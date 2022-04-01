@@ -1,0 +1,146 @@
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstddef>
+#include <cstdlib>
+#include <iomanip>
+#include <ios>
+#include <iostream>
+#include <memory>
+#include <ratio>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
+#include "block.hh"
+#include "blocks.hh"
+
+const size_t WINDOW_HEIGHT = 24;
+
+template <typename T> struct guard {
+private:
+  T callback;
+
+public:
+  guard(const guard &) = delete;
+  guard &operator=(const guard &) = delete;
+
+  guard(T callback) : callback(callback) {}
+  ~guard() { callback(); }
+};
+
+int main(int argc, char *argv[]) {
+  // Create a connection to the X server
+  Display *display = XOpenDisplay(nullptr);
+  guard display_guard([display] { XCloseDisplay(display); });
+  if (display == NULL) {
+    std::cerr << "Cannot open display" << '\n';
+    return 1;
+  }
+
+  // Get the size of the screen in pixels
+  int screen = DefaultScreen(display);
+  int display_width = DisplayWidth(display, screen);
+  int display_height = DisplayHeight(display, screen);
+
+  // Create a window with width of display and height of WINDOW_HEIGHT px
+  Window window = XCreateSimpleWindow(display, RootWindow(display, screen), 0,
+                                      0, display_width, WINDOW_HEIGHT, 0, 0, 0);
+
+  // Set the window title
+  XStoreName(display, window, "Fishhh's custom status bar");
+
+  // Don't allow window to grab focus
+  XSetWindowAttributes attr;
+  attr.override_redirect = true;
+  XChangeWindowAttributes(display, window, CWOverrideRedirect, &attr);
+
+  // Create a graphics context
+  GC gc = XCreateGC(display, window, 0, 0);
+  guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
+  XMapWindow(display, window);
+
+  // Set the font to a monospace font with size 12
+  XFontStruct *font_info =
+      XLoadQueryFont(display, "-*-fixed-*-*-18-*-*-*-*-*-*-*");
+  if (font_info == NULL) {
+    std::cerr << "Cannot load font" << '\n';
+    return 1;
+  }
+  guard font_info_guard(
+      [display, font_info] { XFreeFont(display, font_info); });
+  XSetFont(display, gc, font_info->fid);
+
+  // Set the background color
+  XSetBackground(display, gc, BlackPixel(display, screen));
+
+  // Set the foreground color
+  XSetForeground(display, gc, WhitePixel(display, screen));
+
+  size_t i = 0;
+
+  // clang-format off
+  Draw draw (
+    display,
+    window,
+    gc,
+    font_info,
+
+    0 /* offset x */,
+    5 /* offset y */,
+    display_width /* max x */,
+    WINDOW_HEIGHT - 5 /* max y */,
+
+    WINDOW_HEIGHT /* bar height */,
+    0
+  );
+  // clang-format on
+
+  std::unordered_map<Block *,
+                     std::chrono::time_point<std::chrono::steady_clock,
+                                             std::chrono::duration<double>>>
+      update_times;
+  for (auto &block : blocks) {
+    update_times[block.get()] =
+        std::chrono::steady_clock::now() + block->update_interval();
+    block->update();
+  }
+
+  while (1) {
+    auto start = std::chrono::steady_clock::now();
+    XClearWindow(display, window);
+    draw._offset_x = 5;
+
+    size_t x = 0;
+    for (auto &block : blocks) {
+      auto now = std::chrono::steady_clock::now();
+      if (now > update_times[block.get()]) {
+        update_times[block.get()] = now + block->update_interval();
+        block->update();
+      }
+
+      draw._offset_x += block->draw(draw);
+      if (&block != &blocks[sizeof blocks / sizeof(blocks[0]) - 1]) {
+        draw._offset_x += 8;
+        XSetForeground(display, gc, 0xD3D3D3);
+        XFillRectangle(display, window, gc, draw._offset_x, 3, 2,
+                  WINDOW_HEIGHT - 6);
+        draw._offset_x += 10;
+      }
+    }
+
+    XFlush(display);
+    auto end = std::chrono::steady_clock::now();
+
+    auto sleep_dur = (std::chrono::milliseconds(1000) - (end - start)) / 160;
+    draw._fps = std::chrono::milliseconds(1000) / (end - start + sleep_dur);
+    std::this_thread::sleep_for(sleep_dur);
+  }
+
+  return 0;
+}
