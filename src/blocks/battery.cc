@@ -32,6 +32,7 @@ void BatteryBlock::update() {
   _charge_now = read_int(_path / "charge_now");
   _charge_full = read_int(_path / "charge_full");
   _charge_full_design = read_int(_path / "charge_full_design");
+  _current_now = read_int(_path / "current_now");
 
   std::ifstream ifs(_path / "status");
   if (!ifs.is_open())
@@ -59,7 +60,7 @@ size_t BatteryBlock::draw(Draw &draw) {
   auto bottom = draw.height() - 1;
   auto height = bottom - top;
   auto left = x;
-  auto right = x += 64;
+  auto right = x += 80;
   draw.line(left, top, right, top);
   draw.line(left, bottom, right, bottom);
   draw.line(left, top, left, bottom);
@@ -69,6 +70,19 @@ size_t BatteryBlock::draw(Draw &draw) {
 
   size_t fill_width = battery_percent / 100 * (right - left - 1);
 
+  auto format_time = [](size_t mins) {
+    std::string time_str;
+    if (mins > 24 * 60) {
+      time_str += std::to_string(mins / 60 / 24) + "d ";
+      mins %= 24 * 60;
+    } else if (mins > 60) {
+      time_str += std::to_string(mins / 60) + "h ";
+      mins %= 60;
+    } else
+      time_str += std::to_string(mins) + "m";
+    return time_str;
+  };
+
   // If charging then fill the box with a gradient
   if (_charging) {
     for (auto i = 0; i < fill_width; ++i) {
@@ -76,7 +90,14 @@ size_t BatteryBlock::draw(Draw &draw) {
       auto x = left + 1 + ((i + _charging_gradient_offset / 10) % fill_width);
       draw.line(x, top + 1, x, bottom - 1, color);
     }
-    _charging_gradient_offset = (_charging_gradient_offset + 2) % (fill_width * 10);
+
+    // NOTE: _charge_full / _current_now results in minutes left till full charge
+    auto time_left_str = format_time(_charge_full / _current_now);
+    draw.text(left + 1 + (fill_width - draw.text_width(time_left_str)) / 2,
+              draw.height() / 2, time_left_str);
+
+    _charging_gradient_offset =
+        (_charging_gradient_offset + 2) % (fill_width * 10);
   } else {
     unsigned long color = 0;
     if (battery_percent > 80) {

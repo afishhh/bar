@@ -20,6 +20,7 @@ class BatteryBlock : public Block {
 private:
   std::filesystem::path _path;
   size_t _charge_full, _charge_full_design, _charge_now;
+  size_t _current_now;
   bool _charging;
   size_t _charging_gradient_offset;
 
