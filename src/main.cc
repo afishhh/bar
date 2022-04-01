@@ -101,6 +101,9 @@ int main(int argc, char *argv[]) {
   );
   // clang-format on
 
+  // PERF: This can be replaced with a priority queue that sorts by time and
+  //       then we could just sleep for the time difference between the next
+  //       block and now, then update that block and redraw everything.
   std::unordered_map<Block *,
                      std::chrono::time_point<std::chrono::steady_clock,
                                              std::chrono::duration<double>>>
@@ -129,7 +132,7 @@ int main(int argc, char *argv[]) {
         draw._offset_x += 8;
         XSetForeground(display, gc, 0xD3D3D3);
         XFillRectangle(display, window, gc, draw._offset_x, 3, 2,
-                  WINDOW_HEIGHT - 6);
+                       WINDOW_HEIGHT - 6);
         draw._offset_x += 10;
       }
     }

@@ -21,7 +21,7 @@ static std::unique_ptr<Block> blocks[] = {
     // TODO: DiskBlock
     // TODO: NetworkBlock
     // TODO: PipewireBlock
-    // TODO: ClockBlock
     // TODO: InternetBlock
+    // TODO: DwmBlock
 };
 // clang-format on
