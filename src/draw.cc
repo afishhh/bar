@@ -1,4 +1,3 @@
-#include "utf8.h"
 #include <X11/Xft/Xft.h>
 #include <X11/extensions/Xrender.h>
 
