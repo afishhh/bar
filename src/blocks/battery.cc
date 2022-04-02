@@ -46,6 +46,7 @@ void BatteryBlock::update() {
   std::string line;
   std::getline(ifs, line);
   _charging = line == "Charging";
+  _full = line == "Full";
 }
 
 size_t BatteryBlock::draw(Draw &draw) {
@@ -124,7 +125,7 @@ size_t BatteryBlock::draw(Draw &draw) {
       draw.line(x, top + 1, x, bottom - 1, color);
     }
 
-    if (_config.show_time_left_charging) {
+    if (_config.show_time_left_charging && !_full) {
       auto time_left_str = format_time((double)(_charge_full - _charge_now) /
                                        _current_now * 3600);
       draw.text(left + width / 2 - draw.text_width(time_left_str) / 2,
@@ -149,7 +150,7 @@ size_t BatteryBlock::draw(Draw &draw) {
 
     draw.rect(left + 1, top + 1, fill_width, height - 1, color);
 
-    if (_config.show_time_left_discharging) {
+    if (_config.show_time_left_discharging && !_full) {
       auto time_left_str =
           format_time((double)_charge_now / _current_now * 3600);
       draw.text(left + width / 2 - draw.text_width(time_left_str) / 2,
