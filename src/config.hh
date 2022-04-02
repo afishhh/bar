@@ -10,12 +10,20 @@
 #include "blocks/network.hh"
 #include "blocks/script.hh"
 
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 
 using namespace std::literals;
 
-static std::initializer_list<const char *> font_names = {
+namespace config {
+
+// NOTE: While the height might seem configurable you will also need to change
+//       widths of quite a few different independent boxes
+static size_t height = 24;
+static bool override_redirect = true;
+
+static std::initializer_list<const char *> fonts = {
     "monospace:size=10", "Font Awesome 5 Free Solid:style=Solid:size=9"};
 
 // clang-format off
@@ -60,3 +68,5 @@ static std::unique_ptr<Block> blocks[] = {
     // TODO: DwmBlock
 };
 // clang-format on
+
+} // namespace config

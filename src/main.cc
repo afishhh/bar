@@ -23,8 +23,6 @@
 #include "block.hh"
 #include "config.hh"
 
-const size_t WINDOW_HEIGHT = 24;
-
 template <typename T> struct guard {
 private:
   T callback;
@@ -51,17 +49,19 @@ int main(int argc, char *argv[]) {
   int display_width = DisplayWidth(display, screen);
   int display_height = DisplayHeight(display, screen);
 
-  // Create a window with width of display and height of WINDOW_HEIGHT px
-  Window window = XCreateSimpleWindow(display, RootWindow(display, screen), 0,
-                                      0, display_width, WINDOW_HEIGHT, 0, 0, 0);
+  // Create a window with width of display and height of config::height px
+  Window window =
+      XCreateSimpleWindow(display, RootWindow(display, screen), 0, 0,
+                          display_width, config::height, 0, 0, 0);
 
   // Set the window title
   XStoreName(display, window, "Fishhh's custom status bar");
 
-  // Don't allow window to grab focus
-  XSetWindowAttributes attr;
-  attr.override_redirect = true;
-  XChangeWindowAttributes(display, window, CWOverrideRedirect, &attr);
+  if (config::override_redirect) {
+    XSetWindowAttributes attr;
+    attr.override_redirect = true;
+    XChangeWindowAttributes(display, window, CWOverrideRedirect, &attr);
+  }
 
   // Create a graphics context
   GC gc = XCreateGC(display, window, 0, 0);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
   // Load a font with Xft
   std::vector<XftFont *> fonts;
-  for (auto font_name : font_names) {
+  for (auto font_name : config::fonts) {
     XftFont *font = XftFontOpenName(display, screen, font_name);
     if (font == NULL) {
       std::cerr << "Cannot load font" << '\n';
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
     fonts.push_back(font);
   }
-  guard fonts_guard([display, fonts](void) {
+  guard fonts_guard([display, fonts]() {
     for (auto font : fonts) {
       XftFontClose(display, font);
     }
@@ -102,9 +102,9 @@ int main(int argc, char *argv[]) {
     0 /* offset x */,
     5 /* offset y */,
     display_width /* max x */,
-    WINDOW_HEIGHT - 5 /* max y */,
+    config::height - 5 /* max y */,
 
-    WINDOW_HEIGHT /* bar height */,
+    config::height /* bar height */,
     0
   );
   // clang-format on
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
                      std::chrono::time_point<std::chrono::steady_clock,
                                              std::chrono::duration<double>>>
       update_times;
-  for (auto &block : blocks) {
+  for (auto &block : config::blocks) {
     update_times[block.get()] =
         std::chrono::steady_clock::now() + block->update_interval();
     block->update();
@@ -124,11 +124,18 @@ int main(int argc, char *argv[]) {
 
   while (1) {
     auto start = std::chrono::steady_clock::now();
+
+    while (XEventsQueued(display, QueuedAfterFlush) > 0) {
+      XEvent e;
+      XNextEvent(display, &e);
+      // Ignore all events :sunglasses:
+    }
+
     XClearWindow(display, window);
     draw._offset_x = 5;
 
     size_t x = 0;
-    for (auto &block : blocks) {
+    for (auto &block : config::blocks) {
       auto now = std::chrono::steady_clock::now();
       if (now > update_times[block.get()]) {
         update_times[block.get()] = now + block->update_interval();
@@ -136,11 +143,13 @@ int main(int argc, char *argv[]) {
       }
 
       draw._offset_x += block->draw(draw);
-      if (&block != &blocks[sizeof blocks / sizeof(blocks[0]) - 1]) {
+      if (&block !=
+          &config::blocks[sizeof config::blocks / sizeof(config::blocks[0]) -
+                          1]) {
         draw._offset_x += 8;
         XSetForeground(display, gc, 0xD3D3D3);
         XFillRectangle(display, window, gc, draw._offset_x, 3, 2,
-                       WINDOW_HEIGHT - 6);
+                       config::height - 6);
         draw._offset_x += 10;
       }
     }
