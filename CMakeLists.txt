@@ -17,6 +17,7 @@ add_executable(
   src/blocks/cpu.cc
   src/blocks/clock.cc
   src/blocks/script.cc
+  src/blocks/disk.cc
 )
 
 find_package(X11 REQUIRED)

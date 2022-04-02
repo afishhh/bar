@@ -4,6 +4,7 @@
 #include "blocks/battery.hh"
 #include "blocks/clock.hh"
 #include "blocks/cpu.hh"
+#include "blocks/disk.hh"
 #include "blocks/fps.hh"
 #include "blocks/memory.hh"
 #include "blocks/network.hh"
@@ -21,6 +22,7 @@ static std::initializer_list<const char *> font_names = {
 static std::unique_ptr<Block> blocks[] = {
     std::make_unique<BatteryBlock>("/sys/class/power_supply/BAT0",
         BatteryBlock::Config {
+            .prefix = "BAT ",
             .show_percentage = true,
             .show_time_left_charging = true,
             .show_time_left_discharging = true,
@@ -37,9 +39,18 @@ static std::unique_ptr<Block> blocks[] = {
     std::make_unique<CpuBlock>(),
     std::make_unique<ClockBlock>(),
     std::make_unique<NetworkBlock>(),
+    std::make_unique<DiskBlock>("/",
+        DiskBlock::Config {
+            .show_fs_type = false,
+            .show_usage_text = true,
+            .show_usage_bar = true,
+            .bar_width = 70,
+            // If the color is not set then it's chosen based on the usage percentage.
+            // .bar_fill_color = 0x00FF00,
+        }
+    ),
     std::make_unique<FpsBlock>(),
     // TODO: NvidiaGpuBlock
-    // TODO: DiskBlock
     // TODO: PipewireBlock
     // TODO: InternetBlock
     // TODO: DwmBlock

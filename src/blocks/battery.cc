@@ -52,7 +52,8 @@ size_t BatteryBlock::draw(Draw &draw) {
   double battery_percent = (double)_charge_now / _charge_full * 100;
   size_t x = 0;
 
-  x += draw.text(x, draw.vcenter(), "Battery: ");
+  if (!_config.prefix.empty())
+    x += draw.text(x, draw.vcenter(), _config.prefix);
   if (_config.show_percentage) {
     std::ostringstream percent_str;
     percent_str << std::setw(5) << std::setfill(' ') << std::right
@@ -62,10 +63,13 @@ size_t BatteryBlock::draw(Draw &draw) {
 
   x += 5;
 
-  if(_config.show_wattage) {
+  if (_config.show_wattage) {
     std::ostringstream current_str;
     current_str << std::setw(4) << std::setfill(' ') << std::right
-                << std::setprecision(1) << std::fixed << (_voltage_now / 1000. / 1000.) * (_current_now / 1000. / 1000.) << "W";
+                << std::setprecision(1) << std::fixed
+                << (_voltage_now / 1000. / 1000.) *
+                       (_current_now / 1000. / 1000.)
+                << "W";
     x += draw.text(x, draw.vcenter(), current_str.str());
   }
 

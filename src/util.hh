@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <sstream>
 
-static std::string to_sensible_unit(size_t bytes) {
+static std::string to_sensible_unit(size_t bytes, size_t precision = 2) {
   const char *units[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
   size_t unit = 1;
   double result = bytes;
@@ -13,7 +13,7 @@ static std::string to_sensible_unit(size_t bytes) {
     unit++;
   }
   std::ostringstream ostr;
-  ostr << std::setprecision(2) << std::fixed << result;
+  ostr << std::setprecision(precision) << std::fixed << result;
   return ostr.str() +
          units[std::min(unit, sizeof units / sizeof(units[0])) - 1];
 }

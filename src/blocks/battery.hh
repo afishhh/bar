@@ -27,6 +27,7 @@ private:
 
 public:
   struct Config {
+    std::string prefix;
     bool show_percentage;
     bool show_time_left_charging;
     bool show_time_left_discharging;
@@ -34,7 +35,11 @@ public:
     size_t bar_width;
     bool show_wattage;
     bool show_degradation;
-  } _config;
+  };
+private:
+  Config _config;
+
+public:
 
   BatteryBlock(std::filesystem::path, Config config);
   ~BatteryBlock();
