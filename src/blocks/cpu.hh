@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <optional>
 #include <vector>
 
 #include "../block.hh"
@@ -65,11 +66,38 @@ class CpuBlock : public Block {
 
   AllTimes _diff;
 
-  bool initialised = false;
+  bool _initialised = false;
 
   AllTimes read_cpu_times();
 
+  struct ThermalInfo {
+    struct TripPoint {
+      long hyst;
+      long temperature;
+      std::string type;
+
+      std::weak_ordering operator<=>(const TripPoint &other) const {
+        return temperature <=> other.temperature;
+      }
+    };
+    std::optional<TripPoint> current_trip_point;
+
+    long temperature;
+  };
+  std::optional<ThermalInfo> _thermal;
+
 public:
+  struct Config {
+    std::optional<std::string> thermal_zone_type;
+  };
+
+private:
+  Config _config;
+
+public:
+  CpuBlock(Config config);
+  ~CpuBlock();
+
   size_t draw(Draw &) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
