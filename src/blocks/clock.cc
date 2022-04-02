@@ -40,16 +40,24 @@ size_t ClockBlock::draw(Draw &draw) {
   auto now = std::chrono::system_clock::now();
   time_t tt = std::chrono::system_clock::to_time_t(now);
   struct tm *tm = localtime(&tt);
+  
+  auto left_pad = [](std::string s, size_t n) {
+    while (s.size() < n) {
+      s.insert(0, " ");
+    }
+    return s;
+  };
+
   x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_year + 1900));
   x += 5;
   x += draw.text(x, draw.vcenter(), month_to_string(tm->tm_mon));
   x += 5;
   x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_mday));
   x += 8;
-  x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_hour));
+  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_hour), 2));
   x += draw.text(x, draw.vcenter(), ":");
-  x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_min));
+  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_min), 2));
   x += draw.text(x, draw.vcenter(), ":");
-  x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_sec));
+  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_sec), 2));
   return x;
 }

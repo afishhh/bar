@@ -70,16 +70,22 @@ size_t BatteryBlock::draw(Draw &draw) {
 
   size_t fill_width = battery_percent / 100 * (right - left - 1);
 
-  auto format_time = [](size_t mins) {
+  auto format_time = [](size_t seconds) {
     std::string time_str;
-    if (mins > 24 * 60) {
-      time_str += std::to_string(mins / 60 / 24) + "d ";
-      mins %= 24 * 60;
-    } else if (mins > 60) {
-      time_str += std::to_string(mins / 60) + "h ";
-      mins %= 60;
+    if (seconds >= 24 * 60 * 60) {
+      time_str += std::to_string(seconds / 60 / 60 / 24) + "d ";
+      seconds %= 24 * 60 * 60;
+    } else if (seconds >= 60 * 60) {
+      time_str += std::to_string(seconds / 60 / 60) + "h ";
+      seconds %= 60 * 60;
+    } else if (seconds >= 60) {
+      time_str += std::to_string(seconds / 60) + "m ";
+      seconds %= 60;
     } else
-      time_str += std::to_string(mins) + "m";
+      time_str += std::to_string(seconds) + "s";
+
+    if (time_str.back() == ' ')
+      time_str.pop_back();
     return time_str;
   };
 
@@ -91,9 +97,9 @@ size_t BatteryBlock::draw(Draw &draw) {
       draw.line(x, top + 1, x, bottom - 1, color);
     }
 
-    // NOTE: _charge_full / _current_now results in minutes left till full charge
-    auto time_left_str = format_time(_charge_full / _current_now);
-    draw.text(left + 1 + (fill_width - draw.text_width(time_left_str)) / 2,
+    auto time_left_str =
+        format_time((double)(_charge_full - _charge_now) / _current_now * 3600);
+    draw.text(left + (right - left - draw.text_width(time_left_str)) / 2,
               draw.height() / 2, time_left_str);
 
     _charging_gradient_offset =
