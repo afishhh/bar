@@ -13,10 +13,16 @@
         devShell = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [ bashInteractive ];
           buildInputs = with pkgs; [
+            cmake
             pkg-config
             xorg.libX11.dev
             xorg.libXft
-            cmake
+
+            # libXft deps
+            xorg.libXext
+            xorg.libXrender
+            fontconfig
+            freetype
           ];
         };
       });

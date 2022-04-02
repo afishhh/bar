@@ -10,10 +10,13 @@ add_executable(
   ${PROJECT_NAME}
 
   src/main.cc
+  src/draw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
+  src/blocks/network.cc
   src/blocks/cpu.cc
   src/blocks/clock.cc
+  src/blocks/script.cc
 )
 
 find_package(X11 REQUIRED)
@@ -21,4 +24,5 @@ find_package(X11 REQUIRED)
 target_link_libraries(
   ${PROJECT_NAME}
   X11::X11
+  X11::Xft
 )

@@ -1,6 +1,9 @@
 #include <X11/X.h>
+#include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
+#include <X11/Xresource.h>
 #include <X11/Xutil.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -18,7 +21,7 @@
 #include <vector>
 
 #include "block.hh"
-#include "blocks.hh"
+#include "config.hh"
 
 const size_t WINDOW_HEIGHT = 24;
 
@@ -65,16 +68,21 @@ int main(int argc, char *argv[]) {
   guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
   XMapWindow(display, window);
 
-  // Set the font to a monospace font with size 12
-  XFontStruct *font_info =
-      XLoadQueryFont(display, "-*-fixed-*-*-18-*-*-*-*-*-*-*");
-  if (font_info == NULL) {
-    std::cerr << "Cannot load font" << '\n';
-    return 1;
+  // Load a font with Xft
+  std::vector<XftFont *> fonts;
+  for (auto font_name : font_names) {
+    XftFont *font = XftFontOpenName(display, screen, font_name);
+    if (font == NULL) {
+      std::cerr << "Cannot load font" << '\n';
+      return 1;
+    }
+    fonts.push_back(font);
   }
-  guard font_info_guard(
-      [display, font_info] { XFreeFont(display, font_info); });
-  XSetFont(display, gc, font_info->fid);
+  guard fonts_guard([display, fonts](void) {
+    for (auto font : fonts) {
+      XftFontClose(display, font);
+    }
+  });
 
   // Set the background color
   XSetBackground(display, gc, BlackPixel(display, screen));
@@ -89,7 +97,7 @@ int main(int argc, char *argv[]) {
     display,
     window,
     gc,
-    font_info,
+    fonts,
 
     0 /* offset x */,
     5 /* offset y */,
