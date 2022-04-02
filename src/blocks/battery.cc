@@ -133,13 +133,13 @@ size_t BatteryBlock::draw(Draw &draw) {
     }
 
     _charging_gradient_offset =
-        (_charging_gradient_offset + 2) % (fill_width * 10);
+        (_charging_gradient_offset + 2) % (fill_width * 20);
   } else {
     unsigned long color = 0;
     if (battery_percent > 80) {
-      color = 0x00FF00;
+      color = 0x00CC00;
     } else if (battery_percent > 60) {
-      color = 0xFFFF00;
+      color = 0xCCCC00;
     } else if (battery_percent > 40) {
       color = 0xFFA500;
     } else if (battery_percent > 20) {
