@@ -15,6 +15,9 @@ static size_t read_int(std::filesystem::path path) {
     throw std::runtime_error("Could not open file");
   std::string line;
   std::getline(ifs, line);
+  // Happens right after unplugging or plugging in the battery.
+  if (line.empty())
+    return 0;
   return std::stoul(line);
 }
 
@@ -99,8 +102,8 @@ size_t BatteryBlock::draw(Draw &draw) {
 
     auto time_left_str =
         format_time((double)(_charge_full - _charge_now) / _current_now * 3600);
-    draw.text(left + (right - left - draw.text_width(time_left_str)) / 2,
-              draw.height() / 2, time_left_str);
+    draw.text(left + (right - left) / 2 - draw.text_width(time_left_str) / 2,
+              1 + draw.vcenter(), time_left_str);
 
     _charging_gradient_offset =
         (_charging_gradient_offset + 2) % (fill_width * 10);
