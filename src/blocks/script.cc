@@ -12,6 +12,7 @@ extern char **environ;
 #include <system_error>
 
 #include "script.hh"
+#include "../util.hh"
 
 void ScriptBlock::update() {
   // Execute script from this->_path and put it's stdout into this->_output
@@ -69,8 +70,13 @@ void ScriptBlock::update() {
   ifs.seekg(0, std::ios::beg);
   ifs.read(&_output[0], _output.size());
   ifs.close();
+
+  _output = std::string(trim(_output));
+
+  if(close(memfd) < 0)
+    throw std::system_error(errno, std::system_category(), "close");
 }
 
 size_t ScriptBlock::draw(Draw &draw) {
-  return draw.text(0, draw.vcenter(), _output.substr(0, _output.find('\n')));
+  return draw.text(0, draw.vcenter(), _output);
 }
