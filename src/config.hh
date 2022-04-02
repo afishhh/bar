@@ -52,7 +52,6 @@ static std::unique_ptr<Block> blocks[] = {
             // .bar_fill_color = 0x00FF00,
         }
     ),
-
     std::make_unique<NetworkBlock>(),
     std::make_unique<FpsBlock>(),
     // TODO: NvidiaGpuBlock
