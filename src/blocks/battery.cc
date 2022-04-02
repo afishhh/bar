@@ -158,5 +158,14 @@ size_t BatteryBlock::draw(Draw &draw) {
     }
   }
 
+  if (_config.show_degradation) {
+    x += 5;
+    std::ostringstream ss;
+    ss << std::setw(5) << std::setfill(' ') << std::right
+       << std::setprecision(1) << std::fixed
+       << ((double)_charge_full / _charge_full_design * 100.) << '%';
+    x += draw.text(x, draw.vcenter(), ss.str());
+  }
+
   return x;
 }
