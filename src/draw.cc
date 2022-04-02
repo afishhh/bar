@@ -111,24 +111,26 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
 
 size_t Draw::text_width(std::string_view text) const {
   size_t total = 0;
-  // for (auto it = text.begin(); it != text.end();) {
-  //   long utf8;
-  //   auto len = utf8decode(it, &utf8, UTF_SIZ);
-  //   bool found = false;
-  //   for (auto font : _fonts) {
-  //     if (XftCharExists(_dpy, font, utf8)) {
-  //       XGlyphInfo info;
-  //       XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&utf8, 1, &info);
-  //       total += info.xOff;
-  //       found = true;
-  //       break;
-  //     }
-  //   }
-  //   if (!found) {
-  //     std::cerr << "Could not find char " << (char)utf8 << " (" << std::hex
-  //               << utf8 << ") in any font\n";
-  //   }
-  //   it += len;
-  // }
+  for (auto it = text.begin(); it != text.end();) {
+    long utf8;
+    size_t len = utf8decode(it, &utf8, UTF_SIZ);
+    bool found = false;
+
+    for (auto font : _fonts) {
+      if (XftCharExists(_dpy, font, utf8)) {
+        XGlyphInfo info;
+        XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
+        total += info.xOff;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      std::cerr << "Could not find char '" << (char)utf8 << "' (0x" << std::hex
+                << utf8 << ") in any font\n";
+    }
+
+    it += len;
+  }
   return total;
 }
