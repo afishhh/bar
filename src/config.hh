@@ -19,7 +19,20 @@ static std::initializer_list<const char *> font_names = {
 
 // clang-format off
 static std::unique_ptr<Block> blocks[] = {
-    std::make_unique<BatteryBlock>("/sys/class/power_supply/BAT0"),
+    std::make_unique<BatteryBlock>("/sys/class/power_supply/BAT0",
+        BatteryBlock::Config {
+            .show_percentage = true,
+            .show_time_left_charging = true,
+            .show_time_left_discharging = true,
+            // How many "blocks" of time to show.
+            // eg. if 2 then "2h 30m" will be shown.
+            // if 3 then "2h 30m 10s" will be shown.
+            .time_precision = 2,
+            .bar_width = 75,
+            .show_wattage = true,
+            .show_degradation = true,
+        }
+    ),
     std::make_unique<MemoryBlock>(),
     std::make_unique<CpuBlock>(),
     std::make_unique<ClockBlock>(),
