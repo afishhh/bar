@@ -43,7 +43,7 @@ size_t ClockBlock::draw(Draw &draw) {
   
   auto left_pad = [](std::string s, size_t n) {
     while (s.size() < n) {
-      s.insert(0, " ");
+      s.insert(0, "0");
     }
     return s;
   };
