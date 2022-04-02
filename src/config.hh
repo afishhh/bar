@@ -24,9 +24,6 @@ static std::unique_ptr<Block> blocks[] = {
     std::make_unique<CpuBlock>(),
     std::make_unique<ClockBlock>(),
     std::make_unique<NetworkBlock>(),
-
-    std::make_unique<ScriptBlock>("sb-mic-volume", 500ms),
-
     std::make_unique<FpsBlock>(),
     // TODO: NvidiaGpuBlock
     // TODO: DiskBlock

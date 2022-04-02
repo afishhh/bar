@@ -10,20 +10,11 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       with pkgs.lib; {
-        devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ bashInteractive ];
-          buildInputs = with pkgs; [
-            cmake
-            pkg-config
-            xorg.libX11.dev
-            xorg.libXft
-
-            # libXft deps
-            xorg.libXext
-            xorg.libXrender
-            fontconfig
-            freetype
-          ];
+        defaultPackage = pkgs.callPackage ./default.nix { };
+        devShell = self.defaultPackage.${system};
+      } // {
+        overlay = final: prev: {
+          bar = prev.callPackage ./default.nix { };
         };
       });
 }
