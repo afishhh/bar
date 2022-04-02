@@ -6,7 +6,6 @@
 
 #include "battery.hh"
 
-BatteryBlock::BatteryBlock(std::filesystem::path path) : _path(path) {}
 BatteryBlock::BatteryBlock(std::filesystem::path path,
                            BatteryBlock::Config config)
     : _path(path), _config(config) {}
@@ -24,11 +23,11 @@ static size_t read_int(std::filesystem::path path) {
   return std::stoul(line);
 }
 
-std::optional<BatteryBlock> BatteryBlock::find_first() {
+std::optional<BatteryBlock> BatteryBlock::find_first(Config config) {
   for (auto &entry :
        std::filesystem::directory_iterator("/sys/class/power_supply")) {
     if (entry.path().filename() == "BAT0") {
-      return BatteryBlock(entry.path());
+      return BatteryBlock(entry.path(), config);
     }
   }
   return {};

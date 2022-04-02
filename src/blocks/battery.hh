@@ -36,11 +36,10 @@ public:
     bool show_degradation;
   } _config;
 
-  BatteryBlock(std::filesystem::path);
   BatteryBlock(std::filesystem::path, Config config);
   ~BatteryBlock();
 
-  static std::optional<BatteryBlock> find_first();
+  static std::optional<BatteryBlock> find_first(Config config);
 
   size_t draw(Draw &) override;
   void update() override;
