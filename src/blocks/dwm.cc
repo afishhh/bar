@@ -32,6 +32,8 @@ void DwmBlock::late_init() {
     auto tags = _connection.get_tags();
     for (const auto &tag : *tags) {
       _tags.push_back(Tag{
+          // HACK: You might ask, why's this shit here?
+          //       and I can only tell you, I don't fucking know.
           .name = tag.tag_name == "" ? "1" : tag.tag_name,
           .bitmask = tag.bit_mask,
           .selected = bool(bar_monitor.tag_state.selected & tag.bit_mask),
@@ -76,9 +78,10 @@ void DwmBlock::late_init() {
         _focused_client_title = event.new_name;
       };
   _connection.subscribe(dwmipc::Event::FOCUSED_TITLE_CHANGE);
-  _connection.on_layout_change = [this](const dwmipc::LayoutChangeEvent &event) {
-    _layout_symbol = event.new_symbol;
-  };
+  _connection.on_layout_change =
+      [this](const dwmipc::LayoutChangeEvent &event) {
+        _layout_symbol = event.new_symbol;
+      };
   _connection.subscribe(dwmipc::Event::LAYOUT_CHANGE);
 }
 DwmBlock::~DwmBlock() {}
