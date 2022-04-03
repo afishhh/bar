@@ -98,9 +98,6 @@ int main(int argc, char *argv[]) {
   );
   // clang-format on
 
-  // PERF: This can be replaced with a priority queue that sorts by time and
-  //       then we could just sleep for the time difference between the next
-  //       block and now, then update that block and redraw everything.
   std::unordered_map<Block *,
                      std::chrono::time_point<std::chrono::steady_clock,
                                              std::chrono::duration<double>>>
