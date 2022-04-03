@@ -15,7 +15,7 @@ public:
   //        hashmap is accessed and causes a SIGFPE float point exception.
   virtual void late_init(){};
 
-  virtual size_t draw(Draw &) = 0;
+  virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
   virtual void update(){};
   virtual std::chrono::duration<double> update_interval() {
     return std::chrono::duration<double>::max();

@@ -1,4 +1,5 @@
 #include <X11/Xlib.h>
+#include <chrono>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
@@ -49,7 +50,7 @@ void BatteryBlock::update() {
   _full = line == "Full";
 }
 
-size_t BatteryBlock::draw(Draw &draw) {
+size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   double battery_percent = (double)_charge_now / _charge_full * 100;
   size_t x = 0;
 
@@ -133,7 +134,7 @@ size_t BatteryBlock::draw(Draw &draw) {
     }
 
     _charging_gradient_offset =
-        (_charging_gradient_offset + 2) % (fill_width * 20);
+        (_charging_gradient_offset + std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() / 2500000) % (fill_width * 20);
   } else {
     unsigned long color = 0;
     if (battery_percent > 80) {

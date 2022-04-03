@@ -22,7 +22,7 @@ public:
               const std::chrono::duration<double> &interval, size_t limit)
       : _path(path), _interval(interval), _limit(limit) {}
 
-  size_t draw(Draw &) override;
+  size_t draw(Draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override { return _interval; }
 };

@@ -46,7 +46,7 @@ public:
 
   static std::optional<BatteryBlock> find_first(Config config);
 
-  size_t draw(Draw &) override;
+  size_t draw(Draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(1000);

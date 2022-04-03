@@ -36,7 +36,7 @@ void NetworkBlock::update() {
   _last_rx_bytes = old_rx;
 }
 
-size_t NetworkBlock::draw(Draw &draw) {
+size_t NetworkBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   auto x = 0;
   x += draw.text(x, draw.vcenter(), "Tx");
   x += 3;

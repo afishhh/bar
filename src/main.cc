@@ -116,6 +116,11 @@ int main(int argc, char *argv[]) {
     block->update();
   }
 
+  std::unordered_map<Block*, std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>>> last_draw_points;
+  for (auto &block : config::blocks) {
+    last_draw_points[block.get()] = std::chrono::steady_clock::now();
+  }
+
   while (1) {
     auto start = std::chrono::steady_clock::now();
 
@@ -137,7 +142,9 @@ int main(int argc, char *argv[]) {
         block->update();
       }
 
-      draw._offset_x += block->draw(draw);
+      auto delta = now - last_draw_points[block.get()];
+      draw._offset_x += block->draw(draw, delta);
+      last_draw_points[block.get()] = now;
       if (&block !=
           &config::blocks[sizeof config::blocks / sizeof(config::blocks[0]) -
                           1]) {
