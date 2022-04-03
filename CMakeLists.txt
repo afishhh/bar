@@ -4,12 +4,12 @@ set(PROJECT_NAME bar)
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-fsanitize=address -g ${CMAKE_CXX_FLAGS}")
 
 add_executable(
   ${PROJECT_NAME}
 
   src/main.cc
+  src/guard.cc
   src/draw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
