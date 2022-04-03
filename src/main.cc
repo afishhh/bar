@@ -106,19 +106,23 @@ int main(int argc, char *argv[]) {
   for (auto &block : config::blocks)
     block->late_init();
 
-  std::unordered_map<Block *,
-                     std::chrono::time_point<std::chrono::steady_clock,
-                                             std::chrono::duration<double>>>
-      update_times;
-  for (auto &block : config::blocks) {
-    update_times[block.get()] =
-        std::chrono::steady_clock::now() + block->update_interval();
-    block->update();
-  }
+  // FIXME: Cleanup these maps
+  using steady_time_point =
+      std::chrono::time_point<std::chrono::steady_clock,
+                              std::chrono::duration<double>>;
 
-  std::unordered_map<Block*, std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>>> last_draw_points;
+  std::unordered_map<Block *, steady_time_point> update_times;
+  std::unordered_map<Block *, steady_time_point> animate_times;
+
+  std::unordered_map<Block *, steady_time_point> last_animate_points;
+  std::unordered_map<Block *, steady_time_point> last_draw_points;
   for (auto &block : config::blocks) {
-    last_draw_points[block.get()] = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    update_times[block.get()] = now + block->update_interval();
+    animate_times[block.get()] = now + block->animate_interval();
+    last_animate_points[block.get()] = now;
+    last_draw_points[block.get()] = now;
+    block->update();
   }
 
   while (1) {
@@ -140,6 +144,11 @@ int main(int argc, char *argv[]) {
       if (now > update_times[block.get()]) {
         update_times[block.get()] = now + block->update_interval();
         block->update();
+      }
+      if (now > animate_times[block.get()]) {
+        animate_times[block.get()] = now + block->animate_interval();
+        block->animate(now - last_animate_points[block.get()]);
+        last_animate_points[block.get()] = now;
       }
 
       auto delta = now - last_draw_points[block.get()];

@@ -30,7 +30,7 @@ public:
   DiskBlock(const std::filesystem::path &mountpoint, Config config);
   ~DiskBlock();
 
-  size_t draw(Draw &, std::chrono::duration<double> delta) override;
+  size_t draw(Draw &, std::chrono::duration<double> delta) const override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::seconds(3);

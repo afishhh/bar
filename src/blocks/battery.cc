@@ -50,7 +50,8 @@ void BatteryBlock::update() {
   _full = line == "Full";
 }
 
-size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+size_t BatteryBlock::draw(Draw &draw,
+                          std::chrono::duration<double> delta) const {
   double battery_percent = (double)_charge_now / _charge_full * 100;
   size_t x = 0;
 
@@ -132,9 +133,6 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
       draw.text(left + width / 2 - draw.text_width(time_left_str) / 2,
                 1 + draw.vcenter(), time_left_str);
     }
-
-    _charging_gradient_offset =
-        (_charging_gradient_offset + std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() / 2500000) % (fill_width * 20);
   } else {
     unsigned long color = 0;
     if (battery_percent > 80) {
@@ -169,4 +167,11 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   }
 
   return x;
+}
+
+void BatteryBlock::animate(std::chrono::duration<double> delta) {
+  size_t fill_width =
+      (double)_charge_now / _charge_full * (_config.bar_width - 1);
+  _charging_gradient_offset =
+      (_charging_gradient_offset + size_t(delta / animate_interval())) % (fill_width * 20);
 }
