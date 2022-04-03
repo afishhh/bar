@@ -27,8 +27,7 @@ void MemoryBlock::update() {
   _used = _total - _avail;
 }
 
-size_t MemoryBlock::draw(Draw &draw,
-                         std::chrono::duration<double> delta) const {
+size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   size_t x = draw.text(0, draw.vcenter(), "Memory: ");
 
   std::string text = to_sensible_unit(_used * 1024);

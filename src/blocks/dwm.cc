@@ -86,7 +86,7 @@ void DwmBlock::late_init() {
 }
 DwmBlock::~DwmBlock() {}
 
-size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double> delta) const {
+size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   size_t x = 0;
   for (const auto &tag : _tags) {
     if (!tag.occupied && !tag.selected && !tag.urgent)

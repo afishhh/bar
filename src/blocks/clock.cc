@@ -35,7 +35,7 @@ std::string month_to_string(int mon) {
   }
 }
 
-size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double> delta) const {
+size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   size_t x = 0;
   auto now = std::chrono::system_clock::now();
   time_t tt = std::chrono::system_clock::to_time_t(now);

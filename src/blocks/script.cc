@@ -77,6 +77,6 @@ void ScriptBlock::update() {
     throw std::system_error(errno, std::system_category(), "close");
 }
 
-size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double> delta) const {
+size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   return draw.text(0, draw.vcenter(), _output);
 }

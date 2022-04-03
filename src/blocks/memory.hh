@@ -12,7 +12,7 @@ class MemoryBlock : public Block {
   size_t _avail;
 
 public:
-  size_t draw(Draw &, std::chrono::duration<double> delta) const override;
+  size_t draw(Draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(500);

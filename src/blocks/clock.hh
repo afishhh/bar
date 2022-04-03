@@ -4,5 +4,5 @@
 
 class ClockBlock : public Block {
 public:
-  size_t draw(Draw&, std::chrono::duration<double> delta) const override;
+  size_t draw(Draw&, std::chrono::duration<double> delta) override;
 };

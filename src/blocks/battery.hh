@@ -36,24 +36,19 @@ public:
     bool show_wattage;
     bool show_degradation;
   };
-
 private:
   Config _config;
 
 public:
+
   BatteryBlock(std::filesystem::path, Config config);
   ~BatteryBlock();
 
   static std::optional<BatteryBlock> find_first(Config config);
 
-  size_t draw(Draw &, std::chrono::duration<double> delta) const override;
+  size_t draw(Draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(1000);
-  }
-
-  void animate(std::chrono::duration<double>) override;
-  std::chrono::duration<double> animate_interval() override {
-    return std::chrono::nanoseconds(2500000);
   }
 };
