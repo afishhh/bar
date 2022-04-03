@@ -33,13 +33,6 @@ private:
   Visual *_visual = DefaultVisual(_dpy, DefaultScreen(_dpy));
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
-  void check_coords(size_t &x, size_t &y) const {
-    if (_offset_x + x >= _max_x)
-      throw std::logic_error("x coordinate out of range");
-    if (_offset_y + y >= _max_y)
-      throw std::logic_error("y coordinate out of range");
-  }
-
   std::unordered_map<color_type, XftColor> _color_cache;
 
 public:
@@ -76,16 +69,12 @@ public:
 
   void rect(size_t x, size_t y, int width, int height,
             color_type color = 0xFFFFFF) const {
-    check_coords(x, y);
     XSetForeground(_dpy, _gc, color);
     XFillRectangle(_dpy, _win, _gc, x + _offset_x, y + _offset_y, width,
                    height);
   }
   void line(size_t x1, size_t y1, size_t x2, size_t y2,
             color_type color = 0xFFFFFF) const {
-    check_coords(x1, y1);
-    check_coords(x2, y2);
-
     XSetForeground(_dpy, _gc, color);
     XDrawLine(_dpy, _win, _gc, x1 + _offset_x, y1 + _offset_y, x2 + _offset_x,
               y2 + _offset_y);

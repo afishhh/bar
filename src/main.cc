@@ -52,6 +52,11 @@ int main(int argc, char *argv[]) {
     XChangeWindowAttributes(display, window, CWOverrideRedirect, &attr);
   }
 
+  XClassHint class_hint;
+  class_hint.res_name = (char *)"fbar";
+  class_hint.res_class = (char *)"fbar";
+  XSetClassHint(display, window, &class_hint);
+
   // Create a graphics context
   GC gc = XCreateGC(display, window, 0, 0);
   guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
@@ -97,6 +102,9 @@ int main(int argc, char *argv[]) {
     0
   );
   // clang-format on
+
+  for (auto &block : config::blocks)
+    block->late_init();
 
   std::unordered_map<Block *,
                      std::chrono::time_point<std::chrono::steady_clock,

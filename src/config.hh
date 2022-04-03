@@ -5,6 +5,7 @@
 #include "blocks/clock.hh"
 #include "blocks/cpu.hh"
 #include "blocks/disk.hh"
+#include "blocks/dwm.hh"
 #include "blocks/fps.hh"
 #include "blocks/memory.hh"
 #include "blocks/network.hh"
@@ -21,13 +22,16 @@ namespace config {
 // NOTE: While the height might seem configurable you will also need to change
 //       widths of quite a few different independent boxes
 static size_t height = 24;
-static bool override_redirect = true;
+static bool override_redirect = false;
 
 static std::initializer_list<const char *> fonts = {
     "monospace:size=10", "Font Awesome 5 Free Solid:style=Solid:size=9"};
 
 // clang-format off
+// FIXME: Allow right aligned blocks.
 static std::unique_ptr<Block> blocks[] = {
+    std::make_unique<DwmBlock>("/tmp/dwm.socket"),
+    std::make_unique<ClockBlock>(),
     std::make_unique<BatteryBlock>("/sys/class/power_supply/BAT0",
         BatteryBlock::Config {
             .prefix = "BAT ",
@@ -49,7 +53,6 @@ static std::unique_ptr<Block> blocks[] = {
             .thermal_zone_type = "SEN1"
         }
     ),
-    std::make_unique<ClockBlock>(),
     std::make_unique<DiskBlock>("/",
         DiskBlock::Config {
             .show_fs_type = false,

@@ -10,6 +10,9 @@
 , fontconfig
 , freetype
 
+# For dwmipcpp
+, jsoncpp
+
 , configFile ? ./src/config.hh
 }:
 
@@ -29,6 +32,7 @@ stdenv.mkDerivation {
     libXrender
     fontconfig
     freetype
+    jsoncpp
   ];
 
   patchPhase = "rm src/config.hh; ln -s ${configFile} src/config.hh";

@@ -59,7 +59,6 @@ size_t utf8decode(const char *c, long *u, size_t clen) {
 }
 
 size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
-  check_coords(x, y);
   XSetForeground(_dpy, _gc, color);
 
   if (!_color_cache.contains(color)) {
