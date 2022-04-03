@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class Draw {
@@ -34,6 +35,7 @@ private:
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
   std::unordered_map<color_type, XftColor> _color_cache;
+  std::unordered_set<long> _missing_codepoints;
 
 public:
   friend int main(int argc, char *argv[]);

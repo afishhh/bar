@@ -3,8 +3,10 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 
 #include "draw.hh"
 
@@ -79,9 +81,9 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
 
   auto total_width = 0;
 
-  for (auto it = text.begin(); it != text.end();) {
+  for (auto it = text.begin(); it < text.end();) {
     long utf8;
-    size_t len = utf8decode(it, &utf8, UTF_SIZ);
+    size_t len = utf8decode(it, &utf8, std::distance(it, text.end()));
     bool found = false;
 
     for (auto font : _fonts) {
@@ -98,8 +100,14 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
       }
     }
     if (!found) {
-      std::cerr << "Could not find char '" << (char)utf8 << "' (0x" << std::hex
-                << utf8 << ") in any font\n";
+      if (!_missing_codepoints.contains(utf8)) {
+        std::cerr << "Could not find char '" << (char)utf8 << "' (0x"
+                  << std::hex << utf8 << ") in any font\n";
+        _missing_codepoints.insert(utf8);
+      }
+      // NOTE: We bail out here because for some reason we loop infinitely
+      //       otherwise.
+      break;
     }
 
     it += len;
