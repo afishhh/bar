@@ -157,7 +157,9 @@ int main(int argc, char *argv[]) {
     XFlush(display);
     auto end = std::chrono::steady_clock::now();
 
-    auto sleep_dur = (std::chrono::milliseconds(1000) - (end - start)) / 160;
+    auto sleep_dur = (std::chrono::milliseconds(1000) - (end - start) * 160) / 180;
+    if(sleep_dur < 0ns) sleep_dur = 0ns;
+    // FIXME: Better FPS counting (average fps)
     draw._fps = std::chrono::milliseconds(1000) / (end - start + sleep_dur);
     std::this_thread::sleep_for(sleep_dur);
   }
