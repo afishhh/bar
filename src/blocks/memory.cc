@@ -20,11 +20,11 @@ void MemoryBlock::update() {
   while (std::getline(file, line)) {
     if (line.find("MemTotal:") != std::string::npos) {
       _total = std::stoul(line.substr(line.find_last_of(':') + 1));
-    } else if (line.find("MemFree:") != std::string::npos) {
-      _free = std::stoul(line.substr(line.find_last_of(':') + 1));
+    } else if (line.find("MemAvailable:") != std::string::npos) {
+      _avail = std::stoul(line.substr(line.find_last_of(':') + 1));
     }
   }
-  _used = _total - _free;
+  _used = _total - _avail;
 }
 
 size_t MemoryBlock::draw(Draw &draw) {

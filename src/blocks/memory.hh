@@ -9,7 +9,7 @@
 class MemoryBlock : public Block {
   size_t _total;
   size_t _used;
-  size_t _free;
+  size_t _avail;
 
 public:
   size_t draw(Draw &) override;
