@@ -1,6 +1,7 @@
 #include "dwm.hh"
 
 #include "dwmipcpp/connection.hpp"
+#include "dwmipcpp/errors.hpp"
 #include "dwmipcpp/types.hpp"
 #include "dwmipcpp/util.hpp"
 #include <algorithm>
@@ -66,11 +67,16 @@ void DwmBlock::late_init() {
   _connection.subscribe(dwmipc::Event::TAG_CHANGE);
   _connection.on_client_focus_change =
       [this](const dwmipc::ClientFocusChangeEvent &event) {
-        if (event.new_win_id == 0)
-          _focused_client_title = "";
-        else
-          _focused_client_title =
-              _connection.get_client(event.new_win_id)->name;
+        try {
+          if (event.new_win_id == 0)
+            _focused_client_title = "";
+          else
+            _focused_client_title =
+                _connection.get_client(event.new_win_id)->name;
+        } catch (dwmipc::ResultFailureError &err) {
+          std::cerr << "get_client(ClientFocusChangeEvent->client) failed: "
+                    << err.what() << '\n';
+        }
       };
   _connection.subscribe(dwmipc::Event::CLIENT_FOCUS_CHANGE);
   _connection.on_focused_title_change =
