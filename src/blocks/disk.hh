@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <optional>
 #include <filesystem>
 #include <sys/types.h>
 #include <unordered_map>
