@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::steady_clock::now();
 
     auto sleep_dur =
-        (std::chrono::milliseconds(1000) - (end - start) * 160) / 180;
+        (std::chrono::milliseconds(1000) - (end - start) * 70) / 90;
     if (sleep_dur < 0ns)
       sleep_dur = 0ns;
     // FIXME: Better FPS counting (average fps)
