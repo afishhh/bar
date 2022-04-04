@@ -57,9 +57,10 @@ void ScriptBlock::update() {
 
     if (std::chrono::steady_clock::now() > end) {
       kill(pid, SIGKILL);
-      throw std::runtime_error("Script timed out");
+      _timed_out = true;
     }
   }
+  _timed_out = false;
 
   std::ifstream ifs("/proc/self/fd/" + std::to_string(memfd), std::ios::binary);
   if (!ifs)
@@ -78,5 +79,8 @@ void ScriptBlock::update() {
 }
 
 size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+  if(_timed_out)
+    return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
+
   return draw.text(0, draw.vcenter(), _output);
 }

@@ -13,6 +13,7 @@ class ScriptBlock : public Block {
   std::optional<size_t> _limit;
 
   std::string _output;
+  bool _timed_out = false;
 
 public:
   ScriptBlock(const std::filesystem::path &path,
