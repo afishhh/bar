@@ -35,7 +35,7 @@ private:
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
   std::unordered_map<color_type, XftColor> _color_cache;
-  std::unordered_set<long> _missing_codepoints;
+  std::unordered_map<long, XftFont *> _codepoint_cache;
 
 public:
   friend int main(int argc, char *argv[]);
@@ -83,7 +83,7 @@ public:
   }
   size_t text(size_t x, size_t y, std::string_view,
               color_type color = 0xFFFFFF);
-  size_t text_width(std::string_view) const;
+  size_t text_width(std::string_view);
 
   size_t fps() const { return _fps; }
 };
