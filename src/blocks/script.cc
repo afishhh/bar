@@ -1,4 +1,3 @@
-#include <csignal>
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/mman.h>
@@ -8,6 +7,8 @@
 
 extern char **environ;
 
+#include <csignal>
+#include <thread>
 #include <fstream>
 #include <system_error>
 
@@ -59,6 +60,8 @@ void ScriptBlock::update() {
       kill(pid, SIGKILL);
       _timed_out = true;
     }
+
+    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
   }
   _timed_out = false;
 
