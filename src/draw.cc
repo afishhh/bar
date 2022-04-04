@@ -95,7 +95,7 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
         XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
         x += info.xOff;
         total_width += info.xOff;
-      }
+      } else break;
     } else {
       bool found = false;
 
@@ -132,7 +132,7 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
 
 size_t Draw::text_width(std::string_view text) {
   size_t total = 0;
-  for (auto it = text.begin(); it != text.end();) {
+  for (auto it = text.begin(); it < text.end();) {
     long utf8;
     size_t len = utf8decode(it, &utf8, UTF_SIZ);
 
@@ -141,7 +141,7 @@ size_t Draw::text_width(std::string_view text) {
         XGlyphInfo info;
         XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
         total += info.xOff;
-      }
+      } else break;
     } else {
       bool found = false;
       for (auto font : _fonts) {
