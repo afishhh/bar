@@ -85,6 +85,10 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
   for (auto it = text.begin(); it < text.end();) {
     long utf8;
     size_t len = utf8decode(it, &utf8, std::distance(it, text.end()));
+    if(len == 0) {
+      ++it;
+      continue;
+    }
 
     if (_codepoint_cache.contains(utf8)) {
       if (auto font = _codepoint_cache[utf8]) {
@@ -95,7 +99,7 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
         XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
         x += info.xOff;
         total_width += info.xOff;
-      } else break;
+      }
     } else {
       bool found = false;
 
@@ -120,7 +124,6 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
         _codepoint_cache.emplace(utf8, nullptr);
         // NOTE: We bail out here because for some reason we loop infinitely
         //       otherwise.
-        break;
       }
     }
 
@@ -135,13 +138,17 @@ size_t Draw::text_width(std::string_view text) {
   for (auto it = text.begin(); it < text.end();) {
     long utf8;
     size_t len = utf8decode(it, &utf8, UTF_SIZ);
+    if(len == 0) {
+      ++it;
+      continue;
+    }
 
     if (_codepoint_cache.contains(utf8)) {
       if (auto font = _codepoint_cache.at(utf8)) {
         XGlyphInfo info;
         XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
         total += info.xOff;
-      } else break;
+      }
     } else {
       bool found = false;
       for (auto font : _fonts) {
@@ -158,7 +165,6 @@ size_t Draw::text_width(std::string_view text) {
         std::cerr << "Could not find char '" << (char)utf8 << "' (0x"
                   << std::hex << utf8 << ") in any font\n";
         _codepoint_cache.emplace(utf8, nullptr);
-        break;
       }
     }
 
