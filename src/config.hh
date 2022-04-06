@@ -11,6 +11,7 @@
 #include "blocks/network.hh"
 #include "blocks/script.hh"
 
+#include <csignal>
 #include <cstddef>
 #include <filesystem>
 #include <memory>

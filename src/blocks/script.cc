@@ -1,19 +1,41 @@
+#include <cstddef>
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <wait.h>
 
 extern char **environ;
 
 #include <csignal>
-#include <thread>
 #include <fstream>
 #include <system_error>
+#include <thread>
 
-#include "script.hh"
 #include "../util.hh"
+#include "script.hh"
+
+std::unordered_map<int, ScriptBlock *> signal_block_update_map;
+void ScriptBlock::handle_update_signal(int sig) {
+  if (signal_block_update_map.contains(sig)) {
+    ScriptBlock *block{signal_block_update_map[sig]};
+    block->update();
+  }
+}
+
+void ScriptBlock::late_init() {
+  if (_update_signal) {
+    signal_block_update_map[*_update_signal] = this;
+
+    struct sigaction sa;
+    sa.sa_handler = &handle_update_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(*_update_signal, &sa, nullptr);
+  }
+}
 
 void ScriptBlock::update() {
   // Execute script from this->_path and put it's stdout into this->_output
@@ -77,12 +99,12 @@ void ScriptBlock::update() {
 
   _output = std::string(trim(_output));
 
-  if(close(memfd) < 0)
+  if (close(memfd) < 0)
     throw std::system_error(errno, std::system_category(), "close");
 }
 
 size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
-  if(_timed_out)
+  if (_timed_out)
     return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
 
   return draw.text(0, draw.vcenter(), _output);

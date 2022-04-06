@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -10,18 +11,26 @@
 class ScriptBlock : public Block {
   std::filesystem::path _path;
   std::chrono::duration<double> _interval;
-  std::optional<size_t> _limit;
+  std::optional<int> _update_signal;
 
   std::string _output;
   bool _timed_out = false;
 
+  static void handle_update_signal(int);
 public:
   ScriptBlock(const std::filesystem::path &path,
               const std::chrono::duration<double> &interval)
       : _path(path), _interval(interval) {}
   ScriptBlock(const std::filesystem::path &path,
-              const std::chrono::duration<double> &interval, size_t limit)
-      : _path(path), _interval(interval), _limit(limit) {}
+              const std::chrono::duration<double> &interval, int update_signal)
+      : _path(path), _interval(interval), _update_signal(update_signal) {
+    if (*_update_signal > SIGRTMAX || _update_signal < SIGRTMIN)
+      throw std::runtime_error("Update signal number out of range! Available range: (" +
+                               std::to_string(SIGRTMIN) + '-' +
+                               std::to_string(SIGRTMAX) + ")");
+  }
+
+  void late_init() override;
 
   size_t draw(Draw &, std::chrono::duration<double> delta) override;
   void update() override;
