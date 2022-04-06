@@ -12,9 +12,9 @@
       with pkgs.lib; {
         defaultPackage = pkgs.callPackage ./default.nix { };
         devShell = self.defaultPackage.${system};
-      } // {
+      }) // {
         overlay = final: prev: {
           bar = prev.callPackage ./default.nix { };
         };
-      });
+      };
 }
