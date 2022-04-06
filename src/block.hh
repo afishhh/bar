@@ -12,7 +12,7 @@ public:
   // FIXME: Workaroud for "Static Initiaisation Order Fiasco".
   //        dwmipcpp has a static hashmap which is initialised after the blocks
   //        are and when DwmBlock tries to intialise a Connection with dwm that
-  //        hashmap is accessed and causes a SIGFPE float point exception.
+  //        hashmap is accessed and causes a SIGFPE floating point exception.
   virtual void late_init(){};
 
   virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
