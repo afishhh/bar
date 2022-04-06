@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.1)
 set(PROJECT_NAME bar)
 project(${PROJECT_NAME})
 
-if (BAR_DWMIPC)
+option(DWMIPC "Enable linking with dwmipcpp, enabling the DWM block." OFF)
+if (DWMIPC)
   include(FetchContent)
   FetchContent_Declare(
     dwmipcpp
@@ -24,7 +25,6 @@ add_executable(
   src/guard.cc
   src/draw.cc
   src/blocks/memory.cc
-  src/blocks/dwm.cc
   src/blocks/battery.cc
   src/blocks/network.cc
   src/blocks/cpu.cc
