@@ -69,7 +69,6 @@ static std::unique_ptr<Block> blocks[] = {
     // TODO: NvidiaGpuBlock
     // TODO: PipewireBlock
     // TODO: InternetBlock
-    // TODO: DwmBlock
 };
 // clang-format on
 
