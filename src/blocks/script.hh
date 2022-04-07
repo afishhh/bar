@@ -4,6 +4,7 @@
 #include <csignal>
 #include <cstddef>
 #include <filesystem>
+#include <mutex>
 #include <optional>
 
 #include "../block.hh"
@@ -13,10 +14,15 @@ class ScriptBlock : public Block {
   std::chrono::duration<double> _interval;
   std::optional<int> _update_signal;
 
+  std::mutex _update_mutex;
+  std::timed_mutex _process_mutex;
+
   std::string _output;
   bool _timed_out = false;
 
   static void handle_update_signal(int);
+  static void handle_sigchld_signal(int, siginfo_t *, void *);
+
 public:
   ScriptBlock(const std::filesystem::path &path,
               const std::chrono::duration<double> &interval)
@@ -25,9 +31,9 @@ public:
               const std::chrono::duration<double> &interval, int update_signal)
       : _path(path), _interval(interval), _update_signal(update_signal) {
     if (*_update_signal > SIGRTMAX || _update_signal < SIGRTMIN)
-      throw std::runtime_error("Update signal number out of range! Available range: (" +
-                               std::to_string(SIGRTMIN) + '-' +
-                               std::to_string(SIGRTMAX) + ")");
+      throw std::runtime_error(
+          "Update signal number out of range! Available range: (" +
+          std::to_string(SIGRTMIN) + '-' + std::to_string(SIGRTMAX) + ")");
   }
 
   void late_init() override;

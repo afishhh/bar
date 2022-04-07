@@ -48,4 +48,5 @@ target_link_libraries(
   X11::X11
   X11::Xft
   ${DWMIPCPP_LIBRARIES}
+  pthread
 )
