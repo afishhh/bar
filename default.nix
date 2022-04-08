@@ -13,7 +13,7 @@
 # For dwmipcpp
 , jsoncpp
 
-, configFile ? ./src/config.hh
+, configFile ? ./src/config.def.hh
 }:
 
 stdenv.mkDerivation {
