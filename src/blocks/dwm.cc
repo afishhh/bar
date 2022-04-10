@@ -54,8 +54,11 @@ void DwmBlock::late_init() {
 
   for (const auto &mon : *monitors) {
     if (mon.is_selected) {
-      _focused_client_title =
-          _connection.get_client(mon.clients.selected)->name;
+      if (mon.clients.selected == 0)
+        _focused_client_title = "";
+      else
+        _focused_client_title =
+            _connection.get_client(mon.clients.selected)->name;
       _layout_symbol = mon.layout.symbol.cur;
     }
   }
