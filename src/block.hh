@@ -4,6 +4,7 @@
 #include <cstddef>
 
 #include "draw.hh"
+#include "loop.hh"
 
 class Block {
 public:
@@ -16,6 +17,11 @@ public:
   virtual void late_init(){};
 
   virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
+
+  virtual void animate(EventLoop::duration delta){};
+  virtual std::optional<EventLoop::duration> animate_interval() {
+    return std::nullopt;
+  }
   virtual void update(){};
   virtual std::chrono::duration<double> update_interval() {
     return std::chrono::duration<double>::max();

@@ -23,6 +23,9 @@
 #include "block.hh"
 #include "config.hh"
 #include "guard.hh"
+#include "loop.hh"
+
+const size_t EV_REDRAW_EVENT = EventLoop::create_event();
 
 int main(int argc, char *argv[]) {
   // Create a connection to the X server
@@ -116,14 +119,28 @@ int main(int argc, char *argv[]) {
     block->update();
   }
 
-  std::unordered_map<Block*, std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>>> last_draw_points;
+  std::unordered_map<Block *,
+                     std::chrono::time_point<std::chrono::steady_clock,
+                                             std::chrono::duration<double>>>
+      last_draw_points;
   for (auto &block : config::blocks) {
     last_draw_points[block.get()] = std::chrono::steady_clock::now();
   }
 
-  while (1) {
-    auto start = std::chrono::steady_clock::now();
+  auto loop = EventLoop();
 
+  for (auto &block : config::blocks) {
+    if (block->update_interval() != std::chrono::duration<double>::max())
+      loop.add_timer(true,
+                     std::chrono::duration_cast<decltype(loop)::duration>(
+                         block->update_interval()),
+                     [&](auto delta) { block->update(); loop.fire_event(EV_REDRAW_EVENT); });
+    if (auto i = block->animate_interval())
+      loop.add_timer(true, std::move(*i),
+                     [&](auto delta) { block->animate(delta); loop.fire_event(EV_REDRAW_EVENT); });
+  }
+
+  loop.on_event(EV_REDRAW_EVENT,  [&]() {
     while (XEventsQueued(display, QueuedAfterFlush) > 0) {
       XEvent e;
       XNextEvent(display, &e);
@@ -137,11 +154,6 @@ int main(int argc, char *argv[]) {
     size_t x = 0;
     for (auto &block : config::blocks) {
       auto now = std::chrono::steady_clock::now();
-      if (now > update_times[block.get()]) {
-        update_times[block.get()] = now + block->update_interval();
-        block->update();
-      }
-
       auto delta = now - last_draw_points[block.get()];
       draw._offset_x += block->draw(draw, delta);
       last_draw_points[block.get()] = now;
@@ -157,16 +169,11 @@ int main(int argc, char *argv[]) {
     }
 
     XFlush(display);
-    auto end = std::chrono::steady_clock::now();
 
-    auto sleep_dur =
-        (std::chrono::milliseconds(1000) - (end - start) * 70) / 90;
-    if (sleep_dur < 0ns)
-      sleep_dur = 0ns;
-    // FIXME: Better FPS counting (average fps)
-    draw._fps = std::chrono::milliseconds(1000) / (end - start + sleep_dur);
-    std::this_thread::sleep_for(sleep_dur);
-  }
+    draw._fps = -1;
+  });
+
+  loop.run();
 
   return 0;
 }

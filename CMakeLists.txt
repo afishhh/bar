@@ -22,6 +22,7 @@ add_executable(
   ${PROJECT_NAME}
 
   src/main.cc
+  src/loop.cc
   src/guard.cc
   src/draw.cc
   src/blocks/memory.cc

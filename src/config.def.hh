@@ -6,7 +6,6 @@
 #include "blocks/cpu.hh"
 #include "blocks/disk.hh"
 #include "blocks/dwm.hh"
-#include "blocks/fps.hh"
 #include "blocks/memory.hh"
 #include "blocks/network.hh"
 #include "blocks/script.hh"
@@ -65,7 +64,6 @@ static std::unique_ptr<Block> blocks[] = {
         }
     ),
     std::make_unique<NetworkBlock>(),
-    std::make_unique<FpsBlock>(),
     // TODO: NvidiaGpuBlock
     // TODO: PipewireBlock
     // TODO: InternetBlock
