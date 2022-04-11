@@ -108,10 +108,17 @@ void ScriptBlock::update() {
                std::chrono::milliseconds(25);
     if (!_process_mutex.try_lock_for(_interval -
                                      std::chrono::milliseconds(30))) {
+      process_block_map.erase(pid);
       kill(pid, SIGKILL);
       _timed_out = true;
     }
+
+    // Get rid of the zombie process.
+    while (waitpid(pid, nullptr, 0) < 0 && errno == EINTR)
+      ;
+
     _timed_out = false;
+
     // If we got the lock that means the process finished before the timeout
     // and we can unlock the mutex safely.
     _process_mutex.unlock();
