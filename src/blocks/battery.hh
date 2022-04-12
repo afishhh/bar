@@ -49,7 +49,9 @@ public:
   size_t draw(Draw &, std::chrono::duration<double> delta) override;
 
   void animate(EventLoop::duration delta) override;
-  std::optional<EventLoop::duration> animate_interval() override;
+  std::optional<EventLoop::duration> animate_interval() override {
+    return std::chrono::milliseconds(50);
+  }
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(1000);

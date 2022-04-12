@@ -59,9 +59,6 @@ void BatteryBlock::animate(EventLoop::duration delta) {
         size_t(((double)_charge_now / _charge_full * (_config.bar_width - 1) *
                 20));
 }
-std::optional<EventLoop::duration> BatteryBlock::animate_interval() {
-  return std::chrono::nanoseconds(2500000);
-}
 
 size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   double battery_percent = (double)_charge_now / _charge_full * 100;

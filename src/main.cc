@@ -3,7 +3,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/Xdbe.h>
 
+#include <X11/extensions/dbe.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -36,6 +38,17 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  {
+    int mayor, minor;
+    if (XdbeQueryExtension(display, &mayor, &minor)) {
+      std::cout << "Supported Xdbe extension version " << mayor << '.' << minor
+                << '\n';
+    } else {
+      std::cerr << "Xdbe extension not supported" << '\n';
+      return 1;
+    }
+  }
+
   // Get the size of the screen in pixels
   int screen = DefaultScreen(display);
   int display_width = DisplayWidth(display, screen);
@@ -51,6 +64,7 @@ int main(int argc, char *argv[]) {
 
   if (config::override_redirect) {
     XSetWindowAttributes attr;
+    attr.background_pixel = BlackPixel(display, screen);
     attr.override_redirect = true;
     XChangeWindowAttributes(display, window, CWOverrideRedirect, &attr);
   }
@@ -59,11 +73,6 @@ int main(int argc, char *argv[]) {
   class_hint.res_name = (char *)"fbar";
   class_hint.res_class = (char *)"fbar";
   XSetClassHint(display, window, &class_hint);
-
-  // Create a graphics context
-  GC gc = XCreateGC(display, window, 0, 0);
-  guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
-  XMapWindow(display, window);
 
   // Load a font with Xft
   std::vector<XftFont *> fonts;
@@ -81,11 +90,19 @@ int main(int argc, char *argv[]) {
     }
   });
 
-  // Set the background color
-  XSetBackground(display, gc, BlackPixel(display, screen));
+  // Initialize Xdbe buffer
+  auto backbuffer = XdbeAllocateBackBufferName(display, window, XdbeBackground);
+  guard backbuffer_guard([display, backbuffer]() {
+    XdbeDeallocateBackBufferName(display, backbuffer);
+  });
+  XdbeSwapInfo swap_info;
+  swap_info.swap_window = window;
+  swap_info.swap_action = XdbeBackground;
+  XMapWindow(display, window);
 
-  // Set the foreground color
-  XSetForeground(display, gc, WhitePixel(display, screen));
+  // Create a graphics context
+  GC gc = XCreateGC(display, backbuffer, 0, nullptr);
+  guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
 
   size_t i = 0;
 
@@ -93,6 +110,7 @@ int main(int argc, char *argv[]) {
   Draw draw (
     display,
     window,
+    backbuffer,
     gc,
     fonts,
 
@@ -134,13 +152,18 @@ int main(int argc, char *argv[]) {
       loop.add_timer(true,
                      std::chrono::duration_cast<decltype(loop)::duration>(
                          block->update_interval()),
-                     [&](auto delta) { block->update(); loop.fire_event(EV_REDRAW_EVENT); });
+                     [&](auto delta) {
+                       block->update();
+                       loop.fire_event(EV_REDRAW_EVENT);
+                     });
     if (auto i = block->animate_interval())
-      loop.add_timer(true, std::move(*i),
-                     [&](auto delta) { block->animate(delta); loop.fire_event(EV_REDRAW_EVENT); });
+      loop.add_timer(true, std::move(*i), [&](auto delta) {
+        block->animate(delta);
+        loop.fire_event(EV_REDRAW_EVENT);
+      });
   }
 
-  loop.on_event(EV_REDRAW_EVENT,  [&]() {
+  loop.on_event(EV_REDRAW_EVENT, [&]() {
     while (XEventsQueued(display, QueuedAfterFlush) > 0) {
       XEvent e;
       XNextEvent(display, &e);
@@ -148,7 +171,6 @@ int main(int argc, char *argv[]) {
       XFreeEventData(display, &e.xcookie);
     }
 
-    XClearWindow(display, window);
     draw._offset_x = 5;
 
     size_t x = 0;
@@ -162,15 +184,15 @@ int main(int argc, char *argv[]) {
                           1]) {
         draw._offset_x += 8;
         XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, window, gc, draw._offset_x, 3, 2,
+        XFillRectangle(display, backbuffer, gc, draw._offset_x, 3, 2,
                        config::height - 6);
         draw._offset_x += 10;
       }
     }
 
+    if (!XdbeSwapBuffers(display, &swap_info, 1))
+      throw std::runtime_error("XdbeSwapBuffers failed");
     XFlush(display);
-
-    draw._fps = -1;
   });
 
   loop.run();

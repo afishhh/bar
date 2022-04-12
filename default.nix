@@ -3,9 +3,9 @@
 , pkg-config
 , libX11
 , libXft
+, libXext
 
   # libXft deps
-, libXext
 , libXrender
 , fontconfig
 , freetype
