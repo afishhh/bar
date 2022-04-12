@@ -25,11 +25,7 @@
 #include "guard.hh"
 #include "loop.hh"
 
-EventLoop loop{};
-const size_t EV_REDRAW_EVENT =
-    // Redraw is a batched event which means that multiple redraw events close
-    // to each other will be collapsed into one.
-    loop.create_event({.batched = true, .batch_time = 7ms, .callbacks = {}});
+const size_t EV_REDRAW_EVENT = EventLoop::create_event();
 
 int main(int argc, char *argv[]) {
   // Create a connection to the X server
@@ -138,18 +134,13 @@ int main(int argc, char *argv[]) {
       loop.add_timer(true,
                      std::chrono::duration_cast<decltype(loop)::duration>(
                          block->update_interval()),
-                     [&](auto delta) {
-                       block->update();
-                       loop.fire_event(EV_REDRAW_EVENT);
-                     });
+                     [&](auto delta) { block->update(); loop.fire_event(EV_REDRAW_EVENT); });
     if (auto i = block->animate_interval())
-      loop.add_timer(true, std::move(*i), [&](auto delta) {
-        block->animate(delta);
-        loop.fire_event(EV_REDRAW_EVENT);
-      });
+      loop.add_timer(true, std::move(*i),
+                     [&](auto delta) { block->animate(delta); loop.fire_event(EV_REDRAW_EVENT); });
   }
 
-  loop.on_event(EV_REDRAW_EVENT, [&]() {
+  loop.on_event(EV_REDRAW_EVENT,  [&]() {
     while (XEventsQueued(display, QueuedAfterFlush) > 0) {
       XEvent e;
       XNextEvent(display, &e);

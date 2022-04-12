@@ -6,7 +6,6 @@
 #include <functional>
 #include <queue>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -28,15 +27,9 @@ private:
     time_point last = next;
     auto operator<=>(const Timer &other) const { return other.next <=> next; }
   };
-  struct Event {
-    bool batched;
-    duration batch_time;
-    std::vector<event_callback> callbacks;
-  };
 
   std::priority_queue<Timer> _timers;
-  std::unordered_map<size_t, Event> _events;
-  std::unordered_set<size_t> _events_batched;
+  std::unordered_map<size_t, std::vector<event_callback>> _events;
   static size_t _next_event_id;
 
 public:
@@ -46,8 +39,8 @@ public:
   void run();
   void stop();
 
-  size_t create_event(Event);
-  void on_event(size_t id, event_callback);
+  static size_t create_event();
+  void on_event(size_t id, event_callback callback);
   void fire_event(size_t id);
 
   void add_timer(bool repeat, duration interval,

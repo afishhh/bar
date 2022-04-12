@@ -7,8 +7,6 @@
 #include <ratio>
 #include <thread>
 
-using namespace std::literals;
-
 EventLoop::EventLoop() {}
 EventLoop::~EventLoop() {}
 
@@ -49,21 +47,13 @@ void EventLoop::stop() {
 }
 
 size_t EventLoop::_next_event_id = 0;
-size_t EventLoop::create_event(Event ev) {
-  _events[_next_event_id] = std::move(ev);
+size_t EventLoop::create_event() {
   return _next_event_id++;
 }
 void EventLoop::on_event(size_t id, event_callback callback) {
-  _events[id].callbacks.push_back(std::move(callback));
+  _events[id].push_back(callback);
 }
 void EventLoop::fire_event(size_t id) {
-  auto &event = _events[id];
-  if (!event.batched || !_events_batched.contains(id)) {
-    add_timer(false, event.batched ? event.batch_time : 0ns, [&](auto delta) {
-      for (auto &callback : event.callbacks)
-        callback();
-      _events_batched.erase(id);
-    });
-    _events_batched.insert(id);
-  }
+  for (auto &callback : _events[id])
+    callback();
 }
