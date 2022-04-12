@@ -27,8 +27,6 @@
 #include "guard.hh"
 #include "loop.hh"
 
-const size_t EV_REDRAW_EVENT = EventLoop::create_event();
-
 int main(int argc, char *argv[]) {
   // Create a connection to the X server
   Display *display = XOpenDisplay(nullptr);
@@ -145,25 +143,25 @@ int main(int argc, char *argv[]) {
     last_draw_points[block.get()] = std::chrono::steady_clock::now();
   }
 
-  auto loop = EventLoop();
+  auto &loop = EventLoop::instance();
 
   for (auto &block : config::blocks) {
     if (block->update_interval() != std::chrono::duration<double>::max())
       loop.add_timer(true,
-                     std::chrono::duration_cast<decltype(loop)::duration>(
+                     std::chrono::duration_cast<EventLoop::duration>(
                          block->update_interval()),
                      [&](auto delta) {
                        block->update();
-                       loop.fire_event(EV_REDRAW_EVENT);
+                       loop.fire_event(EventLoop::Event::REDRAW);
                      });
     if (auto i = block->animate_interval())
       loop.add_timer(true, std::move(*i), [&](auto delta) {
         block->animate(delta);
-        loop.fire_event(EV_REDRAW_EVENT);
+        loop.fire_event(EventLoop::Event::REDRAW);
       });
   }
 
-  loop.on_event(EV_REDRAW_EVENT, [&]() {
+  loop.on_event(EventLoop::Event::REDRAW, [&]() {
     while (XEventsQueued(display, QueuedAfterFlush) > 0) {
       XEvent e;
       XNextEvent(display, &e);

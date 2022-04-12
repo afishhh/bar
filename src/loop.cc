@@ -10,6 +10,13 @@
 EventLoop::EventLoop() {}
 EventLoop::~EventLoop() {}
 
+EventLoop *EventLoop::_instance = nullptr;
+EventLoop &EventLoop::instance() {
+  if (_instance == nullptr)
+    _instance = new EventLoop();
+  return *_instance;
+}
+
 void EventLoop::add_timer(bool repeat, duration interval,
                           const timer_callback &callback) {
   _timers.push({
@@ -46,14 +53,10 @@ void EventLoop::stop() {
     _timers.pop();
 }
 
-size_t EventLoop::_next_event_id = 0;
-size_t EventLoop::create_event() {
-  return _next_event_id++;
-}
-void EventLoop::on_event(size_t id, event_callback callback) {
+void EventLoop::on_event(Event id, event_callback callback) {
   _events[id].push_back(callback);
 }
-void EventLoop::fire_event(size_t id) {
+void EventLoop::fire_event(Event id) {
   for (auto &callback : _events[id])
     callback();
 }

@@ -16,6 +16,7 @@ public:
   using duration = clock::duration;
   using timer_callback = std::function<void(duration)>;
   using event_callback = std::function<void()>;
+  enum class Event { REDRAW };
 
 private:
   struct Timer {
@@ -29,19 +30,27 @@ private:
   };
 
   std::priority_queue<Timer> _timers;
-  std::unordered_map<size_t, std::vector<event_callback>> _events;
+  std::unordered_map<Event, std::vector<event_callback>> _events;
   static size_t _next_event_id;
 
-public:
+  static EventLoop *_instance;
+
   EventLoop();
   ~EventLoop();
+
+public:
+  EventLoop(const EventLoop &) = delete;
+  EventLoop &operator=(const EventLoop &) = delete;
+  EventLoop(EventLoop &&) = delete;
+  EventLoop &operator=(EventLoop &&) = delete;
+
+  static EventLoop &instance();
 
   void run();
   void stop();
 
-  static size_t create_event();
-  void on_event(size_t id, event_callback callback);
-  void fire_event(size_t id);
+  void on_event(Event, event_callback callback);
+  void fire_event(Event);
 
   void add_timer(bool repeat, duration interval,
                  const timer_callback &callback);

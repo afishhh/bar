@@ -22,6 +22,7 @@ void ScriptBlock::handle_update_signal(int sig) {
   if (signal_block_update_map.contains(sig)) {
     ScriptBlock *block{signal_block_update_map[sig]};
     block->update();
+    EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
   }
 }
 
