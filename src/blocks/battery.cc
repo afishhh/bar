@@ -1,10 +1,11 @@
-#include <X11/Xlib.h>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
 #include <string>
 
+#include "../util.hh"
 #include "battery.hh"
 
 BatteryBlock::BatteryBlock(std::filesystem::path path,
@@ -143,18 +144,10 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
                 1 + draw.vcenter(), time_left_str);
     }
   } else {
-    unsigned long color = 0;
-    if (battery_percent > 80) {
-      color = 0x00CC00;
-    } else if (battery_percent > 60) {
-      color = 0xCCCC00;
-    } else if (battery_percent > 40) {
-      color = 0xFFA500;
-    } else if (battery_percent > 20) {
-      color = 0xFF0000;
-    } else {
-      color = 0xFF0000;
-    }
+    // 0-100 in HSL is the Red-Green range so we can act as if battery_percent
+    // is in the HSL hue range and then just map it to a percentage
+    auto hue = map_range(battery_percent, 0, 360, 0, 1);
+    unsigned long color = rgb_to_long(hsl_to_rgb(hue, 1, .5));
 
     draw.rect(left + 1, top + 1, fill_width, height - 1, color);
 
