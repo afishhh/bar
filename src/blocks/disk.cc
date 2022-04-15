@@ -109,17 +109,9 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
 
     Draw::color_type color;
     if (!_config.bar_fill_color) {
-      if (used > total / 8 * 7) {
-        color = 0xFF0000;
-      } else if (used > total / 8 * 5) {
-        color = 0xFF8000;
-      } else if (used > total / 8 * 3) {
-        color = 0xFFFF00;
-      } else if (used > total / 8 * 1) {
-        color = 0x80FF00;
-      } else {
-        color = 0x00FF00;
-      }
+      // Explained in battery.cc
+      auto hue = map_range(map_range(used, 0, total, 100, 0), 0, 360, 0, 1);
+      color = rgb_to_long(hsl_to_rgb(hue, 1, .5));
     } else
       color = *_config.bar_fill_color;
 
