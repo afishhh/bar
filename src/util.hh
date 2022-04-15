@@ -7,7 +7,7 @@
 #include <tuple>
 
 static std::string to_sensible_unit(size_t bytes, size_t precision = 2) {
-  const char *units[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+  static const char *units[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
   size_t unit = 1;
   double result = bytes;
   while (result > 1024) {
@@ -39,9 +39,16 @@ static std::string_view trim(const std::string_view &str,
   return trim_left(trim_right(str, ws), ws);
 }
 
-// https://stackoverflow.com/a/9493060
+/** @brief Convert HSL color values to RGB.
+ *
+ * @param h Hue        [0, 1]
+ * @param s Saturation [0, 1]
+ * @param l Lightness  [0, 1]
+ * @returns Tuple of RGB components [0, 255]
+ */
 inline std::tuple<unsigned char, unsigned char, unsigned char>
 hsl_to_rgb(double h, double s, double l) {
+  // https://stackoverflow.com/a/9493060
   double r, g, b;
   if (s == 0) {
     return {l, l, l};
@@ -69,17 +76,41 @@ hsl_to_rgb(double h, double s, double l) {
   return {r * 255, g * 255, b * 255};
 }
 
+/** @brief Converts seprate RGB components into a single 32-bit integer.
+ *
+ * @param r Red component.
+ * @param g Green component.
+ * @param b Blue component.
+ * @return 32-bit integer representing the color.
+ */
 inline unsigned long rgb_to_long(unsigned char r, unsigned char g,
                                  unsigned char b) {
   return (r << 16) | (g << 8) | b;
 }
+
+/** @brief Converts separate RGB components into a single 32-bit integer.
+ *
+ * @param rgb Tuple of RGB components.
+ * @return 32-bit integer representing the color.
+ */
 inline unsigned long
 rgb_to_long(std::tuple<unsigned char, unsigned char, unsigned char> rgb) {
   return rgb_to_long(std::get<0>(rgb), std::get<1>(rgb), std::get<2>(rgb));
 }
-// https://stackoverflow.com/a/5732390
+
+/**
+ * @brief Maps number from one range to another.
+ *
+ * @param {double} number    Number to map.
+ * @param {double} in_start  Start of the input range.
+ * @param {double} in_end    End of the input range.
+ * @param {double} out_start Start of the output range.
+ * @param {double} out_end   End of the output range.
+ * @returns {double}         Mapped number.
+ */
 inline double map_range(double number, double in_start, double in_end,
                         double out_start, double out_end) {
+  // https://stackoverflow.com/a/5732390
   return (number - in_start) * (out_end - out_start) / (in_end - in_start) +
          out_start;
 }
