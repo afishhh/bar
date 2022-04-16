@@ -75,10 +75,6 @@ class CpuBlock : public Block {
       long hyst;
       long temperature;
       std::string type;
-
-      std::weak_ordering operator<=>(const TripPoint &other) const {
-        return temperature <=> other.temperature;
-      }
     };
     std::optional<TripPoint> current_trip_point;
 

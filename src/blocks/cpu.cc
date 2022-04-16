@@ -1,8 +1,11 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
+#include <ranges>
 #include <sstream>
 #include <string_view>
 #include <vector>
@@ -91,55 +94,40 @@ void CpuBlock::update() {
       }
 
       std::vector<ThermalInfo::TripPoint> points;
-      // FIXME: Hacky and for some reason adds each point thrice
-      for (auto subentry : std::filesystem::directory_iterator(entry.path())) {
-        if (!subentry.path().filename().string().starts_with("trip_point_") &&
-            !subentry.path().filename().string().ends_with("_type"))
-          continue;
+      {
+        auto it = std::filesystem::directory_iterator(entry.path());
+        auto point_range =
+            it | std::views::filter([](const auto &entry) {
+              auto n = entry.path().filename().string();
+              return n.starts_with("trip_point_") && n.ends_with("_type");
+            }) |
+            std::views::transform([](const auto &entry) {
+              auto f = entry.path().string();
+              // remove _type
+              return f.erase(f.size() - 5);
+            }) |
+            std::views::transform([](const auto &path) {
+              ThermalInfo::TripPoint point;
 
-        // Get the number of the trip point frmo the path
-        size_t trip_point_number =
-            std::stoul(subentry.path().filename().string().substr(
-                std::string_view("trip_point_").size()));
-        ThermalInfo::TripPoint point;
+              std::ifstream(path + "_temp") >> point.temperature;
+              std::ifstream(path + "_type") >> point.type;
+              std::ifstream(path + "_hyst") >> point.hyst;
 
-        {
-          auto temp_path =
-              entry.path() /
-              ("trip_point_" + std::to_string(trip_point_number) + "_temp");
-          std::ifstream temp_file(temp_path);
-          temp_file >> point.temperature;
-        }
-
-        {
-          auto type_path =
-              entry.path() /
-              ("trip_point_" + std::to_string(trip_point_number) + "_type");
-          std::ifstream type_file(type_path);
-          type_file >> point.type;
-        }
-
-        {
-          auto hyst_path =
-              entry.path() /
-              ("trip_point_" + std::to_string(trip_point_number) + "_hyst");
-          std::ifstream hyst_file(hyst_path);
-          hyst_file >> point.hyst;
-        }
-
-        points.push_back(point);
+              return point;
+            });
+        // TODO: use ranges::to once it's implemented in libstdc++
+        std::ranges::move(point_range, std::back_inserter(points));
       }
 
-      std::sort(points.begin(), points.end(), [](const auto &a, const auto &b) {
+      std::ranges::sort(points, [](const auto &a, const auto &b) {
         return a.temperature > b.temperature;
       });
 
-      for (auto &point : points) {
-        if (point.temperature < _thermal->temperature) {
-          _thermal->current_trip_point = point;
-          break;
-        }
-      }
+      auto it = std::ranges::find_if(points, [&](const auto &point) {
+        return point.temperature < _thermal->temperature;
+      });
+      if (it != points.end())
+        _thermal->current_trip_point = *it;
     }
   }
 }
@@ -195,13 +183,15 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
     draw.hrect(left, top, width, height);
 
     auto maxfill = height - 1;
-    size_t fill = maxfill * (double)_diff.percore[i].busy() / _diff.percore[i].total();
+    size_t fill =
+        maxfill * (double)_diff.percore[i].busy() / _diff.percore[i].total();
 
-    auto hue = map_range(_diff.percore[i].busy(), 0, _diff.percore[i].total(), 120, 0);
-    unsigned long color = rgb_to_long(hsl_to_rgb(map_range(hue, 0, 360, 0, 1), 1, 0.5));
+    auto hue =
+        map_range(_diff.percore[i].busy(), 0, _diff.percore[i].total(), 120, 0);
+    unsigned long color =
+        rgb_to_long(hsl_to_rgb(map_range(hue, 0, 360, 0, 1), 1, 0.5));
 
-    draw.frect(left + 1, top + (maxfill - fill) + 1, width - 1, fill,
-              color);
+    draw.frect(left + 1, top + (maxfill - fill) + 1, width - 1, fill, color);
   }
 
   return x;
