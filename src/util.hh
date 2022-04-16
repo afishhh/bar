@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 #include <tuple>
 
 std::string to_sensible_unit(size_t bytes, size_t precision = 2);
@@ -12,6 +13,20 @@ std::string_view trim_left(std::string_view str,
 std::string_view trim_right(std::string_view str,
                             std::string_view ws = "\t\n\r ");
 std::string_view trim(std::string_view str, std::string_view ws = "\t\n\r ");
+
+// clang-format off
+template <std::convertible_to<std::string_view>... Args>
+requires (requires {
+    { std::string() += Args() };
+} && ...)
+std::string concatenate(Args... args) {
+  size_t size = (... + std::string_view(args).size());
+  std::string result;
+  result.reserve(size);
+  (result += ... += args);
+  return result;
+}
+// clang-format on
 
 /** @brief Convert HSL color values to RGB.
  *

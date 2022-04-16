@@ -103,22 +103,27 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
     std::string time_str;
     unsigned short blocks = 0;
     if (seconds >= 24 * 60 * 60 && blocks < _config.time_precision) {
-      time_str += std::to_string(seconds / (24 * 60 * 60)) + "d ";
+      time_str += std::to_string(seconds / (24 * 60 * 60));
+      time_str += "d ";
       seconds %= 24 * 60 * 60;
       ++blocks;
     }
     if (seconds >= 60 * 60 && blocks < _config.time_precision) {
-      time_str += std::to_string(seconds / (60 * 60)) + "h ";
+      time_str += std::to_string(seconds / (60 * 60));
+      time_str += "h ";
       seconds %= 60 * 60;
       ++blocks;
     }
     if (seconds >= 60 && blocks < _config.time_precision) {
-      time_str += std::to_string(seconds / 60) + "m ";
+      time_str += std::to_string(seconds / 60);
+      time_str += "m ";
       seconds %= 60;
       ++blocks;
     }
-    if (blocks < _config.time_precision)
-      time_str += std::to_string(seconds) + "s ";
+    if (blocks < _config.time_precision) {
+      time_str += std::to_string(seconds);
+      time_str += "s ";
+    }
 
     if (time_str.back() == ' ')
       time_str.pop_back();
