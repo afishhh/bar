@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "../util.hh"
 #include "cpu.hh"
 
 CpuBlock::CpuBlock(Config config) : _config(config) {}
@@ -195,21 +196,10 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     draw.hrect(left, top, width, height);
 
     auto maxfill = height - 1;
-    double percentage =
-        (double)_diff.percore[i].busy() / _diff.percore[i].total();
-    size_t fill = maxfill * percentage;
+    size_t fill = maxfill * (double)_diff.percore[i].busy() / _diff.percore[i].total();
 
-    unsigned long color;
-    if (percentage > 0.80)
-      color = 0xFF0000;
-    else if (percentage > 0.60)
-      color = 0xFFA500;
-    else if (percentage > 0.40)
-      color = 0xFFFF00;
-    else if (percentage > 0.20)
-      color = 0x00FF00;
-    else
-      color = 0x00FFFF;
+    auto hue = map_range(_diff.percore[i].busy(), 0, _diff.percore[i].total(), 120, 0);
+    unsigned long color = rgb_to_long(hsl_to_rgb(map_range(hue, 0, 360, 0, 1), 1, 0.5));
 
     draw.frect(left + 1, top + (maxfill - fill) + 1, width - 1, fill,
               color);
