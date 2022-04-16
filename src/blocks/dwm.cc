@@ -114,7 +114,7 @@ size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   auto w = draw.text(x, draw.vcenter(),
                      std::string_view(_focused_client_title.begin(), trunc));
   std::string xs(40, 'x');
-  x += std::max(w, draw.text_width(xs));
+  x += std::max(w, draw.textw(xs));
   return x;
 }
 void DwmBlock::update() { _connection.handle_event(); }

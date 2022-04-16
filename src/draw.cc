@@ -61,7 +61,7 @@ size_t utf8decode(const char *c, long *u, size_t clen) {
   return len;
 }
 
-size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
+size_t XDraw::text(size_t x, size_t y, std::string_view text, color_type color) {
   XSetForeground(_dpy, _gc, color);
 
   if (!_color_cache.contains(color)) {
@@ -133,7 +133,7 @@ size_t Draw::text(size_t x, size_t y, std::string_view text, color_type color) {
   return total_width;
 }
 
-size_t Draw::text_width(std::string_view text) {
+size_t XDraw::textw(std::string_view text) {
   size_t total = 0;
   for (auto it = text.begin(); it < text.end();) {
     long utf8;

@@ -37,13 +37,10 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   auto top = 0;
   auto bottom = draw.height() - 1;
   auto left = x;
-  auto width = draw.text_width(text) + 10;
+  auto width = draw.textw(text) + 10;
   auto right = x += width;
   auto height = bottom - top;
-  draw.line(left, top, right, top);
-  draw.line(left, bottom, right, bottom);
-  draw.line(left, top, left, bottom);
-  draw.line(right, top, right, bottom);
+  draw.hrect(left, top, width, height);
 
   auto percent = (double)_used / _total;
   auto fillwidth = (width - 2) * percent;
@@ -58,7 +55,7 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     color = 0x0088CC;
   }
 
-  draw.rect(left + 1, top + 1, fillwidth, height - 1, color);
+  draw.frect(left + 1, top + 1, fillwidth, height - 1, color);
 
   draw.text(left + 6, draw.vcenter() + 1, text);
 

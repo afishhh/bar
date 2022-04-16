@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   size_t i = 0;
 
   // clang-format off
-  Draw draw (
+  XDraw draw (
     display,
     window,
     backbuffer,

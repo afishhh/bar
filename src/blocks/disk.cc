@@ -98,14 +98,12 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     auto width = _config.bar_width;
     auto fillwidth = width * used / total;
     auto top = 0;
-    auto bottom = draw.height() - 1;
+    auto height = draw.height() - 1;
+    auto bottom = height;
     auto left = x;
     auto right = x += width;
 
-    draw.line(left, top, right, top);
-    draw.line(left, bottom, right, bottom);
-    draw.line(left, top, left, bottom);
-    draw.line(right, top, right, bottom);
+    draw.hrect(left, top, width, height);
 
     Draw::color_type color;
     if (!_config.bar_fill_color) {
@@ -115,7 +113,7 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     } else
       color = *_config.bar_fill_color;
 
-    draw.rect(left + 1, top + 1, fillwidth, bottom - top - 1, color);
+    draw.frect(left + 1, top + 1, fillwidth, bottom - top - 1, color);
   }
 
   return x;

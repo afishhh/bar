@@ -94,12 +94,8 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   auto left = x;
   auto width = _config.bar_width;
   auto right = x += width;
-  draw.line(left, top, right, top);
-  draw.line(left, bottom, right, bottom);
-  draw.line(left, top, left, bottom);
-  draw.line(right, top, right, bottom);
 
-  // FIXME: draw a little square bump on the right of the battery
+  draw.hrect(left, top, width, height);
 
   size_t fill_width = battery_percent / 100 * (width - 1);
 
@@ -140,7 +136,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     if (_config.show_time_left_charging && !_full) {
       auto time_left_str = format_time((double)(_charge_full - _charge_now) /
                                        _current_now * 3600);
-      draw.text(left + width / 2 - draw.text_width(time_left_str) / 2,
+      draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
                 1 + draw.vcenter(), time_left_str);
     }
   } else {
@@ -149,12 +145,12 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     auto hue = map_range(battery_percent, 0, 360, 0, 1);
     unsigned long color = rgb_to_long(hsl_to_rgb(hue, .9, .45));
 
-    draw.rect(left + 1, top + 1, fill_width, height - 1, color);
+    draw.frect(left + 1, top + 1, fill_width, height - 1, color);
 
     if (_config.show_time_left_discharging && !_full) {
       auto time_left_str =
           format_time((double)_charge_now / _current_now * 3600);
-      draw.text(left + width / 2 - draw.text_width(time_left_str) / 2,
+      draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
                 1 + draw.vcenter(), time_left_str);
     }
   }

@@ -186,16 +186,15 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
 
   for (size_t i = 0; i < _diff.percore.size(); ++i) {
     auto left = x;
-    auto right = x += 8;
+    auto width = 8;
+    auto right = x += width;
     auto top = 0;
-    auto bottom = draw.height() - 1;
+    auto height = draw.height() - 1;
+    auto bottom = top + height;
 
-    draw.line(left, top, right, top);
-    draw.line(left, bottom, right, bottom);
-    draw.line(left, top, left, bottom);
-    draw.line(right, top, right, bottom);
+    draw.hrect(left, top, width, height);
 
-    auto maxfill = bottom - top - 1;
+    auto maxfill = height - 1;
     double percentage =
         (double)_diff.percore[i].busy() / _diff.percore[i].total();
     size_t fill = maxfill * percentage;
@@ -212,7 +211,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     else
       color = 0x00FFFF;
 
-    draw.rect(left + 1, top + (maxfill - fill) + 1, right - left - 1, fill,
+    draw.frect(left + 1, top + (maxfill - fill) + 1, width - 1, fill,
               color);
   }
 
