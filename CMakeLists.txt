@@ -24,6 +24,7 @@ add_executable(
   src/main.cc
   src/loop.cc
   src/guard.cc
+  src/util.cc
   src/draw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
@@ -40,6 +41,10 @@ set_target_properties(
   ${PROJECT_NAME} PROPERTIES
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+  -Wall -Wextra -Werror
 )
 
 find_package(X11 REQUIRED)

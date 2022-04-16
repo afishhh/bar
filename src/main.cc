@@ -27,7 +27,7 @@
 #include "guard.hh"
 #include "loop.hh"
 
-int main(int argc, char *argv[]) {
+int main() {
   // Create a connection to the X server
   Display *display = XOpenDisplay(nullptr);
   guard display_guard([display] { XCloseDisplay(display); });
@@ -50,7 +50,6 @@ int main(int argc, char *argv[]) {
   // Get the size of the screen in pixels
   int screen = DefaultScreen(display);
   int display_width = DisplayWidth(display, screen);
-  int display_height = DisplayHeight(display, screen);
 
   // Create a window with width of display and height of config::height px
   Window window =
@@ -102,8 +101,6 @@ int main(int argc, char *argv[]) {
   GC gc = XCreateGC(display, backbuffer, 0, nullptr);
   guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
 
-  size_t i = 0;
-
   // clang-format off
   XDraw draw (
     display,
@@ -117,8 +114,7 @@ int main(int argc, char *argv[]) {
     display_width /* max x */,
     config::height - 5 /* max y */,
 
-    config::height /* bar height */,
-    0
+    config::height /* bar height */
   );
   // clang-format on
 
@@ -150,7 +146,7 @@ int main(int argc, char *argv[]) {
       loop.add_timer(true,
                      std::chrono::duration_cast<EventLoop::duration>(
                          block->update_interval()),
-                     [&](auto delta) {
+                     [&](auto) {
                        block->update();
                        loop.fire_event(EventLoop::Event::REDRAW);
                      });
@@ -171,7 +167,6 @@ int main(int argc, char *argv[]) {
 
     draw._offset_x = 5;
 
-    size_t x = 0;
     for (auto &block : config::blocks) {
       auto now = std::chrono::steady_clock::now();
       auto delta = now - last_draw_points[block.get()];

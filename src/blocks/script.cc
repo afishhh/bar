@@ -105,8 +105,6 @@ void ScriptBlock::update() {
       throw std::system_error(errno, std::system_category(),
                               "posix_spawnattr_destroy");
 
-    auto end = std::chrono::steady_clock::now() + _interval -
-               std::chrono::milliseconds(25);
     if (!_process_mutex.try_lock_for(_interval -
                                      std::chrono::milliseconds(30))) {
       process_block_map.erase(pid);
@@ -145,7 +143,7 @@ void ScriptBlock::update() {
   update_thread.detach();
 }
 
-size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double>) {
   if (_timed_out)
     return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
 

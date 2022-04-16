@@ -66,11 +66,11 @@ private:
   std::unordered_map<long, XftFont *> _codepoint_cache;
 
 public:
-  friend int main(int argc, char *argv[]);
+  friend int main();
 
   XDraw(Display *dpy, Window win, Drawable drawable, GC gc,
         std::vector<XftFont *> fonts, size_t offset_x, size_t offset_y,
-        size_t max_x, size_t max_y, size_t bar_height, size_t fps)
+        size_t max_x, size_t max_y, size_t bar_height)
       : _dpy(dpy), _win(win), _drawable(drawable), _gc(gc), _fonts(fonts),
         _offset_x(offset_x), _offset_y(offset_y), _max_x(max_x), _max_y(max_y),
         _bar_height(bar_height) {

@@ -18,7 +18,7 @@ public:
 
   virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
 
-  virtual void animate(EventLoop::duration delta){};
+  virtual void animate(EventLoop::duration) {}
   virtual std::optional<EventLoop::duration> animate_interval() {
     return std::nullopt;
   }

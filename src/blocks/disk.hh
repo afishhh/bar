@@ -2,8 +2,8 @@
 
 #include <chrono>
 #include <cstddef>
-#include <optional>
 #include <filesystem>
+#include <optional>
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
@@ -16,14 +16,16 @@ class DiskBlock : public Block {
   struct statfs _statfs;
 
   std::filesystem::path _mountpoint;
+
 public:
   struct Config {
     bool show_fs_type;
     bool show_usage_text;
     bool show_usage_bar;
     size_t bar_width;
-    std::optional<Draw::color_type> bar_fill_color;
+    std::optional<Draw::color_type> bar_fill_color{};
   };
+
 private:
   Config _config;
 

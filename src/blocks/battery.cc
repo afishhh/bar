@@ -61,7 +61,7 @@ void BatteryBlock::animate(EventLoop::duration delta) {
                 20));
 }
 
-size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   double battery_percent = (double)_charge_now / _charge_full * 100;
   size_t x = 0;
 
@@ -93,7 +93,6 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   auto height = bottom - top;
   auto left = x;
   auto width = _config.bar_width;
-  auto right = x += width;
 
   draw.hrect(left, top, width, height);
 
@@ -117,7 +116,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
       seconds %= 60;
       ++blocks;
     }
-    if (seconds >= 0 && blocks < _config.time_precision)
+    if (blocks < _config.time_precision)
       time_str += std::to_string(seconds) + "s ";
 
     if (time_str.back() == ' ')
@@ -127,7 +126,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
 
   // If charging then fill the box with a gradient
   if (_charging) {
-    for (auto i = 0; i < fill_width; ++i) {
+    for (size_t i = 0; i < fill_width; ++i) {
       auto color = (155 + (unsigned long)((double)i / fill_width * 100)) << 8;
       auto x = left + 1 + ((i + _charging_gradient_offset / 10) % fill_width);
       draw.line(x, top + 1, x, bottom - 1, color);

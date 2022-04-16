@@ -69,7 +69,7 @@ void DiskBlock::update() {
     throw std::system_error(errno, std::generic_category(), "statfs");
 }
 
-size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
 
   x += draw.text(x, draw.vcenter(), _mountpoint.string());
@@ -101,7 +101,6 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
     auto height = draw.height() - 1;
     auto bottom = height;
     auto left = x;
-    auto right = x += width;
 
     draw.hrect(left, top, width, height);
 

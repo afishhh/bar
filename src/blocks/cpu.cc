@@ -144,7 +144,7 @@ void CpuBlock::update() {
   }
 }
 
-size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
+size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t y = draw.vcenter();
   size_t x = 0;
   auto percentage = 100.0 * _diff.total.busy() / _diff.total.total();
@@ -188,10 +188,8 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double> delta) {
   for (size_t i = 0; i < _diff.percore.size(); ++i) {
     auto left = x;
     auto width = 8;
-    auto right = x += width;
     auto top = 0;
     auto height = draw.height() - 1;
-    auto bottom = top + height;
 
     draw.hrect(left, top, width, height);
 
