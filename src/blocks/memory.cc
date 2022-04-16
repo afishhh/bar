@@ -39,6 +39,7 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   auto left = x;
   auto width = draw.textw(text) + 10;
   auto height = bottom - top;
+  x += width;
   draw.hrect(left, top, width, height);
 
   auto percent = (double)_used / _total;

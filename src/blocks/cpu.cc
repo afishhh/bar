@@ -190,6 +190,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
     auto width = 8;
     auto top = 0;
     auto height = draw.height() - 1;
+    x += width;
 
     draw.hrect(left, top, width, height);
 

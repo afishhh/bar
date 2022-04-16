@@ -93,6 +93,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   auto height = bottom - top;
   auto left = x;
   auto width = _config.bar_width;
+  x += width;
 
   draw.hrect(left, top, width, height);
 

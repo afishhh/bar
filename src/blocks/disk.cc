@@ -101,6 +101,7 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
     auto height = draw.height() - 1;
     auto bottom = height;
     auto left = x;
+    x += width;
 
     draw.hrect(left, top, width, height);
 
