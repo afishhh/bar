@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <optional>
 #include <ranges>
 #include <sstream>
 #include <string_view>
@@ -13,7 +14,9 @@
 #include "../util.hh"
 #include "cpu.hh"
 
-CpuBlock::CpuBlock(Config config) : _config(config) {}
+CpuBlock::CpuBlock(Config config) : _config(config) {
+  this->_current = this->read_cpu_times();
+}
 CpuBlock::~CpuBlock() {}
 
 CpuBlock::AllTimes CpuBlock::read_cpu_times() {
@@ -52,24 +55,11 @@ CpuBlock::AllTimes CpuBlock::read_cpu_times() {
 }
 
 void CpuBlock::update() {
-  if (_initialised) {
-    this->_previous = this->_current;
-    this->_current = this->read_cpu_times();
-  } else {
-    this->_current = this->read_cpu_times();
-    // Zero out this->_previous
-    std::memset(&this->_previous.total, 0, sizeof(this->_previous.total));
-    this->_previous.percore.resize(this->_current.percore.size());
-    for (auto &t : this->_previous.percore) {
-      std::memset(&t, 0, sizeof(t));
-    }
-
-    this->_initialised = true;
-  }
+  this->_previous = this->_current;
+  this->_current = this->read_cpu_times();
 
   _diff = this->_current - this->_previous;
 
-  // Thermals
   if (_config.thermal_zone_type) {
     for (auto entry :
          std::filesystem::directory_iterator("/sys/class/thermal/")) {
@@ -128,6 +118,8 @@ void CpuBlock::update() {
       });
       if (it != points.end())
         _thermal->current_trip_point = *it;
+      else
+        _thermal->current_trip_point = std::nullopt;
     }
   }
 }

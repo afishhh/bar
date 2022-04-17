@@ -66,8 +66,6 @@ class CpuBlock : public Block {
 
   AllTimes _diff;
 
-  bool _initialised = false;
-
   AllTimes read_cpu_times();
 
   struct ThermalInfo {
