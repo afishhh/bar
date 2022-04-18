@@ -11,7 +11,7 @@
 
 #include "draw.hh"
 
-// Stolen from dwm/drw.c
+// Stolen from git.suckless.org/dwm drw.c
 #define BETWEEN(X, A, B) ((A) <= (X) && (X) <= (B))
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4
@@ -61,9 +61,7 @@ size_t utf8decode(const char *c, long *u, size_t clen) {
   return len;
 }
 
-size_t XDraw::text(size_t x, size_t y, std::string_view text, color_type color) {
-  XSetForeground(_dpy, _gc, color);
-
+XftColor *XDraw::lookup_color(color_type color) {
   if (!_color_cache.contains(color)) {
     // This color type juggling here is necessary because XftDrawString8
     // requires an XftColor which requires an XRenderColor
@@ -79,58 +77,87 @@ size_t XDraw::text(size_t x, size_t y, std::string_view text, color_type color) 
 
     _color_cache[color] = std::move(xft_color);
   }
+  return &_color_cache[color];
+}
 
-  auto total_width = 0;
+XftFont *XDraw::lookup_font(long codepoint) {
+  if (auto it = _codepoint_cache.find(codepoint); it != _codepoint_cache.end())
+    return it->second;
+  else {
+    for (auto font : _fonts) {
+      if (XftCharExists(_dpy, font, codepoint)) {
+        _codepoint_cache[codepoint] = font;
+        return font;
+      }
+    }
+
+    _codepoint_cache[codepoint] = nullptr;
+    // Convert the codepoint into a string
+    const char str[] = {char(codepoint & 0xFF), char((codepoint >> 8) & 0xFF),
+                        char((codepoint >> 16) & 0xFF),
+                        char((codepoint >> 24) & 0xFF), '\0'};
+    std::cerr << "Could not find font for codepoint " << std::hex
+              << std::setw(4) << std::setfill('0') << std::right << codepoint
+              << " '" << str << "'\n";
+    return nullptr;
+  }
+}
+
+size_t XDraw::text(size_t x, size_t y, std::string_view text,
+                   color_type color) {
+  XSetForeground(_dpy, _gc, color);
+
+  x += _offset_x;
+  y += _offset_y;
+
+  auto xft_color = lookup_color(color);
+  size_t width = 0;
+  std::string_view::iterator current_begin = text.begin();
+  XftFont *current_font = nullptr;
 
   for (auto it = text.begin(); it < text.end();) {
     long utf8;
     size_t len = utf8decode(it, &utf8, std::distance(it, text.end()));
-    if(len == 0) {
+    if (len == 0) {
       ++it;
-      continue;
+      // Stop on invalid unicode
+      break;
     }
 
-    if (_codepoint_cache.contains(utf8)) {
-      if (auto font = _codepoint_cache[utf8]) {
-        XftDrawStringUtf8(_xft_draw, &_color_cache[color], font, x + _offset_x,
-                          y + _offset_y + (font->descent + font->ascent) / 4,
-                          (FcChar8 *)&*it, len);
-        XGlyphInfo info;
-        XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
-        x += info.xOff;
-        total_width += info.xOff;
-      }
-    } else {
-      bool found = false;
+    if (auto font = lookup_font(utf8)) {
+      if(current_font != nullptr && current_font != font) {
+        XGlyphInfo extents;
+        XftTextExtentsUtf8(_dpy, current_font,
+                           reinterpret_cast<const FcChar8 *>(&*current_begin),
+                           std::distance(current_begin, it), &extents);
+        XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
+                          y + (current_font->descent + current_font->ascent) / 4,
+                          reinterpret_cast<const FcChar8 *>(&*current_begin),
+                          std::distance(current_begin, it));
+        width += extents.xOff;
+        x += extents.xOff;
 
-      for (auto font : _fonts) {
-        if (XftCharExists(_dpy, font, utf8)) {
-          XftDrawStringUtf8(_xft_draw, &_color_cache[color], font,
-                            x + _offset_x,
-                            y + _offset_y + (font->descent + font->ascent) / 4,
-                            (FcChar8 *)&*it, len);
-          XGlyphInfo info;
-          XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
-          x += info.xOff;
-          total_width += info.xOff;
-          found = true;
-          break;
-        }
+        current_begin = it;
       }
-
-      if (!found) {
-        std::cerr << "Could not find char '" << (std::string_view(it, it + len))
-                  << "' (0x" << std::hex << utf8 << ") in any font\n";
-        _codepoint_cache.emplace(utf8, nullptr);
-        // NOTE: We bail out here because for some reason we loop infinitely
-        //       otherwise.
-      }
+      current_font = font;
     }
 
     it += len;
   }
 
-  return total_width;
+  if (current_font != nullptr) {
+    XGlyphInfo extents;
+    XftTextExtentsUtf8(_dpy, current_font,
+                       reinterpret_cast<const FcChar8 *>(&*current_begin),
+                       std::distance(current_begin, text.end()), &extents);
+    XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
+                      y + (current_font->descent + current_font->ascent) / 4,
+                      reinterpret_cast<const FcChar8 *>(&*current_begin),
+                      std::distance(current_begin, text.end()));
+    width += extents.xOff;
+  }
+
+  return width;
 }
 
 size_t XDraw::textw(std::string_view text) {
@@ -138,37 +165,19 @@ size_t XDraw::textw(std::string_view text) {
   for (auto it = text.begin(); it < text.end();) {
     long utf8;
     size_t len = utf8decode(it, &utf8, UTF_SIZ);
-    if(len == 0) {
+    if (len == 0) {
       ++it;
       continue;
     }
 
-    if (_codepoint_cache.contains(utf8)) {
-      if (auto font = _codepoint_cache.at(utf8)) {
-        XGlyphInfo info;
-        XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
-        total += info.xOff;
-      }
-    } else {
-      bool found = false;
-      for (auto font : _fonts) {
-        if (XftCharExists(_dpy, font, utf8)) {
-          XGlyphInfo info;
-          XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
-          total += info.xOff;
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
-        std::cerr << "Could not find char '" << (char)utf8 << "' (0x"
-                  << std::hex << utf8 << ") in any font\n";
-        _codepoint_cache.emplace(utf8, nullptr);
-      }
+    if (auto font = lookup_font(utf8)) {
+      XGlyphInfo info;
+      XftTextExtentsUtf8(_dpy, font, (FcChar8 *)&*it, len, &info);
+      total += info.xOff;
     }
 
     it += len;
   }
+
   return total;
 }
