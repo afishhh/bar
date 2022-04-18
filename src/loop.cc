@@ -37,11 +37,8 @@ void EventLoop::run() {
 
     if (timer.interval) {
       timer.next += *timer.interval;
-      while (timer.next < now) {
+      while (timer.next < now)
         timer.next += *timer.interval;
-        std::cerr << "A timer callback was skipped since timer execution took "
-                     "too long!\n";
-      }
       _timers.push(std::move(timer));
     }
   }

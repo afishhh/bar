@@ -26,10 +26,10 @@ private:
     timer_callback callback;
 
     time_point last = next;
-    auto operator<=>(const Timer &other) const { return other.next <=> next; }
+    auto operator<=>(const Timer &other) const { return next <=> other.next; }
   };
 
-  std::priority_queue<Timer> _timers;
+  std::priority_queue<Timer, std::vector<Timer>, std::greater<Timer>> _timers;
   std::unordered_map<Event, std::vector<event_callback>> _events;
   static size_t _next_event_id;
 
