@@ -35,8 +35,7 @@ std::string month_to_string(int mon) {
   }
 }
 
-size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
-  size_t x = 0;
+void ClockBlock::animate(EventLoop::duration) {
   auto now = std::chrono::system_clock::now();
   time_t tt = std::chrono::system_clock::to_time_t(now);
   struct tm *tm = localtime(&tt);
@@ -48,16 +47,20 @@ size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
     return s;
   };
 
-  x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_year + 1900));
-  x += 5;
-  x += draw.text(x, draw.vcenter(), month_to_string(tm->tm_mon));
-  x += 5;
-  x += draw.text(x, draw.vcenter(), std::to_string(tm->tm_mday));
-  x += 8;
-  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_hour), 2));
-  x += draw.text(x, draw.vcenter(), ":");
-  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_min), 2));
-  x += draw.text(x, draw.vcenter(), ":");
-  x += draw.text(x, draw.vcenter(), left_pad(std::to_string(tm->tm_sec), 2));
-  return x;
+  _text.clear();
+  _text += std::to_string(tm->tm_year + 1900);
+  _text += " ";
+  _text += month_to_string(tm->tm_mon);
+  _text += " ";
+  _text += std::to_string(tm->tm_mday);
+  _text += " ";
+  _text += left_pad(std::to_string(tm->tm_hour), 2);
+  _text += ":";
+  _text += left_pad(std::to_string(tm->tm_min), 2);
+  _text += ":";
+  _text += left_pad(std::to_string(tm->tm_sec), 2);
+}
+
+size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
+  return draw.text(0, draw.vcenter(), _text);
 }
