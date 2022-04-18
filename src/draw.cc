@@ -62,45 +62,43 @@ size_t utf8decode(const char *c, long *u, size_t clen) {
 }
 
 XftColor *XDraw::lookup_color(color_type color) {
-  if (!_color_cache.contains(color)) {
-    // This color type juggling here is necessary because XftDrawString8
-    // requires an XftColor which requires an XRenderColor
-    XftColor xft_color;
-    auto xrandr_color =
-        XRenderColor{.red = (unsigned short)((color >> 16 & 0xFF) * 257),
-                     .green = (unsigned short)((color >> 8 & 0xFF) * 257),
-                     .blue = (unsigned short)((color & 0xFF) * 257),
-                     .alpha = 0xffff};
-    if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) !=
-        1)
-      throw std::runtime_error("XftColorAllocValue failed");
+  if (auto c = _color_cache.find(color); c != _color_cache.end())
+    return &c->second;
 
-    _color_cache[color] = std::move(xft_color);
-  }
-  return &_color_cache[color];
+  // This color type juggling here is necessary because XftDrawString8
+  // requires an XftColor which requires an XRenderColor
+  XftColor xft_color;
+  auto xrandr_color =
+      XRenderColor{.red = (unsigned short)((color >> 16 & 0xFF) * 257),
+                   .green = (unsigned short)((color >> 8 & 0xFF) * 257),
+                   .blue = (unsigned short)((color & 0xFF) * 257),
+                   .alpha = 0xffff};
+  if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
+    throw std::runtime_error("XftColorAllocValue failed");
+
+  return &_color_cache.emplace(color, std::move(xft_color)).first->second;
 }
 
 XftFont *XDraw::lookup_font(long codepoint) {
-  if (auto it = _codepoint_cache.find(codepoint); it != _codepoint_cache.end())
-    return it->second;
-  else {
-    for (auto font : _fonts) {
-      if (XftCharExists(_dpy, font, codepoint)) {
-        _codepoint_cache[codepoint] = font;
-        return font;
-      }
-    }
+  if(auto f = _font_cache.find(codepoint); f != _font_cache.end())
+    return f->second;
 
-    _codepoint_cache[codepoint] = nullptr;
-    // Convert the codepoint into a string
-    const char str[] = {char(codepoint & 0xFF), char((codepoint >> 8) & 0xFF),
-                        char((codepoint >> 16) & 0xFF),
-                        char((codepoint >> 24) & 0xFF), '\0'};
-    std::cerr << "Could not find font for codepoint " << std::hex
-              << std::setw(4) << std::setfill('0') << std::right << codepoint
-              << " '" << str << "'\n";
-    return nullptr;
+  for (const auto &font : _fonts) {
+    if (XftCharExists(_dpy, font, codepoint)) {
+      _font_cache.emplace(codepoint, font);
+      return font;
+    }
   }
+
+  // Convert the codepoint into a string
+  const char str[] = {char(codepoint & 0xFF), char((codepoint >> 8) & 0xFF),
+                      char((codepoint >> 16) & 0xFF),
+                      char((codepoint >> 24) & 0xFF), '\0'};
+  std::cerr << "Could not find font for codepoint 0x" << std::hex << std::setw(4)
+            << std::setfill('0') << std::right << codepoint << " '" << str
+            << "'\n";
+  _font_cache.emplace(codepoint, nullptr);
+  return nullptr;
 }
 
 size_t XDraw::text(size_t x, size_t y, std::string_view text,
@@ -125,13 +123,14 @@ size_t XDraw::text(size_t x, size_t y, std::string_view text,
     }
 
     if (auto font = lookup_font(utf8)) {
-      if(current_font != nullptr && current_font != font) {
+      if (current_font != nullptr && current_font != font) {
         XGlyphInfo extents;
         XftTextExtentsUtf8(_dpy, current_font,
                            reinterpret_cast<const FcChar8 *>(&*current_begin),
                            std::distance(current_begin, it), &extents);
         XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
-                          y + (current_font->descent + current_font->ascent) / 4,
+                          y + (current_font->descent + current_font->ascent) /
+                                  4,
                           reinterpret_cast<const FcChar8 *>(&*current_begin),
                           std::distance(current_begin, it));
         width += extents.xOff;
