@@ -27,20 +27,26 @@ void EventLoop::add_timer(bool repeat, duration interval,
 
 void EventLoop::run() {
   while (!_timers.empty()) {
-    auto timer = _timers.top();
-    _timers.pop();
-    std::this_thread::sleep_until(timer.next);
+    std::this_thread::sleep_until(_timers.top().next);
+    do {
+      auto timer = _timers.top();
+      _timers.pop();
 
-    timer.callback(clock::now() - timer.last);
-    auto now = clock::now();
-    timer.last = now;
+      timer.callback(clock::now() - timer.last);
+      auto now = clock::now();
+      timer.last = now;
 
-    if (timer.interval) {
-      timer.next += *timer.interval;
-      while (timer.next < now)
-        timer.next += *timer.interval;
-      _timers.push(std::move(timer));
-    }
+      if (timer.interval) {
+        while (timer.next < now)
+          timer.next += *timer.interval;
+        _timers.push(std::move(timer));
+      }
+    } while (_timers.top().next < clock::now());
+
+    for (auto event : _queued_events)
+      for (const auto &cb : _events[event])
+        cb();
+    _queued_events.clear();
   }
 }
 
@@ -52,7 +58,4 @@ void EventLoop::stop() {
 void EventLoop::on_event(Event id, event_callback callback) {
   _events[id].push_back(callback);
 }
-void EventLoop::fire_event(Event id) {
-  for (auto &callback : _events[id])
-    callback();
-}
+void EventLoop::fire_event(Event id) { _queued_events.insert(id); }

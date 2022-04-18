@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <functional>
 #include <queue>
+#include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -31,7 +32,12 @@ private:
 
   std::priority_queue<Timer, std::vector<Timer>, std::greater<Timer>> _timers;
   std::unordered_map<Event, std::vector<event_callback>> _events;
-  static size_t _next_event_id;
+  // FIXME: Use a deduplicated data structure that keeps track of the order of
+  //        insertion.
+  //
+  //        Currently a std::set is used but the set doesn't keep track of the
+  //        order of insertion which may be unintuitive.
+  std::set<Event> _queued_events;
 
   static EventLoop *_instance;
 
