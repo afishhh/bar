@@ -24,12 +24,20 @@ $ ls build/
 As shown above the resulting executable will be placed in `build/bar`.
 
 ## Custom blocks
-Create a new header file in `src/blocks` containing a class for you block.
+Create a new header file in `src/blocks` containing a class for your block.
 If you created a C++ file to acompany the header then remember to add it to `CMakeLists.txt`.
 
 ```cpp
+#include <cstddef>
+#include <chrono>
+
+// For EventLoop::duration
+#include "../loop.hh"
 // For the Block base class
 #include "../block.hh"
+
+// For 1s 100ms etc.
+using namespace std::literals::chrono;
 
 // A custom block is a C++ class deriving from Block.
 class MyBlock : public Block {
