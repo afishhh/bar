@@ -92,7 +92,7 @@ public:
 }
 ```
 
-After making your custom block you can, add an #include directive to `config.hh` and add it to the `blocks` array.
+After making your custom block you need to add an #include directive to `config.hh` and add it to the `blocks` array.
 
 ```cpp
 // ...
