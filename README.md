@@ -31,6 +31,8 @@ If you created a C++ file to acompany the header then remember to add it to `CMa
 #include <cstddef>
 #include <chrono>
 
+// For map_range, hsl_to_rgb and rgb_to_long
+#include "../util.hh"
 // For EventLoop::duration
 #include "../loop.hh"
 // For the Block base class
@@ -43,11 +45,13 @@ using namespace std::literals::chrono;
 class MyBlock : public Block {
     // Block state can be stored as data members.
     size_t _some_counter;
-    
+    size_t _hue = 0;
+    Draw::color_t _color;
+
 public:
     // Configuration should be passed via the constructor.
     MyBlock(size_t initial_value = 0)
-        : _some_counter(initial_value) {}
+        : _some_counter(initial_value), _color(0xFF0000) {}
     ~MyBlock() {}
 
     void late_init() override {
@@ -62,7 +66,7 @@ public:
         // Example drawing code:
         std::string str = "Counter: ";
         str += std::to_string(_some_counter);
-        return draw.text(0, draw.vcenter(), str);
+        return draw.text(0, draw.vcenter(), str, _color);
     };
     
     void update(EventLoop::duration delta) override {
@@ -78,10 +82,12 @@ public:
     void animate(EventLoop::duration delta) override {
         // -- Animation code here --
         // This method should also update data members similiar to update(), it's provided so that animations could be implemented independent of more resource intensive information gathering.
-        // Like update() it will be called every animate_interval().
+        // Similiar to update() it will be called every animate_interval().
+        hue = (hue + 1) % 360;
+        _color = rgb_to_long(hsl_to_rgb(map_range(hue, 0, 360, 0, 1), 1., .5));
     }
     EventLoop::duration animate_interval() override {
-        return 100ms;
+        return 50ms;
     }
 }
 ```
