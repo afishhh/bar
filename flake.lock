@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "dwmipcpp-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1595566641,
+        "narHash": "sha256-6JFgLSprf/JOjiHR/UYXH20zH+RKS7ny4P2KT7Lr7zo=",
+        "owner": "mihirlad55",
+        "repo": "dwmipcpp",
+        "rev": "6b6947fd63845c8239f0a895be695bf206eaae6d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mihirlad55",
+        "repo": "dwmipcpp",
+        "rev": "6b6947fd63845c8239f0a895be695bf206eaae6d",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "locked": {
         "lastModified": 1648297722,
@@ -33,6 +50,7 @@
     },
     "root": {
       "inputs": {
+        "dwmipcpp-src": "dwmipcpp-src",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs"
       }

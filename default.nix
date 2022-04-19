@@ -10,10 +10,12 @@
 , fontconfig
 , freetype
 
+, dwmipcpp-src
 # For dwmipcpp
 , jsoncpp
 
 , configFile ? ./src/config.def.hh
+, ...
 }:
 
 stdenv.mkDerivation {
@@ -35,6 +37,11 @@ stdenv.mkDerivation {
     jsoncpp
   ];
 
-  patchPhase = "rm src/config.hh; ln -s ${configFile} src/config.hh";
+  cmakeFlags = [
+    "-DDWMIPC=ON"
+    "-DFETCHCONTENT_SOURCE_DIR_DWMIPCPP=${dwmipcpp-src}"
+  ];
+
+  patchPhase = "ln -s ${configFile} src/config.hh";
   installPhase = "mkdir -p $out/bin/; cp bar $out/bin/fbar";
 }
