@@ -6,10 +6,10 @@
 class Logger : public std::ostream, private std::streambuf {
   std::ostream &_out;
   std::string _buf;
-  std::string_view _prefix;
+  std::string _prefix;
 
 public:
-  Logger(std::ostream &out, std::string_view prefix)
+  Logger(std::ostream &out, const std::string &prefix)
       : std::ostream(this), _out(out), _prefix(prefix) {}
   ~Logger() override {
     if (!_buf.empty()) {
