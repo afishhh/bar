@@ -18,7 +18,7 @@ eval set -- "$opts"
 
 [[ $? -ne 0 ]] && exit 1
 
-type=debug
+type=release
 no_dwmipc=false
 
 if command -v nproc >/dev/null 2>&1; then
