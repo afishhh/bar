@@ -9,6 +9,7 @@
 #include <iterator>
 #include <string_view>
 
+#include "log.hh"
 #include "xdraw.hh"
 
 // Stolen from git.suckless.org/dwm drw.c
@@ -94,7 +95,7 @@ XftFont *XDraw::lookup_font(long codepoint) {
   const char str[] = {char(codepoint & 0xFF), char((codepoint >> 8) & 0xFF),
                       char((codepoint >> 16) & 0xFF),
                       char((codepoint >> 24) & 0xFF), '\0'};
-  std::cerr << "Could not find font for codepoint 0x" << std::hex << std::setw(4)
+  warn << "Could not find font for codepoint 0x" << std::hex << std::setw(4)
             << std::setfill('0') << std::right << codepoint << " '" << str
             << "'\n";
   _font_cache.emplace(codepoint, nullptr);

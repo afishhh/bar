@@ -1,4 +1,5 @@
 #include "memory.hh"
+#include "../log.hh"
 #include "../util.hh"
 
 #include <cstddef>
@@ -10,9 +11,8 @@
 void MemoryBlock::update() {
   auto file = std::ifstream("/proc/meminfo");
   if (!file.is_open()) {
-    std::cerr
-        << "WARNING: Could not open /proc/meminfo; Skipping MemoryBlock update!"
-        << std::endl;
+    warn
+        << "WARNING: Could not open /proc/meminfo; Skipping MemoryBlock update!\n";
     return;
   }
 

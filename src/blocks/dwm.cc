@@ -1,4 +1,5 @@
 #include "dwm.hh"
+#include "../log.hh"
 
 #include "dwmipcpp/connection.hpp"
 #include "dwmipcpp/errors.hpp"
@@ -77,8 +78,8 @@ void DwmBlock::late_init() {
             _focused_client_title =
                 _connection.get_client(event.new_win_id)->name;
         } catch (dwmipc::ResultFailureError &err) {
-          std::cerr << "get_client(ClientFocusChangeEvent->client) failed: "
-                    << err.what() << '\n';
+          warn << "get_client(ClientFocusChangeEvent->client) failed: "
+               << err.what() << '\n';
         }
       };
   _connection.subscribe(dwmipc::Event::CLIENT_FOCUS_CHANGE);

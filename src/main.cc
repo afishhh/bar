@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "log.hh"
 #include "block.hh"
 #include "xdraw.hh"
 #include "config.hh"
@@ -33,17 +34,17 @@ int main() {
   Display *display = XOpenDisplay(nullptr);
   guard display_guard([display] { XCloseDisplay(display); });
   if (display == NULL) {
-    std::cerr << "Cannot open display" << '\n';
+    error << "Cannot open display" << '\n';
     return 1;
   }
 
   {
     int mayor, minor;
     if (XdbeQueryExtension(display, &mayor, &minor)) {
-      std::cout << "Supported Xdbe extension version " << mayor << '.' << minor
+      info << "Supported Xdbe extension version " << mayor << '.' << minor
                 << '\n';
     } else {
-      std::cerr << "Xdbe extension not supported" << '\n';
+      error << "Xdbe extension not supported" << '\n';
       return 1;
     }
   }
@@ -77,7 +78,7 @@ int main() {
   for (auto font_name : config::fonts) {
     XftFont *font = XftFontOpenName(display, screen, font_name);
     if (font == NULL) {
-      std::cerr << "Cannot load font" << '\n';
+      info << "Cannot load font " << std::quoted(font_name) << '\n';
       return 1;
     }
     fonts.push_back(font);

@@ -14,6 +14,8 @@ std::string_view trim_right(std::string_view str,
                             std::string_view ws = "\t\n\r ");
 std::string_view trim(std::string_view str, std::string_view ws = "\t\n\r ");
 
+std::string strip_escape_sequences(std::string);
+
 // clang-format off
 template <std::convertible_to<std::string_view>... Args>
 requires (requires {

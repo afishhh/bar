@@ -1,3 +1,5 @@
+#include <regex>
+
 #include "util.hh"
 
 std::string to_sensible_unit(size_t bytes, size_t precision) {
@@ -33,6 +35,12 @@ std::string_view trim(std::string_view str, std::string_view ws) {
     return "";
   auto end = str.find_last_not_of(ws);
   return str.substr(start, end - start + 1);
+}
+
+std::string strip_escape_sequences(std::string str) {
+  // https://stackoverflow.com/a/14693789
+  static std::regex re("\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])");
+  return std::regex_replace(str, re, "");
 }
 
 std::tuple<unsigned char, unsigned char, unsigned char>
