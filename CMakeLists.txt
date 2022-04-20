@@ -25,7 +25,7 @@ add_executable(
   src/loop.cc
   src/guard.cc
   src/util.cc
-  src/draw.cc
+  src/xdraw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
   src/blocks/network.cc

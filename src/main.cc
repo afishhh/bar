@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "block.hh"
+#include "xdraw.hh"
 #include "config.hh"
 #include "guard.hh"
 #include "loop.hh"

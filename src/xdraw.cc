@@ -9,7 +9,7 @@
 #include <iterator>
 #include <string_view>
 
-#include "draw.hh"
+#include "xdraw.hh"
 
 // Stolen from git.suckless.org/dwm drw.c
 #define BETWEEN(X, A, B) ((A) <= (X) && (X) <= (B))
