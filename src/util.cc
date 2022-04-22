@@ -37,12 +37,6 @@ std::string_view trim(std::string_view str, std::string_view ws) {
   return str.substr(start, end - start + 1);
 }
 
-std::string strip_escape_sequences(std::string str) {
-  // https://stackoverflow.com/a/14693789
-  static std::regex re("\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])");
-  return std::regex_replace(str, re, "");
-}
-
 std::tuple<unsigned char, unsigned char, unsigned char>
 hsl_to_rgb(double h, double s, double l) {
   // https://stackoverflow.com/a/9493060
