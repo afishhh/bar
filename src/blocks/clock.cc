@@ -1,66 +1,18 @@
 #include <bits/types/time_t.h>
 #include <chrono>
+#include <ctime>
 #include <string>
 
 #include "clock.hh"
-
-std::string month_to_string(int mon) {
-  switch (mon) {
-    case 0:
-      return "January";
-    case 1:
-      return "February";
-    case 2:
-      return "March";
-    case 3:
-      return "April";
-    case 4:
-      return "May";
-    case 5:
-      return "June";
-    case 6:
-      return "July";
-    case 7:
-      return "August";
-    case 8:
-      return "September";
-    case 9:
-      return "October";
-    case 10:
-      return "November";
-    case 11:
-      return "December";
-    default:
-      return "Invalid Month";
-  }
-}
 
 void ClockBlock::animate(EventLoop::duration) {
   auto now = std::chrono::system_clock::now();
   time_t tt = std::chrono::system_clock::to_time_t(now);
   struct tm *tm = localtime(&tt);
   
-  auto left_pad = [](std::string s, size_t n) {
-    while (s.size() < n) {
-      s.insert(0, "0");
-    }
-    return s;
-  };
-
-  _text.clear();
-  _text += std::to_string(tm->tm_year + 1900);
-  _text += " ";
-  _text += month_to_string(tm->tm_mon);
-  _text += " ";
-  _text += std::to_string(tm->tm_mday);
-  _text += " ";
-  _text += left_pad(std::to_string(tm->tm_hour), 2);
-  _text += ":";
-  _text += left_pad(std::to_string(tm->tm_min), 2);
-  _text += ":";
-  _text += left_pad(std::to_string(tm->tm_sec), 2);
+  std::strftime(_text.data(), _text.size(), "%Y %B %d %H:%M:%S", tm);
 }
 
 size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
-  return draw.text(0, draw.vcenter(), _text);
+  return draw.text(0, draw.vcenter(), _text.data());
 }

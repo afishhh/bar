@@ -1,11 +1,12 @@
 #pragma once
 
+#include <array>
 #include <string>
 
 #include "../block.hh"
 
 class ClockBlock : public Block {
-  std::string _text;
+  std::array<char, 80> _text;
 
 public:
   size_t draw(Draw &, std::chrono::duration<double> delta) override;
