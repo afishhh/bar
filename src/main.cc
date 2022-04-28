@@ -211,10 +211,11 @@ int main() {
       draw.clear();
 
       if (&block != &config::right_blocks[0]) {
-        x -= 8;
+        x -= 6;
         XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
-        x -= 10;
+        XFillRectangle(display, backbuffer, gc, x, 3, 2,
+                       config::height - 6);
+        x -= 14;
       }
     }
 
