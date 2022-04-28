@@ -102,7 +102,7 @@ XftFont *XDraw::lookup_font(long codepoint) {
   return nullptr;
 }
 
-size_t XDraw::text(size_t x, size_t y, std::string_view text,
+Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
                    color_type color) {
   XSetForeground(_dpy, _gc, color);
 
@@ -160,7 +160,7 @@ size_t XDraw::text(size_t x, size_t y, std::string_view text,
   return width;
 }
 
-size_t XDraw::textw(std::string_view text) {
+Draw::pos_t XDraw::textw(std::string_view text) {
   size_t total = 0;
   for (auto it = text.begin(); it < text.end();) {
     long utf8;

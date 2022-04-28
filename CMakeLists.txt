@@ -27,6 +27,7 @@ add_executable(
   src/util.cc
   src/log.cc
   src/xdraw.cc
+  src/bufdraw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
   src/blocks/network.cc

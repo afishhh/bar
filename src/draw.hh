@@ -8,7 +8,7 @@ class Draw {
 public:
   using color_type = std::uint32_t;
   using color_t = color_type;
-  using pos_type = std::size_t;
+  using pos_type = std::uint32_t;
   using pos_t = pos_type;
 
 public:

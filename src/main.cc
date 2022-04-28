@@ -15,19 +15,23 @@
 #include <ios>
 #include <iostream>
 #include <memory>
+#include <ranges>
 #include <ratio>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "log.hh"
 #include "block.hh"
-#include "xdraw.hh"
+#include "bufdraw.hh"
 #include "config.hh"
 #include "guard.hh"
+#include "log.hh"
 #include "loop.hh"
+#include "util.hh"
+#include "xdraw.hh"
 
 int main() {
   // Create a connection to the X server
@@ -42,7 +46,7 @@ int main() {
     int mayor, minor;
     if (XdbeQueryExtension(display, &mayor, &minor)) {
       info << "Supported Xdbe extension version " << mayor << '.' << minor
-                << '\n';
+           << '\n';
     } else {
       error << "Xdbe extension not supported" << '\n';
       return 1;
@@ -104,7 +108,7 @@ int main() {
   guard gc_guard([display, gc](void) { XFreeGC(display, gc); });
 
   // clang-format off
-  XDraw draw (
+  XDraw real_draw (
     display,
     window,
     backbuffer,
@@ -120,44 +124,69 @@ int main() {
   );
   // clang-format on
 
-  for (auto &block : config::blocks)
-    block->late_init();
+  struct BlockInfo {
+    std::chrono::time_point<std::chrono::steady_clock,
+                            std::chrono::duration<double>>
+        last_update;
+    std::chrono::time_point<std::chrono::steady_clock,
+                            std::chrono::duration<double>>
+        last_draw;
 
-  std::unordered_map<Block *,
-                     std::chrono::time_point<std::chrono::steady_clock,
-                                             std::chrono::duration<double>>>
-      update_times;
-  for (auto &block : config::blocks) {
-    update_times[block.get()] =
-        std::chrono::steady_clock::now() + block->update_interval();
-    block->update();
-  }
+    struct cache {
+      cache(const BufDraw &draw) : width(0), data(draw) {}
 
-  std::unordered_map<Block *,
-                     std::chrono::time_point<std::chrono::steady_clock,
-                                             std::chrono::duration<double>>>
-      last_draw_points;
-  for (auto &block : config::blocks) {
-    last_draw_points[block.get()] = std::chrono::steady_clock::now();
-  }
-
+      std::size_t width;
+      BufDraw data;
+    };
+    std::optional<cache> cached;
+  };
+  std::unordered_map<Block *, BlockInfo> block_info;
   auto &loop = EventLoop::instance();
 
-  for (auto &block : config::blocks) {
-    if (block->update_interval() != std::chrono::duration<double>::max())
+  auto setup_block = [&](Block &block) {
+    block.late_init();
+
+    auto &info = block_info[&block];
+    info.last_update = std::chrono::steady_clock::now();
+    block.update();
+
+    info.last_draw = std::chrono::steady_clock::now();
+
+    info.cached.emplace(BufDraw(real_draw));
+
+    auto redraw = [&]() {
+      auto &info = block_info[&block];
+      auto now = std::chrono::steady_clock::now();
+      info.cached->data.clear();
+      info.cached->width = block.draw(info.cached->data, now - info.last_draw);
+      info.last_draw = now;
+    };
+
+    redraw();
+
+    if (block.update_interval() != std::chrono::duration<double>::max())
       loop.add_timer(true,
                      std::chrono::duration_cast<EventLoop::duration>(
-                         block->update_interval()),
-                     [&](auto) {
-                       block->update();
+                         block.update_interval()),
+                     [&, redraw](auto) {
+                       block.update();
+                       redraw();
+
                        loop.fire_event(EventLoop::Event::REDRAW);
                      });
-    if (auto i = block->animate_interval())
-      loop.add_timer(true, std::move(*i), [&](auto delta) {
-        block->animate(delta);
+    if (auto i = block.animate_interval())
+      loop.add_timer(true, std::move(*i), [&, redraw](auto delta) {
+        block.animate(delta);
+        redraw();
+
         loop.fire_event(EventLoop::Event::REDRAW);
       });
-  }
+  };
+
+  for (auto &block : config::left_blocks)
+    setup_block(*block);
+  for (auto &block : config::right_blocks)
+    setup_block(*block);
 
   loop.on_event(EventLoop::Event::REDRAW, [&]() {
     while (XEventsQueued(display, QueuedAfterFlush) > 0) {
@@ -167,21 +196,48 @@ int main() {
       XFreeEventData(display, &e.xcookie);
     }
 
-    draw._offset_x = 5;
+    std::size_t x = 5;
 
-    for (auto &block : config::blocks) {
-      auto now = std::chrono::steady_clock::now();
-      auto delta = now - last_draw_points[block.get()];
-      draw._offset_x += block->draw(draw, delta);
-      last_draw_points[block.get()] = now;
-      if (&block !=
-          &config::blocks[sizeof config::blocks / sizeof(config::blocks[0]) -
-                          1]) {
-        draw._offset_x += 8;
+    for (auto &block : config::left_blocks) {
+      auto info = block_info[block.get()];
+      auto width = info.cached->width;
+      auto draw = info.cached->data;
+
+      draw.draw_offset(x, 0);
+      draw.clear();
+      x += width;
+
+      if (&block != &config::left_blocks[sizeof config::left_blocks /
+                                             sizeof(config::left_blocks[0]) -
+                                         1]) {
+        x += 8;
         XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, backbuffer, gc, draw._offset_x, 3, 2,
-                       config::height - 6);
-        draw._offset_x += 10;
+        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
+        x += 10;
+      }
+    }
+
+    XWindowAttributes attr;
+    XGetWindowAttributes(display, window, &attr);
+
+    x = attr.width - 5;
+
+    for (auto &block : config::right_blocks | std::views::reverse) {
+      auto info = block_info[block.get()];
+      auto width = info.cached->width;
+      auto draw = info.cached->data;
+
+      x -= width;
+      XSetForeground(display, gc, BlackPixel(display, screen));
+      XFillRectangle(display, backbuffer, gc, x - 8, 0, width + 18,
+                     config::height);
+      draw.draw_offset(x, 0);
+
+      if (&block != &config::right_blocks[0]) {
+        x -= 8;
+        XSetForeground(display, gc, 0xD3D3D3);
+        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
+        x -= 10;
       }
     }
 

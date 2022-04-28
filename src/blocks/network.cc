@@ -1,6 +1,10 @@
+#include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 #include "../util.hh"
@@ -40,12 +44,21 @@ size_t NetworkBlock::draw(Draw &draw, std::chrono::duration<double>) {
   auto x = 0;
   x += draw.text(x, draw.vcenter(), "Tx");
   x += 3;
-  x += draw.text(x, draw.vcenter(), to_sensible_unit(_tx_bytes * 2));
+
+  auto pad_left = [](std::string s, std::size_t count) {
+    using ssize = std::make_signed<std::size_t>::type;
+    s.insert(0, std::max(ssize(count) - ssize(s.size()), ssize(0)), ' ');
+    return s;
+  };
+
+  x += draw.text(x, draw.vcenter(),
+                 pad_left(to_sensible_unit(_tx_bytes * 2), 8));
   x += draw.text(x, draw.vcenter(), "/s");
   x += 7;
   x += draw.text(x, draw.vcenter(), "Rx");
   x += 3;
-  x += draw.text(x, draw.vcenter(), to_sensible_unit(_rx_bytes * 2));
+  x += draw.text(x, draw.vcenter(),
+                 pad_left(to_sensible_unit(_rx_bytes * 2), 8));
   x += draw.text(x, draw.vcenter(), "/s");
   return x;
 }

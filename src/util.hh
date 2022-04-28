@@ -7,6 +7,9 @@
 #include <string_view>
 #include <tuple>
 
+template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 std::string to_sensible_unit(size_t bytes, size_t precision = 2);
 std::string_view trim_left(std::string_view str,
                            std::string_view ws = "\t\n\r ");

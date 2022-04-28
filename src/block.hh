@@ -23,6 +23,7 @@ public:
     return std::nullopt;
   }
   virtual void update(){};
+  // FIXME: Use EventLoop::duration instead of std::chrono::duration<double>.
   virtual std::chrono::duration<double> update_interval() {
     return std::chrono::duration<double>::max();
   };
