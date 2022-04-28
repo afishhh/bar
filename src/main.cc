@@ -178,6 +178,7 @@ int main() {
     for (auto &block : config::left_blocks) {
       auto now = std::chrono::steady_clock::now();
       auto info = block_info[block.get()];
+      real_draw._offset_x = x;
       x += block->draw(real_draw, now - info.last_draw);
       info.last_draw = now;
 
