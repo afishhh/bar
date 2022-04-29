@@ -1,19 +1,11 @@
 # A custom status bar
 
 ## Features
-- dwm-ipc support
-- easy custom block creation in C++
-- quite a few built-in blocks
+- dwm-ipc patch support (uses dwmipcpp library), support for other window managers may be added through custom blocks.
+- Easy custom block creation in C++.
+- Quite a few built-in blocks.
+- dwmblocks like script blocks, like in dwmblocks script blocks can also update when they recieve a signal.
 
-## Things to do
-- [ ] Right aligned blocks
-
-    Possible approaches:
-    - Calling draw() twice with a FakeDraw then determining the width.
-    - Calling draw() with a BufDraw that stores the draw instructions and only executes them after exiting from draw() with an offset. This could also be used to cache draw operations.
-    - Adding a width() method where a block would need to precalculate it's width. (An error could be thrown if the width from draw() does not match the one from width() or the draw() method could be made void)
-
-## Building
 ```command
 $ ./build.sh
 <a lot of stuff>
