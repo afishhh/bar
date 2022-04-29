@@ -1,4 +1,5 @@
 #include <regex>
+#include <string>
 
 #include "util.hh"
 
@@ -35,6 +36,19 @@ std::string_view trim(std::string_view str, std::string_view ws) {
     return "";
   auto end = str.find_last_not_of(ws);
   return str.substr(start, end - start + 1);
+}
+
+std::string quote(std::string_view str, char quote, char escape) {
+  std::string s;
+  s.reserve(str.size() + 5);
+  s.push_back(quote);
+  for (auto c : str) {
+    if (c == quote)
+      s.push_back(escape);
+    s.push_back(c);
+  }
+  s.push_back(quote);
+  return s;
 }
 
 std::tuple<unsigned char, unsigned char, unsigned char>

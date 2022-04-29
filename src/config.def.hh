@@ -68,14 +68,6 @@ static std::unique_ptr<Block> right_blocks[] = {
             // .bar_fill_color = 0x00FF00,
         }
     ),
-    std::make_unique<DiskBlock>("/mnt/data",
-        DiskBlock::Config {
-            .show_fs_type = false,
-            .show_usage_text = true,
-            .show_usage_bar = true,
-            .bar_width = 45,
-        }
-    ),
     std::make_unique<ScriptBlock>("sb-mic-volume", 1s, SIGRTMIN + 20),
     std::make_unique<ScriptBlock>("sb-volume", 1s, 44),
     std::make_unique<NetworkBlock>(),

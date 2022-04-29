@@ -40,8 +40,8 @@ stdenv.mkDerivation {
   cmakeFlags = [
     "-DDWMIPC=ON"
     "-DFETCHCONTENT_SOURCE_DIR_DWMIPCPP=${dwmipcpp-src}"
+    ''-DCMAKE_INSTALL_PREFIX=''${out}''
   ];
 
   patchPhase = "ln -s ${configFile} src/config.hh";
-  installPhase = "mkdir -p $out/bin/; cp bar $out/bin/fbar";
 }

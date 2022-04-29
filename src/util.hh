@@ -17,7 +17,7 @@ std::string_view trim_right(std::string_view str,
                             std::string_view ws = "\t\n\r ");
 std::string_view trim(std::string_view str, std::string_view ws = "\t\n\r ");
 
-std::string strip_escape_sequences(std::string);
+std::string quote(std::string_view, char quote = '"', char escape = '\\');
 
 // clang-format off
 template <std::convertible_to<std::string_view>... Args>

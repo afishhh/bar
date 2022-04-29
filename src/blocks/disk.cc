@@ -13,6 +13,8 @@
 #include "../util.hh"
 #include "disk.hh"
 
+using namespace std::literals;
+
 // This was taken from the statfs(2) manpage on 2022 April 2.
 std::unordered_map<__fsword_t, std::string> fs_type_to_name_map = {
     {0xadf5, "adfs"},          {0xadff, "affs"},
@@ -66,7 +68,7 @@ DiskBlock::~DiskBlock() {}
 
 void DiskBlock::update() {
   if (statfs(_mountpoint.c_str(), &_statfs) < 0)
-    throw std::system_error(errno, std::generic_category(), "statfs");
+    throw std::system_error(errno, std::generic_category(), "statfs(" + quote(_mountpoint.string()) + ")");
 }
 
 size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {

@@ -59,3 +59,9 @@ target_link_libraries(
   ${DWMIPCPP_LIBRARIES}
   pthread
 )
+
+include(GNUInstallDirs)
+
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
