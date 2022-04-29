@@ -65,7 +65,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   double battery_percent = (double)_charge_now / _charge_full * 100;
   size_t x = 0;
 
-  x += draw.text(x, draw.vcenter(), _config.prefix);
+  x += draw.text(x, draw.vcenter(), _config.prefix, _config.prefix_color);
   if (_config.show_percentage) {
     std::ostringstream percent_str;
     percent_str << std::setw(5) << std::setfill(' ') << std::right

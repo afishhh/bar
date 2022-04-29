@@ -15,6 +15,7 @@ class MemoryBlock : public Block {
 public:
   struct Config {
     std::string prefix;
+    Draw::color_t prefix_color = 0xFFFFFF;
   };
 
 private:

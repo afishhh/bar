@@ -30,7 +30,7 @@ void MemoryBlock::update() {
 }
 
 size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
-  size_t x = draw.text(0, draw.vcenter(), _config.prefix);
+  size_t x = draw.text(0, draw.vcenter(), _config.prefix, _config.prefix_color);
 
   std::string text = to_sensible_unit(_used * 1024);
   text += '/';

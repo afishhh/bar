@@ -84,6 +84,7 @@ class CpuBlock : public Block {
 public:
   struct Config {
     std::string prefix;
+    Draw::color_t prefix_color = 0xFFFFFF;
     std::optional<std::string> thermal_zone_type;
   };
 
