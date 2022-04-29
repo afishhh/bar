@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,10 +19,33 @@ class DwmBlock : public Block {
   };
   std::vector<Tag> _tags;
   std::string _focused_client_title;
+  bool _focused_client_floating;
+  // TODO: Make a better system for customising title based on state.
+  bool _focused_client_urgent;
   std::string _layout_symbol;
 
 public:
-  DwmBlock(const std::filesystem::path &socket_path);
+  struct Config {
+    std::filesystem::path socket_path;
+
+    bool show_empty_tags;
+    Draw::color_t inactive_tag_color;
+    Draw::color_t selected_tag_color;
+    Draw::color_t urgent_tag_color;
+    Draw::color_t empty_tag_color = inactive_tag_color;
+
+    std::string floating_title_prefix;
+    Draw::color_t title_color;
+    Draw::color_t floating_title_color = title_color;
+
+    std::optional<std::size_t> max_title_length = std::nullopt;
+  };
+
+private:
+  Config _config;
+
+public:
+  DwmBlock(const Config &config);
   ~DwmBlock();
 
   void late_init() override;

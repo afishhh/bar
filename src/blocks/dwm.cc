@@ -6,15 +6,17 @@
 #include "dwmipcpp/types.hpp"
 #include "dwmipcpp/util.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
-DwmBlock::DwmBlock(const std::filesystem::path &socket_path)
-    : _connection(dwmipc::Connection(socket_path)) {}
+DwmBlock::DwmBlock(const Config &config)
+    : _connection(dwmipc::Connection(config.socket_path)), _config(config) {}
 
 void DwmBlock::late_init() {
   // FIXME: I'm pretty sure this doesn't handle multiple monitors properly.
@@ -55,12 +57,17 @@ void DwmBlock::late_init() {
 
   for (const auto &mon : *monitors) {
     if (mon.is_selected) {
-      if (mon.clients.selected == 0)
+      if (mon.clients.selected == 0) {
         _focused_client_title = "";
-      else
-        _focused_client_title =
-            _connection.get_client(mon.clients.selected)->name;
-      _layout_symbol = mon.layout.symbol.cur;
+        _focused_client_floating = false;
+        _focused_client_urgent = false;
+      } else {
+        auto c = _connection.get_client(mon.clients.selected);
+        _focused_client_title = c->name;
+        _focused_client_floating = c->states.is_floating;
+        _focused_client_urgent = c->states.is_urgent;
+        _layout_symbol = mon.layout.symbol.cur;
+      }
     }
   }
 
@@ -72,11 +79,16 @@ void DwmBlock::late_init() {
   _connection.on_client_focus_change =
       [this](const dwmipc::ClientFocusChangeEvent &event) {
         try {
-          if (event.new_win_id == 0)
+          if (event.new_win_id == 0) {
             _focused_client_title = "";
-          else
-            _focused_client_title =
-                _connection.get_client(event.new_win_id)->name;
+            _focused_client_floating = false;
+            _focused_client_urgent = false;
+          } else {
+            auto c = _connection.get_client(event.new_win_id);
+            _focused_client_title = c->name;
+            _focused_client_floating = c->states.is_floating;
+            _focused_client_urgent = c->states.is_urgent;
+          }
         } catch (dwmipc::ResultFailureError &err) {
           warn << "get_client(ClientFocusChangeEvent->client) failed: "
                << err.what() << '\n';
@@ -93,29 +105,52 @@ void DwmBlock::late_init() {
         _layout_symbol = event.new_symbol;
       };
   _connection.subscribe(dwmipc::Event::LAYOUT_CHANGE);
+  _connection.on_focused_state_change =
+      [this](const dwmipc::FocusedStateChangeEvent &event) {
+        _focused_client_floating = event.new_state.is_floating;
+        _focused_client_urgent = event.new_state.is_urgent;
+      };
+  _connection.subscribe(dwmipc::Event::FOCUSED_STATE_CHANGE);
 }
 DwmBlock::~DwmBlock() {}
 
 size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
   for (const auto &tag : _tags) {
-    if (!tag.occupied && !tag.selected && !tag.urgent)
+    if (!(tag.occupied && !_config.show_empty_tags) && !tag.selected &&
+        !tag.urgent)
       continue;
-    x +=
-        draw.text(x, draw.vcenter(), tag.name,
-                  tag.urgent ? 0xFF0000 : (tag.selected ? 0x00FF00 : 0xFFFFFF));
+    Draw::color_t color;
+    if (tag.urgent)
+      color = _config.urgent_tag_color;
+    else if (tag.selected)
+      color = _config.selected_tag_color;
+    else if (tag.occupied)
+      color = _config.inactive_tag_color;
+    else
+      color = _config.empty_tag_color;
+    x += draw.text(x, draw.vcenter(), tag.name, color);
     x += 7;
   }
 
   x += draw.text(x, draw.vcenter(), _layout_symbol) + 7;
 
-  // Limit name to 40 chars
-  auto trunc =
-      std::min(_focused_client_title.begin() + 40, _focused_client_title.end());
-  auto w = draw.text(x, draw.vcenter(),
-                     std::string_view(_focused_client_title.begin(), trunc));
-  std::string xs(40, 'x');
-  x += std::max(w, draw.textw(xs));
+  std::string title = _focused_client_floating ? _config.floating_title_prefix +
+                                                     _focused_client_title
+                                               : _focused_client_title;
+  Draw::pos_t width = 0;
+  if (_config.max_title_length) {
+    auto end =
+        std::min(_focused_client_title.begin() + *_config.max_title_length,
+                 _focused_client_title.end());
+    title = std::string_view(_focused_client_title.begin(), end);
+    std::string xs(*_config.max_title_length, 'x');
+    width = draw.textw(xs);
+  }
+  x += std::max(width, draw.text(x, draw.vcenter(), title,
+                                 _focused_client_floating
+                                     ? _config.floating_title_color
+                                     : _config.title_color));
   return x;
 }
 void DwmBlock::update() { _connection.handle_event(); }

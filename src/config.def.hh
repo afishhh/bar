@@ -30,7 +30,20 @@ static std::initializer_list<const char *> fonts = {
 // clang-format off
 // FIXME: Allow right aligned blocks.
 static std::unique_ptr<Block> left_blocks[] = {
-    std::make_unique<DwmBlock>("/tmp/dwm.socket"),
+    std::make_unique<DwmBlock>(
+        DwmBlock::Config {
+            .socket_path = "/tmp/dwm.socket",
+            .show_empty_tags = false,
+            .inactive_tag_color = 0xFFFFFF,
+            .selected_tag_color = 0x00FF00,
+            .urgent_tag_color = 0xFF0000,
+            .empty_tag_color = 0xFFFFFF,
+
+            .floating_title_prefix = " ",
+            .title_color = 0xFFFFFF,
+            .floating_title_color = 0xFFFFFF,
+        }
+    ),
 };
 static std::unique_ptr<Block> right_blocks[] = {
     std::make_unique<ClockBlock>(),
