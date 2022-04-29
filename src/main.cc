@@ -205,7 +205,7 @@ int main() {
 
       x -= width;
       XSetForeground(display, gc, BlackPixel(display, screen));
-      XFillRectangle(display, backbuffer, gc, x - 8, 0, width + 18,
+      XFillRectangle(display, backbuffer, gc, x - 8, 0, width + 20,
                      config::height);
       draw.draw_offset(x, 0);
       draw.clear();
