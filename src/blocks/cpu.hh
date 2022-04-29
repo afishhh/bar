@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <string>
 #include <optional>
 #include <vector>
 
@@ -82,6 +83,7 @@ class CpuBlock : public Block {
 
 public:
   struct Config {
+    std::string prefix;
     std::optional<std::string> thermal_zone_type;
   };
 

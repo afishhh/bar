@@ -8,11 +8,13 @@
 #include <iostream>
 #include <string>
 
+MemoryBlock::MemoryBlock(const Config &config) : _config(config) {}
+
 void MemoryBlock::update() {
   auto file = std::ifstream("/proc/meminfo");
   if (!file.is_open()) {
-    warn
-        << "WARNING: Could not open /proc/meminfo; Skipping MemoryBlock update!\n";
+    warn << "WARNING: Could not open /proc/meminfo; Skipping MemoryBlock "
+            "update!\n";
     return;
   }
 
@@ -28,7 +30,7 @@ void MemoryBlock::update() {
 }
 
 size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
-  size_t x = draw.text(0, draw.vcenter(), "Memory: ");
+  size_t x = draw.text(0, draw.vcenter(), _config.prefix);
 
   std::string text = to_sensible_unit(_used * 1024);
   text += '/';

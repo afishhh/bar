@@ -133,7 +133,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
   ss << std::setw(5) << std::right << std::fixed << std::setprecision(1)
      << std::fixed << percentage << "%";
 
-  x += draw.text(x, y, "CPU: ");
+  x += draw.text(x, y, _config.prefix);
   x += draw.text(x, y, ss.str());
 
   if (_thermal) {

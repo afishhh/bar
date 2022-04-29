@@ -47,9 +47,14 @@ static std::unique_ptr<Block> left_blocks[] = {
 };
 static std::unique_ptr<Block> right_blocks[] = {
     std::make_unique<ClockBlock>(),
-    std::make_unique<MemoryBlock>(),
+    std::make_unique<MemoryBlock>(
+        MemoryBlock::Config {
+            .prefix = "MEM ",
+        }
+    ),
     std::make_unique<CpuBlock>(
         CpuBlock::Config {
+            .prefix = "CPU ",
             .thermal_zone_type = "SEN1"
         }
     ),
