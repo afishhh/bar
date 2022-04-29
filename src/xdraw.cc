@@ -81,7 +81,7 @@ XftColor *XDraw::lookup_color(color_type color) {
 }
 
 XftFont *XDraw::lookup_font(long codepoint) {
-  if(auto f = _font_cache.find(codepoint); f != _font_cache.end())
+  if (auto f = _font_cache.find(codepoint); f != _font_cache.end())
     return f->second;
 
   for (const auto &font : _fonts) {
@@ -96,16 +96,17 @@ XftFont *XDraw::lookup_font(long codepoint) {
                       char((codepoint >> 16) & 0xFF),
                       char((codepoint >> 24) & 0xFF), '\0'};
   warn << "Could not find font for codepoint 0x" << std::hex << std::setw(4)
-            << std::setfill('0') << std::right << codepoint << " '" << str
-            << "'\n";
+       << std::setfill('0') << std::right << codepoint << " '" << str << "'\n";
   _font_cache.emplace(codepoint, nullptr);
   return nullptr;
 }
 
 Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
-                   color_type color) {
+                        color_type color) {
   XSetForeground(_dpy, _gc, color);
 
+  // FIXME: Why?
+  --y;
   x += _offset_x;
   y += _offset_y;
 
@@ -130,8 +131,7 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
                            reinterpret_cast<const FcChar8 *>(&*current_begin),
                            std::distance(current_begin, it), &extents);
         XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
-                          y + (current_font->descent + current_font->ascent) /
-                                  4,
+                          y + extents.y / 2,
                           reinterpret_cast<const FcChar8 *>(&*current_begin),
                           std::distance(current_begin, it));
         width += extents.xOff;
@@ -150,8 +150,7 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
     XftTextExtentsUtf8(_dpy, current_font,
                        reinterpret_cast<const FcChar8 *>(&*current_begin),
                        std::distance(current_begin, text.end()), &extents);
-    XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
-                      y + (current_font->descent + current_font->ascent) / 4,
+    XftDrawStringUtf8(_xft_draw, xft_color, current_font, x, y + extents.y / 2,
                       reinterpret_cast<const FcChar8 *>(&*current_begin),
                       std::distance(current_begin, text.end()));
     width += extents.xOff;
