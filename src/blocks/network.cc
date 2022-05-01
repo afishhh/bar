@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "../format.hh"
 #include "../util.hh"
 #include "network.hh"
 
@@ -41,24 +42,7 @@ void NetworkBlock::update() {
 }
 
 size_t NetworkBlock::draw(Draw &draw, std::chrono::duration<double>) {
-  auto x = 0;
-  x += draw.text(x, draw.vcenter(), "Tx");
-  x += 3;
-
-  auto pad_left = [](std::string s, std::size_t count) {
-    using ssize = std::make_signed<std::size_t>::type;
-    s.insert(0, std::max(ssize(count) - ssize(s.size()), ssize(0)), ' ');
-    return s;
-  };
-
-  x += draw.text(x, draw.vcenter(),
-                 pad_left(to_sensible_unit(_tx_bytes * 2), 8));
-  x += draw.text(x, draw.vcenter(), "/s");
-  x += 7;
-  x += draw.text(x, draw.vcenter(), "Rx");
-  x += 3;
-  x += draw.text(x, draw.vcenter(),
-                 pad_left(to_sensible_unit(_rx_bytes * 2), 8));
-  x += draw.text(x, draw.vcenter(), "/s");
-  return x;
+  return draw.text(0, std::format("Tx {: >8}/s Rx {: >8}/s",
+                                  to_sensible_unit(_tx_bytes, 1),
+                                  to_sensible_unit(_rx_bytes, 1)));
 }

@@ -1,4 +1,5 @@
 #include "memory.hh"
+#include "../format.hh"
 #include "../log.hh"
 #include "../util.hh"
 
@@ -13,8 +14,8 @@ MemoryBlock::MemoryBlock(const Config &config) : _config(config) {}
 void MemoryBlock::update() {
   auto file = std::ifstream("/proc/meminfo");
   if (!file.is_open()) {
-    warn << "WARNING: Could not open /proc/meminfo; Skipping MemoryBlock "
-            "update!\n";
+    std::print(error,
+               "Could not open /proc/meminfo; MemoryBlock update skipped!\n");
     return;
   }
 
@@ -32,9 +33,8 @@ void MemoryBlock::update() {
 size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = draw.text(0, draw.vcenter(), _config.prefix, _config.prefix_color);
 
-  std::string text = to_sensible_unit(_used * 1024);
-  text += '/';
-  text += to_sensible_unit(_total * 1024);
+  std::string text = std::format("{}/{}", to_sensible_unit(_used * 1024),
+                                 to_sensible_unit(_total * 1024));
 
   auto top = 0;
   auto bottom = draw.height() - 1;

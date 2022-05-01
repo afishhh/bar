@@ -134,7 +134,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
   x += draw.text(x, y, std::format("{:>5.1f}%", percentage));
 
   if (_thermal) {
-    x += 5;
+    x += draw.textw(" ");
 
     auto color = 0xFFFFFF;
     // Feels hacky but whatever :)

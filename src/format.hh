@@ -3,6 +3,7 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 namespace std {
 #ifndef HAVE_STD_FORMAT

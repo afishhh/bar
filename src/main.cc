@@ -27,6 +27,7 @@
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
+#include "format.hh"
 #include "guard.hh"
 #include "log.hh"
 #include "loop.hh"
@@ -38,17 +39,17 @@ int main() {
   Display *display = XOpenDisplay(nullptr);
   guard display_guard([display] { XCloseDisplay(display); });
   if (display == NULL) {
-    error << "Cannot open display" << '\n';
+    std::print(error, "Cannot open display\n");
     return 1;
   }
 
   {
     int mayor, minor;
     if (XdbeQueryExtension(display, &mayor, &minor)) {
-      info << "Supported Xdbe extension version " << mayor << '.' << minor
-           << '\n';
+      std::print(info, "Supported Xdbe extension version {}.{}\n", mayor,
+                 minor);
     } else {
-      error << "Xdbe extension not supported" << '\n';
+      std::print(error, "Xdbe extension not supported\n");
       return 1;
     }
   }
@@ -82,7 +83,7 @@ int main() {
   for (auto font_name : config::fonts) {
     XftFont *font = XftFontOpenName(display, screen, font_name);
     if (font == NULL) {
-      info << "Cannot load font " << std::quoted(font_name) << '\n';
+      std::print(info, "Cannot load font {}\n", std::quoted(font_name));
       return 1;
     }
     fonts.push_back(font);
@@ -213,8 +214,7 @@ int main() {
       if (&block != &config::right_blocks[0]) {
         x -= 6;
         XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, backbuffer, gc, x, 3, 2,
-                       config::height - 6);
+        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
         x -= 14;
       }
     }

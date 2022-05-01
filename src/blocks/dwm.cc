@@ -1,10 +1,3 @@
-#include "dwm.hh"
-#include "../log.hh"
-
-#include "dwmipcpp/connection.hpp"
-#include "dwmipcpp/errors.hpp"
-#include "dwmipcpp/types.hpp"
-#include "dwmipcpp/util.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
@@ -14,6 +7,15 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+
+#include "dwmipcpp/connection.hpp"
+#include "dwmipcpp/errors.hpp"
+#include "dwmipcpp/types.hpp"
+#include "dwmipcpp/util.hpp"
+
+#include "dwm.hh"
+#include "../log.hh"
+#include "../format.hh"
 
 DwmBlock::DwmBlock(const Config &config)
     : _connection(dwmipc::Connection(config.socket_path)), _config(config) {}
@@ -78,20 +80,22 @@ void DwmBlock::late_init() {
   _connection.subscribe(dwmipc::Event::TAG_CHANGE);
   _connection.on_client_focus_change =
       [this](const dwmipc::ClientFocusChangeEvent &event) {
-        try {
-          if (event.new_win_id == 0) {
-            _focused_client_title = "";
-            _focused_client_floating = false;
-            _focused_client_urgent = false;
-          } else {
-            auto c = _connection.get_client(event.new_win_id);
-            _focused_client_title = c->name;
-            _focused_client_floating = c->states.is_floating;
-            _focused_client_urgent = c->states.is_urgent;
+        if (event.new_win_id == 0) {
+          _focused_client_title = "";
+          _focused_client_floating = false;
+          _focused_client_urgent = false;
+        } else {
+          std::shared_ptr<dwmipc::Client> c{nullptr};
+          try {
+            c = _connection.get_client(event.new_win_id);
+          } catch (dwmipc::ResultFailureError &err) {
+            std::print(
+                warn, "get_client(ClientFocusChangeEvent->client) failed: {}\n",
+                err.what());
           }
-        } catch (dwmipc::ResultFailureError &err) {
-          warn << "get_client(ClientFocusChangeEvent->client) failed: "
-               << err.what() << '\n';
+          _focused_client_title = c->name;
+          _focused_client_floating = c->states.is_floating;
+          _focused_client_urgent = c->states.is_urgent;
         }
       };
   _connection.subscribe(dwmipc::Event::CLIENT_FOCUS_CHANGE);

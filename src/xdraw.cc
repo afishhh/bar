@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <cwchar>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <locale>
 #include <string_view>
 
+#include "format.hh"
 #include "log.hh"
 #include "xdraw.hh"
 

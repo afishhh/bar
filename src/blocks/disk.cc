@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
+#include <iomanip>
 #include <string>
 #include <sys/statfs.h>
 #include <sys/types.h>
@@ -11,6 +12,7 @@
 #include <sys/vfs.h>
 
 #include "../util.hh"
+#include "../format.hh"
 #include "disk.hh"
 
 using namespace std::literals;
@@ -68,7 +70,7 @@ DiskBlock::~DiskBlock() {}
 
 void DiskBlock::update() {
   if (statfs(_mountpoint.c_str(), &_statfs) < 0)
-    throw std::system_error(errno, std::generic_category(), "statfs(" + quote(_mountpoint.string()) + ")");
+    throw std::system_error(errno, std::generic_category(), std::format("statfs({})", std::quoted(_mountpoint.string())));
 }
 
 size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
