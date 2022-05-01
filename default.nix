@@ -5,6 +5,8 @@
 , libXft
 , libXext
 
+, fmt
+
   # libXft deps
 , libXrender
 , fontconfig
@@ -31,6 +33,7 @@ stdenv.mkDerivation {
     libX11
     libXft
     libXext
+    fmt.dev
     libXrender
     fontconfig
     freetype

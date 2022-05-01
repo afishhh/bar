@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <string>
 
+#include "../format.hh"
 #include "../util.hh"
 #include "battery.hh"
 
@@ -66,23 +67,16 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
 
   x += draw.text(x, draw.vcenter(), _config.prefix, _config.prefix_color);
-  if (_config.show_percentage) {
-    std::ostringstream percent_str;
-    percent_str << std::setw(5) << std::setfill(' ') << std::right
-                << std::setprecision(1) << std::fixed << battery_percent << '%';
-    x += draw.text(x, draw.height() / 2, percent_str.str());
-  }
+  if (_config.show_percentage)
+    x +=
+        draw.text(x, draw.vcenter(), std::format("{:>5.1f}%", battery_percent));
 
   x += 5;
 
   if (_config.show_wattage) {
-    std::ostringstream current_str;
-    current_str << std::setw(4) << std::setfill(' ') << std::right
-                << std::setprecision(1) << std::fixed
-                << (_voltage_now / 1000. / 1000.) *
-                       (_current_now / 1000. / 1000.)
-                << "W";
-    x += draw.text(x, draw.vcenter(), current_str.str());
+    double wattage =
+        (_voltage_now / 1000. / 1000.) * (_current_now / 1000. / 1000.);
+    x += draw.text(x, draw.vcenter(), std::format("{:>4.1f}W", wattage));
   }
 
   x += 5;
@@ -161,11 +155,8 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   if (_config.show_degradation) {
     x += 5;
-    std::ostringstream ss;
-    ss << std::setw(5) << std::setfill(' ') << std::right
-       << std::setprecision(1) << std::fixed
-       << ((double)_charge_full / _charge_full_design * 100.) << '%';
-    x += draw.text(x, draw.vcenter(), ss.str());
+    double degradation = (double)_charge_full / _charge_full_design * 100.;
+    x += draw.text(x, draw.vcenter(), std::format("{:5>.1f}%", degradation));
   }
 
   return x;

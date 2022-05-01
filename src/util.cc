@@ -1,6 +1,7 @@
 #include <regex>
 #include <string>
 
+#include "format.hh"
 #include "util.hh"
 
 std::string to_sensible_unit(size_t bytes, size_t precision) {
@@ -12,10 +13,9 @@ std::string to_sensible_unit(size_t bytes, size_t precision) {
     result /= 1024;
     unit++;
   }
-  std::ostringstream ostr;
-  ostr << std::setprecision(precision) << std::fixed << result;
-  return ostr.str() +
-         units[std::min(unit, sizeof units / sizeof(units[0])) - 1];
+  return std::format(
+      "{:.{}f}{}", result, precision,
+      units[std::min(unit, sizeof units / sizeof(units[0])) - 1]);
 }
 std::string_view trim_left(std::string_view str, std::string_view ws) {
   const auto it = std::find_if_not(str.begin(), str.end(), [&ws](char c) {

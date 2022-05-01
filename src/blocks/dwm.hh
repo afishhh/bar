@@ -1,3 +1,9 @@
+#pragma once
+
+#ifndef HAVE_DWMIPCPP
+#error "The DWM block requires the dwmipcpp library."
+#endif
+
 #include <chrono>
 #include <cstddef>
 #include <filesystem>

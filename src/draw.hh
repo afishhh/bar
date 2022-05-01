@@ -24,14 +24,17 @@ public:
   virtual pos_t hcenter() const = 0;
 
   virtual void line(pos_t x1, pos_t y1, pos_t x2, pos_t y2,
-                    color_type = 0xFFFFFF) = 0;
+                    color_t = 0xFFFFFF) = 0;
 
   virtual void hrect(pos_t x, pos_t y, pos_t w, pos_t h,
-                     color_type = 0xFFFFFF) = 0;
+                     color_t = 0xFFFFFF) = 0;
   virtual void frect(pos_t x, pos_t y, pos_t w, pos_t h,
-                     color_type = 0xFFFFFF) = 0;
+                     color_t = 0xFFFFFF) = 0;
 
   virtual pos_t text(pos_t x, pos_t y, std::string_view text,
-                     color_type = 0xFFFFFF) = 0;
+                     color_t = 0xFFFFFF) = 0;
+  virtual pos_t text(pos_t x, std::string_view text, color_t color = 0xFFFFFF) {
+    return this->text(x, vcenter(), text, color);
+  }
   virtual pos_t textw(std::string_view text) = 0;
 };

@@ -5,7 +5,9 @@
 #include "blocks/clock.hh"
 #include "blocks/cpu.hh"
 #include "blocks/disk.hh"
+#ifdef HAVE_DWMIPCPP
 #include "blocks/dwm.hh"
+#endif
 #include "blocks/memory.hh"
 #include "blocks/network.hh"
 #include "blocks/script.hh"

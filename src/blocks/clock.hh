@@ -6,7 +6,7 @@
 #include "../block.hh"
 
 class ClockBlock : public Block {
-  std::array<char, 80> _text;
+  std::string _text;
 
 public:
   size_t draw(Draw &, std::chrono::duration<double> delta) override;

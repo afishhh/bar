@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
 set(PROJECT_NAME bar)
-project(${PROJECT_NAME})
+project(${PROJECT_NAME} CXX)
 
 option(DWMIPC "Enable linking with dwmipcpp, enabling the DWM block." OFF)
 if (DWMIPC)
@@ -16,6 +16,8 @@ if (DWMIPC)
   list(APPEND EXTRA_SOURCES
     src/blocks/dwm.cc
   )
+
+  add_definitions(-DHAVE_DWMIPCPP)
 endif()
 
 add_executable(
@@ -46,10 +48,26 @@ set_target_properties(
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE
-  -Wall -Wextra -Werror
+  -Wall -Wextra -Werror -pg
 )
 
 find_package(X11 REQUIRED)
+
+include(CheckCXXSymbolExists)
+
+check_cxx_symbol_exists(std::format    "format" HAVE_STD_FORMAT)
+check_cxx_symbol_exists(std::format_to "format" HAVE_STD_FORMAT_TO)
+check_cxx_symbol_exists(std::print     "format" HAVE_STD_PRINT)
+
+if(NOT HAVE_STD_FORMAT OR NOT HAVE_STD_FORMAT_TO OR NOT HAVE_STD_PRINT)
+  message(WARNING "std::format, std::format_to, or std::print is not available.  Using libfmt as polyfill.")
+  find_package(fmt REQUIRED)
+
+  target_link_libraries(
+    ${PROJECT_NAME}
+    fmt::fmt
+  )
+endif()
 
 target_link_libraries(
   ${PROJECT_NAME}

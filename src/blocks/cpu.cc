@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "../format.hh"
 #include "../util.hh"
 #include "cpu.hh"
 
@@ -129,19 +130,11 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
   auto percentage = 100.0 * _diff.total.busy() / _diff.total.total();
 
-  std::stringstream ss;
-  ss << std::setw(5) << std::right << std::fixed << std::setprecision(1)
-     << std::fixed << percentage << "%";
-
   x += draw.text(x, y, _config.prefix, _config.prefix_color);
-  x += draw.text(x, y, ss.str());
+  x += draw.text(x, y, std::format("{:>5.1f}%", percentage));
 
   if (_thermal) {
     x += 5;
-
-    std::ostringstream ss;
-    ss << std::fixed << std::setprecision(1)
-       << (double)_thermal->temperature / 1000 << "°C";
 
     auto color = 0xFFFFFF;
     // Feels hacky but whatever :)
@@ -160,7 +153,8 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
         color = 0xCCCCCC;
     }
 
-    x += draw.text(x, y, ss.str(), color);
+    x += draw.text(x, y, std::format("{:.1f}°C", _thermal->temperature / 1000.), 
+                   color);
   }
 
   x += 5;

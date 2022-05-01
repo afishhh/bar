@@ -1,16 +1,19 @@
 #include <bits/types/time_t.h>
 #include <chrono>
 #include <ctime>
+#include <iterator>
 #include <string>
 
+#include "../format.hh"
 #include "clock.hh"
 
 void ClockBlock::animate(EventLoop::duration) {
   auto now = std::chrono::system_clock::now();
   time_t tt = std::chrono::system_clock::to_time_t(now);
   struct tm *tm = localtime(&tt);
-  
-  std::strftime(_text.data(), _text.size(), "%Y %B %d %H:%M:%S", tm);
+
+  _text.clear();
+  std::format_to(std::back_inserter(_text), "{:%Y %B %d %H:%M:%S}", *tm);
 }
 
 size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
