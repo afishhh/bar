@@ -91,12 +91,24 @@ XftFont *XDraw::lookup_font(long codepoint) {
     }
   }
 
-  // Convert the codepoint into a string
-  const char str[] = {char(codepoint & 0xFF), char((codepoint >> 8) & 0xFF),
-                      char((codepoint >> 16) & 0xFF),
-                      char((codepoint >> 24) & 0xFF), '\0'};
-  warn << "Could not find font for codepoint 0x" << std::hex << std::setw(4)
-       << std::setfill('0') << std::right << codepoint << " '" << str << "'\n";
+  // Convert the utf-8 codepoint into a string
+  const auto &cvt =
+      std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(
+          std::locale());
+  std::mbstate_t state{};
+
+  const char32_t *last_in;
+  char *last_out;
+  std::array<char, 5> out{};
+  std::codecvt_base::result res =
+      cvt.out(state, (char32_t *)&codepoint, (char32_t *)&codepoint + 1,
+              last_in, out.begin(), out.end() - 1, last_out);
+  if (res != std::codecvt_base::ok)
+    throw std::runtime_error("codepoint conversion failed");
+  out[last_out - out.begin()] = '\0';
+  std::string_view sv{out.begin(), (std::string_view::size_type)(last_out - out.begin())};
+      std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
+                 codepoint, sv);
   _font_cache.emplace(codepoint, nullptr);
   return nullptr;
 }
