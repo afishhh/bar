@@ -17,8 +17,9 @@ public:
   virtual pos_t screen_width() const = 0;
   virtual pos_t screen_height() const = 0;
 
+  // FIXME: How should this work?
   virtual pos_t height() const = 0;
-  virtual pos_t width() const = 0;
+  virtual pos_t width() const { return screen_width(); }
 
   virtual pos_t vcenter() const = 0;
   virtual pos_t hcenter() const = 0;

@@ -116,7 +116,7 @@ int main() {
     gc,
     fonts,
 
-    config::height /* bar height */
+    config::height
   );
   BufDraw draw(real_draw);
   // clang-format on
@@ -190,10 +190,7 @@ int main() {
       }
     }
 
-    XWindowAttributes attr;
-    XGetWindowAttributes(display, window, &attr);
-
-    x = attr.width - 5;
+    x = draw.width() - 5;
 
     for (auto &block : config::right_blocks | std::views::reverse) {
       auto now = std::chrono::steady_clock::now();

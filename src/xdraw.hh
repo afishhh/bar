@@ -3,6 +3,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
+#include <cstddef>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -17,8 +18,7 @@ private:
   GC _gc;
   std::vector<XftFont *> _fonts;
   XftDraw *_xft_draw;
-
-  pos_t _bar_height;
+  std::size_t _height;
 
   Visual *_visual = DefaultVisual(_dpy, DefaultScreen(_dpy));
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
@@ -32,9 +32,9 @@ public:
   friend int main();
 
   XDraw(Display *dpy, Window win, Drawable drawable, GC gc,
-        std::vector<XftFont *> fonts, pos_t bar_height)
+        std::vector<XftFont *> fonts, std::size_t height)
       : _dpy(dpy), _win(win), _drawable(drawable), _gc(gc), _fonts(fonts),
-        _bar_height(bar_height) {
+        _height(height) {
     _xft_draw = XftDrawCreate(_dpy, _drawable, DefaultVisual(_dpy, 0),
                               DefaultColormap(_dpy, 0));
   }
@@ -52,9 +52,7 @@ public:
   pos_t screen_height() const override {
     return DisplayHeight(_dpy, DefaultScreen(_dpy));
   }
-
-  pos_t height() const override { return _bar_height; }
-  pos_t width() const override { return screen_width(); }
+  pos_t height() const override { return _height; }
 
   pos_t vcenter() const override { return height() / 2; }
   pos_t hcenter() const override { return width() / 2; }
