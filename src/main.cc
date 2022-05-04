@@ -202,8 +202,7 @@ int main() {
       info.last_draw = now;
 
       x -= width;
-      real_draw.frect(x - 8, 0, width + 16, config::height,
-                      BlackPixel(display, screen));
+      real_draw.frect(x - 8, 0, width + 16, config::height, 0x000000);
       draw.draw_offset(x, 0);
       draw.clear();
 
