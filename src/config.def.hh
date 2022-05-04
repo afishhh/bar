@@ -23,15 +23,15 @@ namespace config {
 
 // NOTE: While the height might seem configurable you will also need to change
 //       widths of quite a few different independent boxes
-static size_t height = 24;
-static bool override_redirect = false;
+const static size_t height = 24;
+const static bool override_redirect = false;
 
-static std::initializer_list<const char *> fonts = {
+const static std::initializer_list<const char *> fonts = {
     "monospace:size=10", "Font Awesome 5 Free Solid:style=Solid:size=9"};
 
 // clang-format off
 // FIXME: Allow right aligned blocks.
-static std::unique_ptr<Block> left_blocks[] = {
+const static std::unique_ptr<Block> left_blocks[] = {
     std::make_unique<DwmBlock>(
         DwmBlock::Config {
             .socket_path = "/tmp/dwm.socket",
@@ -47,7 +47,7 @@ static std::unique_ptr<Block> left_blocks[] = {
         }
     ),
 };
-static std::unique_ptr<Block> right_blocks[] = {
+const static std::unique_ptr<Block> right_blocks[] = {
     std::make_unique<ClockBlock>(),
     std::make_unique<MemoryBlock>(
         MemoryBlock::Config {

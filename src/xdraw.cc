@@ -122,8 +122,6 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
 
   // FIXME: Why?
   --y;
-  x += _offset_x;
-  y += _offset_y;
 
   auto xft_color = lookup_color(color);
   size_t width = 0;

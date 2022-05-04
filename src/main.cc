@@ -116,11 +116,6 @@ int main() {
     gc,
     fonts,
 
-    0 /* offset x */,
-    5 /* offset y */,
-    display_width /* max x */,
-    config::height - 5 /* max y */,
-
     config::height /* bar height */
   );
   BufDraw draw(real_draw);
@@ -179,17 +174,19 @@ int main() {
     for (auto &block : config::left_blocks) {
       auto now = std::chrono::steady_clock::now();
       auto info = block_info[block.get()];
-      real_draw._offset_x = x;
-      x += block->draw(real_draw, now - info.last_draw);
+      auto width = block->draw(draw, now - info.last_draw);
       info.last_draw = now;
+
+      draw.draw_offset(x, 0);
+      draw.clear();
+      x += width;
 
       if (&block != &config::left_blocks[sizeof config::left_blocks /
                                              sizeof(config::left_blocks[0]) -
                                          1]) {
         x += 8;
-        XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
-        x += 10;
+        real_draw.frect(x, 3, 2, real_draw.height() - 6, 0xD3D3D3);
+        x += 8 + 2;
       }
     }
 
@@ -205,17 +202,15 @@ int main() {
       info.last_draw = now;
 
       x -= width;
-      XSetForeground(display, gc, BlackPixel(display, screen));
-      XFillRectangle(display, backbuffer, gc, x - 8, 0, width + 20,
-                     config::height);
+      real_draw.frect(x - 8, 0, width + 16, config::height,
+                      BlackPixel(display, screen));
       draw.draw_offset(x, 0);
       draw.clear();
 
       if (&block != &config::right_blocks[0]) {
-        x -= 6;
-        XSetForeground(display, gc, 0xD3D3D3);
-        XFillRectangle(display, backbuffer, gc, x, 3, 2, config::height - 6);
-        x -= 14;
+        x -= 8 + 2;
+        real_draw.frect(x, 3, 2, draw.height() - 6, 0xD3D3D3);
+        x -= 8;
       }
     }
 

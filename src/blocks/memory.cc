@@ -36,12 +36,13 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
   std::string text = std::format("{}/{}", to_sensible_unit(_used * 1024),
                                  to_sensible_unit(_total * 1024));
 
-  auto top = 0;
-  auto bottom = draw.height() - 1;
+  auto top = 3;
+  auto bottom = draw.height() - 6;
   auto left = x;
-  auto width = draw.textw(text) + 10;
+  auto width = draw.textw(text) + 12;
   auto height = bottom - top;
   x += width;
+
   draw.hrect(left, top, width, height);
 
   auto percent = (double)_used / _total;
@@ -59,7 +60,7 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   draw.frect(left + 1, top + 1, fillwidth, height - 1, color);
 
-  draw.text(left + 6, draw.vcenter() + 1, text);
+  draw.text(left + 6, draw.vcenter(), text);
 
   return x;
 }

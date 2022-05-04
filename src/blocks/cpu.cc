@@ -162,8 +162,9 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
   for (size_t i = 0; i < _diff.percore.size(); ++i) {
     auto left = x;
     auto width = 8;
-    auto top = 0;
-    auto height = draw.height() - 1;
+    auto top = 3;
+    auto bottom = draw.height() - 6;
+    auto height = bottom - top;
     x += width;
 
     draw.hrect(left, top, width, height);

@@ -81,8 +81,8 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   x += 5;
 
-  auto top = 0;
-  auto bottom = draw.height() - 1;
+  auto top = 3;
+  auto bottom = draw.height() - 6;
   auto height = bottom - top;
   auto left = x;
   auto width = _config.bar_width;
@@ -135,7 +135,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
       auto time_left_str = format_time((double)(_charge_full - _charge_now) /
                                        _current_now * 3600);
       draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
-                1 + draw.vcenter(), time_left_str);
+                draw.vcenter(), time_left_str);
     }
   } else {
     // 0-100 in HSL is the Red-Green range so we can act as if battery_percent
@@ -149,7 +149,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
       auto time_left_str =
           format_time((double)_charge_now / _current_now * 3600);
       draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
-                1 + draw.vcenter(), time_left_str);
+                draw.vcenter(), time_left_str);
     }
   }
 
