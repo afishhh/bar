@@ -109,10 +109,15 @@ XftFont *XDraw::lookup_font(long codepoint) {
   if (res != std::codecvt_base::ok)
     throw std::runtime_error("codepoint conversion failed");
   out[last_out - out.begin()] = '\0';
-  std::string_view sv{out.begin(), (std::string_view::size_type)(last_out - out.begin())};
-      std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
-                 codepoint, sv);
+  std::string_view sv{out.begin(),
+                      (std::string_view::size_type)(last_out - out.begin())};
   _font_cache.emplace(codepoint, nullptr);
+  // Ignore some common characters not meant to be handled by fonts.
+  if (sv == "\n" || sv == "\r" || sv == "\t" || sv == "\v" || sv == "\f" ||
+      sv == "\b" || sv == "\0" || sv == "\e" || sv == "\a")
+    return nullptr;
+  std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
+             codepoint, sv);
   return nullptr;
 }
 
