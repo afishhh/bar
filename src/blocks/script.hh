@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "../block.hh"
+#include "../format.hh"
 #include "../util.hh"
 
 class ScriptBlock : public Block {
@@ -32,9 +33,9 @@ public:
               const std::chrono::duration<double> &interval, int update_signal)
       : _path(path), _interval(interval), _update_signal(update_signal) {
     if (*_update_signal > SIGRTMAX || _update_signal < SIGRTMIN)
-      throw std::runtime_error(concatenate(
-          "Update signal number out of range! Available range: (",
-          std::to_string(SIGRTMIN), "-", std::to_string(SIGRTMAX), ")"));
+      throw std::runtime_error(std::format(
+          "Update signal number out of range! Available range: [{}, {}]",
+          SIGRTMIN, SIGRTMAX));
   }
 
   void late_init() override;
