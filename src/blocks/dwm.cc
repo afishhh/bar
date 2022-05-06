@@ -13,9 +13,9 @@
 #include "dwmipcpp/types.hpp"
 #include "dwmipcpp/util.hpp"
 
-#include "dwm.hh"
-#include "../log.hh"
 #include "../format.hh"
+#include "../log.hh"
+#include "dwm.hh"
 
 DwmBlock::DwmBlock(const Config &config)
     : _connection(dwmipc::Connection(config.socket_path)), _config(config) {}
@@ -76,6 +76,7 @@ void DwmBlock::late_init() {
   _connection.on_tag_change =
       [update_tag_states](const dwmipc::TagChangeEvent &event) {
         update_tag_states(event.new_state);
+        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
   _connection.subscribe(dwmipc::Event::TAG_CHANGE);
   _connection.on_client_focus_change =
@@ -97,22 +98,26 @@ void DwmBlock::late_init() {
           _focused_client_floating = c->states.is_floating;
           _focused_client_urgent = c->states.is_urgent;
         }
+        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
   _connection.subscribe(dwmipc::Event::CLIENT_FOCUS_CHANGE);
   _connection.on_focused_title_change =
       [this](const dwmipc::FocusedTitleChangeEvent &event) {
         _focused_client_title = event.new_name;
+        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
   _connection.subscribe(dwmipc::Event::FOCUSED_TITLE_CHANGE);
   _connection.on_layout_change =
       [this](const dwmipc::LayoutChangeEvent &event) {
         _layout_symbol = event.new_symbol;
+        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
   _connection.subscribe(dwmipc::Event::LAYOUT_CHANGE);
   _connection.on_focused_state_change =
       [this](const dwmipc::FocusedStateChangeEvent &event) {
         _focused_client_floating = event.new_state.is_floating;
         _focused_client_urgent = event.new_state.is_urgent;
+        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
   _connection.subscribe(dwmipc::Event::FOCUSED_STATE_CHANGE);
 }
@@ -139,15 +144,14 @@ size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   x += draw.text(x, draw.vcenter(), _layout_symbol) + 7;
 
-  std::string title = _focused_client_floating ? _config.floating_title_prefix +
-                                                     _focused_client_title
-                                               : _focused_client_title;
+  std::string title =
+      _focused_client_floating
+          ? (_config.floating_title_prefix + _focused_client_title)
+          : _focused_client_title;
   Draw::pos_t width = 0;
   if (_config.max_title_length) {
-    auto end =
-        std::min(_focused_client_title.begin() + *_config.max_title_length,
-                 _focused_client_title.end());
-    title = std::string_view(_focused_client_title.begin(), end);
+    auto end = std::min(title.begin() + *_config.max_title_length, title.end());
+    title = std::string_view(title.begin(), end);
     std::string xs(*_config.max_title_length, 'x');
     width = draw.textw(xs);
   }
