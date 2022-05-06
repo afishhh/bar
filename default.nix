@@ -1,5 +1,6 @@
 { stdenv
 , cmake
+, ninja
 , pkg-config
 , libX11
 , libXft
@@ -27,6 +28,7 @@ stdenv.mkDerivation {
   src = ./.;
   nativeBuildInputs = [
     cmake
+    ninja
     pkg-config
   ];
   buildInputs = [
