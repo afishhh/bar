@@ -13,13 +13,14 @@ function err() {
 	exit 1
 }
 
-opts=$(getopt -a -n "$0" -o "t:,h,j:" -l "type:,help,jobs:,no-dwmipc" -- "$@")
+opts=$(getopt -a -n "$0" -o "t:,h,j:,g:" -l "type:,help,jobs:,no-dwmipc,generator:" -- "$@")
 eval set -- "$opts"
 
 [[ $? -ne 0 ]] && exit 1
 
 type=release
 no_dwmipc=false
+generator="Unix Makefiles"
 
 if command -v nproc >/dev/null 2>&1; then
 	cores=$(nproc)
@@ -54,10 +55,15 @@ while true; do
 			no_dwmipc=true
 			shift
 			;;
+		-g|--generator)
+			generator="$2"
+			shift 2
+			;;
 		-h|--help)
 			echo "Usage: $0 [OPTION]..."
 			echo "  -t, --type <type>  Specify build type (default: release)"
 			echo "  -h, --help         Print this help text"
+			echo "  -g, --generator    Specify CMake generator (default: Unix Makefiles)"
 			echo "  -j, --jobs <num>   Specify number of jobs to run in parallel (1 <= num$([[ $has_nproc ]] && echo " <= $(nproc)")) (default: $cores)"
 			echo "  --no-dwmipc        Disable dwm-ipc patch integration"
 
@@ -83,7 +89,7 @@ if [[ $# -ne 0 ]]; then
 	exit 1
 fi
 
-infohash=$(echo "$type$no_dwmipc" | sha1sum )
+infohash=$(echo "$type$no_dwmipc$generator" | sha1sum)
 if [[ -e build && ! -d build ]]; then
 	err "build exists but is not a directory"
 	exit 1
@@ -117,7 +123,7 @@ fi
 [[ $no_dwmipc == false ]] &&
 	cmake_opts+=(-DDWMIPC=ON)
 
-cmake .. ${cmake_opts[@]} ||
+cmake -G"$generator" .. ${cmake_opts[@]} ||
 	err "cmake generation failed"
 
 [[ $type == "debug" ]] &&
