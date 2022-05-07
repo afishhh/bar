@@ -38,6 +38,7 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/backends/x11.cc
+  src/backends/base.cc
 
   ${EXTRA_SOURCES}
 )

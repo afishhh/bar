@@ -9,10 +9,19 @@ class WindowBackend {
   static WindowBackend *_instance;
 
 public:
-  WindowBackend() {}
+  WindowBackend() {
+    if (_instance)
+      throw std::runtime_error("WindowBackend constructed twice");
+    _instance = this;
+  }
   // De-initializing the backend may fail in some cases so a noexcept(false)
   // destructor is necessary.
   virtual ~WindowBackend() noexcept(false) {}
+
+  WindowBackend(const WindowBackend &) = delete;
+  WindowBackend &operator=(const WindowBackend &) = delete;
+  WindowBackend(WindowBackend &&) = delete;
+  WindowBackend &operator=(WindowBackend &&) = delete;
 
   static WindowBackend &instance() {
     if (!_instance)
