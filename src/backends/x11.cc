@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <memory>
 #include <stdexcept>
+#include <stop_token>
+#include <thread>
 
 #include "../config.hh"
 #include "../draw.hh"
@@ -17,6 +19,8 @@ bool XWindowBackend::is_available() {
 }
 
 XWindowBackend::XWindowBackend() {
+  XInitThreads();
+
   // Create a connection to the X server
   _display = XOpenDisplay(nullptr);
   if (_display == NULL)
@@ -25,8 +29,8 @@ XWindowBackend::XWindowBackend() {
   {
     int mayor, minor;
     if (XdbeQueryExtension(_display, &mayor, &minor))
-      std::print(info, "Supported Xdbe extension version {}.{}\n",
-                 mayor, minor);
+      std::print(info, "Supported Xdbe extension version {}.{}\n", mayor,
+                 minor);
     else
       throw std::runtime_error("Xdbe extension not supported");
   }
@@ -62,9 +66,30 @@ XWindowBackend::XWindowBackend() {
   _back_buffer = XdbeAllocateBackBufferName(_display, _window, XdbeBackground);
   _gc = XCreateGC(_display, _back_buffer, 0, nullptr);
   XMapWindow(_display, _window);
+
+  // ------- Setup event handling -------
+
+  _event_thread = std::jthread([this](std::stop_token token) {
+    while (!token.stop_requested()) {
+      XEvent event;
+      while (!XEventsQueued(_display, QueuedAfterFlush)) {
+        if (token.stop_requested())
+          return;
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+      }
+      XNextEvent(_display, &event);
+
+      for (auto &handler : _event_handlers)
+        handler(event);
+    }
+  });
+  _event_thread.detach();
 }
 
 XWindowBackend::~XWindowBackend() noexcept(false) {
+  _event_thread.request_stop();
+  _event_thread.join();
+
   XFreeGC(_display, _gc);
   XUnmapWindow(_display, _window);
   XdbeDeallocateBackBufferName(_display, _back_buffer);
@@ -98,4 +123,8 @@ void XWindowBackend::post_draw() {
     throw std::runtime_error("XdbeSwapBuffers failed");
 
   XFlush(_display);
+}
+
+void XWindowBackend::add_event_handler(std::function<void(XEvent)> handler) {
+  _event_handlers.emplace_back(std::move(handler));
 }

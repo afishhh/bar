@@ -53,8 +53,8 @@ int main() {
     std::print(error, "Failed to initialize window backend: {}\n", e.what());
     std::exit(1);
   }
-  std::unique_ptr<Draw> real_draw = window_backend->create_draw();
 
+  std::unique_ptr<Draw> real_draw = window_backend->create_draw();
   BufDraw draw(*real_draw);
 
   struct BlockInfo {
