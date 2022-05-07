@@ -32,6 +32,7 @@ public:
   virtual void frect(pos_t x, pos_t y, pos_t w, pos_t h,
                      color_t = 0xFFFFFF) = 0;
 
+  // TODO: Add a text overload returning an output iterator for more efficient formatting using std::format_to
   virtual pos_t text(pos_t x, pos_t y, std::string_view text,
                      color_t = 0xFFFFFF) = 0;
   virtual pos_t text(pos_t x, std::string_view text, color_t color = 0xFFFFFF) {
