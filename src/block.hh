@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <optional>
 
 #include "draw.hh"
 #include "loop.hh"

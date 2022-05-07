@@ -4,6 +4,7 @@
 #include <compare>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <queue>
 #include <set>
 #include <unordered_map>
