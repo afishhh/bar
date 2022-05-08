@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "backends/x11.hh"
+#include "backends/x11/window_backend.hh"
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
@@ -34,7 +34,6 @@
 #include "log.hh"
 #include "loop.hh"
 #include "util.hh"
-#include "xdraw.hh"
 
 std::unique_ptr<WindowBackend> select_window_backend() {
   if (XWindowBackend::is_available())

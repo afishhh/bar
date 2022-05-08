@@ -10,12 +10,12 @@
 #include <stop_token>
 #include <thread>
 
-#include "../config.hh"
-#include "../draw.hh"
-#include "../format.hh"
-#include "../log.hh"
-#include "../xdraw.hh"
-#include "x11.hh"
+#include "../../config.hh"
+#include "../../draw.hh"
+#include "../../format.hh"
+#include "../../log.hh"
+#include "draw.hh"
+#include "window_backend.hh"
 
 /* _XEMBED_INFO flags */
 #define XEMBED_MAPPED (1 << 0)

@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "draw.hh"
+#include "../../draw.hh"
 
 class XDraw : public Draw {
 private:

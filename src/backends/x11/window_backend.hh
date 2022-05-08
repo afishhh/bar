@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base.hh"
+#include "../base.hh"
 
 class XWindowBackend : public WindowBackend {
   Display *_display;

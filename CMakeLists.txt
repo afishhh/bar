@@ -28,7 +28,6 @@ add_executable(
   src/guard.cc
   src/util.cc
   src/log.cc
-  src/xdraw.cc
   src/bufdraw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
@@ -38,7 +37,8 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/blocks/systray.cc
-  src/backends/x11.cc
+  src/backends/x11/draw.cc
+  src/backends/x11/window_backend.cc
   src/backends/base.cc
 
   ${EXTRA_SOURCES}

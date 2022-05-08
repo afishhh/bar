@@ -11,9 +11,9 @@
 #include <locale>
 #include <string_view>
 
-#include "format.hh"
-#include "log.hh"
-#include "xdraw.hh"
+#include "../../format.hh"
+#include "../../log.hh"
+#include "draw.hh"
 
 // Stolen from git.suckless.org/dwm drw.c
 #define BETWEEN(X, A, B) ((A) <= (X) && (X) <= (B))

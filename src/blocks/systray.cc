@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include "../backends/base.hh"
-#include "../backends/x11.hh"
+#include "../backends/x11/window_backend.hh"
 #include "../config.hh"
 #include "../format.hh"
 #include "../log.hh"
