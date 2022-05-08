@@ -4,9 +4,13 @@
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xdbe.h>
+#include <cstddef>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <stdexcept>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "base.hh"
@@ -19,7 +23,15 @@ class XWindowBackend : public WindowBackend {
   std::vector<XftFont *> _fonts;
 
   std::jthread _event_thread;
-  std::vector<std::function<void(XEvent)>> _event_handlers;
+  std::size_t _last_event_handler_id{0};
+  std::unordered_map<std::size_t, std::function<void(XEvent)>> _event_handlers;
+
+  static int _trapped_error_code;
+  static int (*_old_error_handler)(Display *, XErrorEvent *);
+  static int _trapped_error_handler(Display *, XErrorEvent *ev) {
+    _trapped_error_code = ev->error_code;
+    return 0;
+  }
 
 public:
   XWindowBackend();
@@ -31,5 +43,30 @@ public:
   std::unique_ptr<Draw> create_draw() override;
   void post_draw() override;
 
-  void add_event_handler(std::function<void(XEvent)>);
+  std::size_t add_event_handler(std::function<void(XEvent)>);
+  void remove_event_handler(std::size_t);
+  void wait_for_event(std::function<bool(XEvent)>);
+
+  Display *display() { return _display; }
+  Screen *screen() { return DefaultScreenOfDisplay(_display); }
+  Window window() { return _window; }
+  GC gc() { return _gc; }
+
+  Atom intern_atom(std::string_view name, bool only_if_exists = false);
+  // TODO: Design a better interface around XEmbed, for example allow to handle
+  //        when the client stops being embedded.
+  //
+  //       Focus and activate stuff we should be able to safely ignore since
+  //       this is a status bar that is not supposed to gain focus either due
+  //       to override-redirect or some window manager specific means.
+  std::size_t embed(Window client, Window parent);
+
+  // FIXME: What if an errors occurs in a different thread?
+  //        Is it even possible to handle something like that?
+  static void trap_errors() {
+    _trapped_error_code = 0;
+    _old_error_handler = XSetErrorHandler(_trapped_error_handler);
+  }
+  static void untrap_errors() { XSetErrorHandler(_old_error_handler); }
+  static int trapped_error() { return _trapped_error_code; }
 };

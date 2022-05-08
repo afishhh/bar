@@ -18,6 +18,12 @@ public:
   virtual void late_init(){};
 
   virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
+  // HACK: Should this function exist?
+  //       Should it have a better name?
+  //       Should it have a different signature?
+  virtual size_t ddraw(Draw &, std::chrono::duration<double>, size_t, bool) {
+    return 0;
+  }
 
   virtual void animate(EventLoop::duration) {}
   virtual std::optional<EventLoop::duration> animate_interval() {

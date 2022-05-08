@@ -1,5 +1,8 @@
+#include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xdbe.h>
+#include <condition_variable>
+#include <cstddef>
 #include <cstdlib>
 #include <iomanip>
 #include <memory>
@@ -13,6 +16,27 @@
 #include "../log.hh"
 #include "../xdraw.hh"
 #include "x11.hh"
+
+/* _XEMBED_INFO flags */
+#define XEMBED_MAPPED (1 << 0)
+/* XEMBED messages */
+#define XEMBED_EMBEDDED_NOTIFY 0
+#define XEMBED_WINDOW_ACTIVATE 1
+#define XEMBED_WINDOW_DEACTIVATE 2
+#define XEMBED_REQUEST_FOCUS 3
+#define XEMBED_FOCUS_IN 4
+#define XEMBED_FOCUS_OUT 5
+#define XEMBED_FOCUS_NEXT 6
+#define XEMBED_FOCUS_PREV 7
+/* 8-9 were used for XEMBED_GRAB_KEY/XEMBED_UNGRAB_KEY */
+#define XEMBED_MODALITY_ON 10
+#define XEMBED_MODALITY_OFF 11
+#define XEMBED_REGISTER_ACCELERATOR 12
+#define XEMBED_UNREGISTER_ACCELERATOR 13
+#define XEMBED_ACTIVATE_ACCELERATOR 14
+
+int XWindowBackend::_trapped_error_code{0};
+int (*XWindowBackend::_old_error_handler)(Display *, XErrorEvent *){nullptr};
 
 bool XWindowBackend::is_available() {
   return std::getenv("DISPLAY") != nullptr;
@@ -45,7 +69,6 @@ XWindowBackend::XWindowBackend() {
 
   if (config::x11::override_redirect) {
     XSetWindowAttributes attr;
-    attr.background_pixel = BlackPixel(_display, screen);
     attr.override_redirect = true;
     XChangeWindowAttributes(_display, _window, CWOverrideRedirect, &attr);
   }
@@ -79,7 +102,7 @@ XWindowBackend::XWindowBackend() {
       }
       XNextEvent(_display, &event);
 
-      for (auto &handler : _event_handlers)
+      for (const auto &[id, handler] : _event_handlers)
         handler(event);
     }
   });
@@ -125,6 +148,94 @@ void XWindowBackend::post_draw() {
   XFlush(_display);
 }
 
-void XWindowBackend::add_event_handler(std::function<void(XEvent)> handler) {
-  _event_handlers.emplace_back(std::move(handler));
+std::size_t
+XWindowBackend::add_event_handler(std::function<void(XEvent)> handler) {
+  _event_handlers.emplace(_last_event_handler_id, std::move(handler));
+  return _last_event_handler_id++;
+}
+void XWindowBackend::remove_event_handler(std::size_t id) {
+  _event_handlers.erase(id);
+}
+
+void XWindowBackend::wait_for_event(std::function<bool(XEvent)> predicate) {
+  std::condition_variable cv;
+  std::mutex m;
+
+  auto id = add_event_handler([&](XEvent e) {
+    std::lock_guard<std::mutex> l(m);
+    if (predicate(e))
+      cv.notify_one();
+  });
+
+  std::unique_lock<std::mutex> l(m);
+  cv.wait(l);
+
+  remove_event_handler(id);
+}
+
+Atom XWindowBackend::intern_atom(std::string_view name, bool only_if_exists) {
+  Atom atom = XInternAtom(_display, name.data(), only_if_exists);
+  if (!atom)
+    throw std::runtime_error(
+        std::format("Cannot intern atom {}", std::quoted(name)));
+  return atom;
+}
+
+std::size_t XWindowBackend::embed(Window window, Window parent) {
+  if (!XReparentWindow(_display, window, parent, 0, 0))
+    throw std::runtime_error("XReparentWindow failed");
+
+  struct XEmbedInfo {
+    long version;
+    long flags;
+  };
+
+  if (!XMapWindow(_display, window))
+    throw std::runtime_error("XMapWindow failed");
+
+  if (!XSelectInput(_display, window, PropertyChangeMask))
+    throw std::runtime_error("XSelectInput failed");
+  // FIXME: This leaks memory as it's never removed!
+  //        And is also ugly since we need to return the id in case of failure.
+  auto id = add_event_handler([this, window](XEvent event) {
+    if (event.type != PropertyNotify || event.xproperty.window != window)
+      return;
+
+    if (event.xproperty.atom == intern_atom("_XEMBED_INFO") &&
+        event.xproperty.state == PropertyNewValue) {
+      Atom type;
+      unsigned long len, bytes_left;
+      int format;
+      unsigned char *data;
+
+      if (!XGetWindowProperty(_display, window, intern_atom("_XEMBED_INFO"), 0,
+                              sizeof(XEmbedInfo), false,
+                              intern_atom("_XEMBED_INFO"), &type, &format, &len,
+                              &bytes_left, &data))
+        return; // Happily ignore errors caused by misbehaving clients.
+
+      XEmbedInfo *info = reinterpret_cast<XEmbedInfo *>(data);
+      if (info->flags & XEMBED_MAPPED) {
+        if (!XMapWindow(_display, window))
+          throw std::runtime_error("XMapWindow failed");
+      } else if (!XUnmapWindow(_display, window))
+        throw std::runtime_error("XUnmapWindow failed");
+    }
+  });
+
+  XEvent event;
+  event.xclient.type = ClientMessage;
+  event.xclient.message_type = intern_atom("_XEMBED");
+  event.xclient.format = 32;
+  event.xclient.data.l[0] = CurrentTime;
+  event.xclient.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
+  event.xclient.data.l[2] = 0;
+  event.xclient.data.l[3] = parent;
+  event.xclient.data.l[4] = 0;
+
+  if (!XSendEvent(_display, window, false, NoEventMask, &event))
+    throw std::runtime_error("XSendEvent failed");
+  XFlush(_display);
+
+  return id;
 }

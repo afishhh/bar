@@ -106,6 +106,7 @@ int main() {
       auto now = std::chrono::steady_clock::now();
       auto info = block_info[block.get()];
       x += block->draw(*real_draw, now - info.last_draw);
+      x += block->ddraw(*real_draw, now - info.last_draw, x, false);
       info.last_draw = now;
 
       if (&block != &config::left_blocks[sizeof config::left_blocks /
@@ -123,6 +124,7 @@ int main() {
       auto now = std::chrono::steady_clock::now();
       auto info = block_info[block.get()];
       auto width = block->draw(draw, now - info.last_draw);
+      width += block->ddraw(draw, now - info.last_draw, x - width, true);
       info.last_draw = now;
 
       x -= width;

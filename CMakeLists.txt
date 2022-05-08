@@ -37,6 +37,7 @@ add_executable(
   src/blocks/clock.cc
   src/blocks/script.cc
   src/blocks/disk.cc
+  src/blocks/systray.cc
   src/backends/x11.cc
   src/backends/base.cc
 
