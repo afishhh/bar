@@ -93,11 +93,6 @@ void XSystrayBlock::late_init() {
       _icons.erase(e.xdestroywindow.window);
       std::print(info, "xsystray: Undocked destroyed window {}\n",
                  e.xdestroywindow.window);
-    } else if (e.type == UnmapNotify && !e.xunmap.from_configure &&
-               _icons.contains(e.xunmap.window)) {
-      _icons.erase(e.xunmap.window);
-      std::print(info, "xsystray: Undocked unmapped window {}\n",
-                 e.xunmap.window);
     } else
       return;
 
@@ -113,9 +108,12 @@ void XSystrayBlock::late_init() {
       XSync(xb->display(), false);
       xb->untrap_errors();
       if (auto err = xb->trapped_error()) {
-        std::print(warn,
-                   "xsystray: Could not move/resize window {} (X error: {})\n",
-                   window, err);
+        if (err == BadWindow) {
+          std::print(warn, "xsystray: Undocking broken window {}\n", window);
+        } else
+          std::print(
+              warn, "xsystray: Could not move/resize window {} (X error: {})\n",
+              window, err);
       }
       ++i;
     }
@@ -125,23 +123,18 @@ void XSystrayBlock::late_init() {
   });
 
   auto orientation_atom = xb->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION");
-  unsigned long orientation = SYSTEM_TRAY_ORIENTATION_HORZ;
+  auto orientation_value_atom =
+      xb->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION_HORZ");
   XChangeProperty(xb->display(), _tray, orientation_atom, XA_CARDINAL, 32,
-                  PropModeReplace, (unsigned char *)&orientation, 1);
+                  PropModeReplace, (unsigned char *)&orientation_value_atom, 1);
 
   auto sn = XScreenNumberOfScreen(xb->screen());
   auto selection_atom_name = std::format("_NET_SYSTEM_TRAY_S{}", sn);
   auto selection_atom = xb->intern_atom(selection_atom_name);
-  if (XGetSelectionOwner(xb->display(), selection_atom) != None) {
-    std::print(error, "xsystray: A system tray is already running\n");
-    std::exit(1);
-  }
   if (!XSetSelectionOwner(xb->display(), selection_atom, _tray, CurrentTime))
     throw std::runtime_error("Failed to set system tray selection owner");
   if (XGetSelectionOwner(xb->display(), selection_atom) != _tray)
-    throw std::runtime_error("Failed to set system tray selection owner");
-
-  XFlush(xb->display());
+    throw std::runtime_error("Failed to obtain system tray ownership");
 
   XEvent e;
   e.xclient.type = ClientMessage;
@@ -155,7 +148,7 @@ void XSystrayBlock::late_init() {
   e.xclient.data.l[4] = 0;
 
   XSendEvent(xb->display(), e.xclient.window, false, StructureNotifyMask, &e);
-  XFlush(xb->display());
+  XSync(xb->display(), false);
 }
 
 std::size_t XSystrayBlock::ddraw(Draw &, std::chrono::duration<double>,
@@ -179,5 +172,7 @@ std::size_t XSystrayBlock::ddraw(Draw &, std::chrono::duration<double>,
 
   if (!XMoveWindow(xb->display(), _tray, x - width_return * right_aligned, 0))
     throw std::runtime_error("Failed to move system tray");
+
+  XSync(xb->display(), false);
   return width_return;
 }
