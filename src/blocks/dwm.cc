@@ -86,17 +86,21 @@ void DwmBlock::late_init() {
           _focused_client_floating = false;
           _focused_client_urgent = false;
         } else {
-          std::shared_ptr<dwmipc::Client> c{nullptr};
           try {
-            c = _connection.get_client(event.new_win_id);
+            auto c = _connection.get_client(event.new_win_id);
+
+            _focused_client_title = c->name;
+            _focused_client_floating = c->states.is_floating;
+            _focused_client_urgent = c->states.is_urgent;
           } catch (dwmipc::ResultFailureError &err) {
             std::print(
                 warn, "get_client(ClientFocusChangeEvent->client) failed: {}\n",
                 err.what());
+
+            _focused_client_title = "";
+            _focused_client_floating = false;
+            _focused_client_urgent = false;
           }
-          _focused_client_title = c->name;
-          _focused_client_floating = c->states.is_floating;
-          _focused_client_urgent = c->states.is_urgent;
         }
         EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
       };
