@@ -170,18 +170,10 @@ std::size_t XSystrayBlock::ddraw(Draw &, std::chrono::duration<double>,
   if (!xb)
     throw std::logic_error("Could not get XWindowBackend instance");
 
-  Window root_return;
-  int x_return, y_return;
-  unsigned int width_return, height_return;
-  unsigned int border_width_return, depth_return;
-  if (!XGetGeometry(xb->display(), _tray, &root_return, &x_return, &y_return,
-                    &width_return, &height_return, &border_width_return,
-                    &depth_return))
-    throw std::runtime_error("Failed to get geometry of system tray");
-
-  if (!XMoveWindow(xb->display(), _tray, x - width_return * right_aligned, 0))
+  auto tray_width = (_icons.size() * config::height) ?: 1;
+  if (!XMoveWindow(xb->display(), _tray, x - tray_width * right_aligned, 0))
     throw std::runtime_error("Failed to move system tray");
 
   XSync(xb->display(), false);
-  return width_return;
+  return tray_width;
 }
