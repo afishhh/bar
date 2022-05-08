@@ -118,8 +118,7 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
       time_str += "s ";
     }
 
-    if (time_str.back() == ' ')
-      time_str.pop_back();
+    time_str.pop_back();
     return time_str;
   };
 

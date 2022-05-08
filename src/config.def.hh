@@ -33,7 +33,8 @@ const static bool override_redirect = false;
 // Controls the bar's window name
 const static std::string window_name = "bar";
 // Window class to set for the window
-// NOTE: This cannot be const due to bad const-correctness in X11
+// NOTE: I am not sure if this can be const because XClassHint properties aren't
+//       but don't seem to be modified anyway.
 static std::string window_class = "bar";
 
 } // namespace x11

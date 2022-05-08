@@ -96,15 +96,15 @@ XftFont *XDraw::lookup_font(long codepoint) {
 
   // Convert the utf-8 codepoint into a string
   const auto &cvt =
-      std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(
+      std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
           std::locale());
   std::mbstate_t state{};
 
-  const char32_t *last_in;
+  const wchar_t *last_in;
   char *last_out;
   std::array<char, 5> out{};
   std::codecvt_base::result res =
-      cvt.out(state, (char32_t *)&codepoint, (char32_t *)&codepoint + 1,
+      cvt.out(state, (wchar_t *)&codepoint, (wchar_t *)&codepoint + 1,
               last_in, out.begin(), out.end() - 1, last_out);
   if (res != std::codecvt_base::ok)
     throw std::runtime_error("codepoint conversion failed");

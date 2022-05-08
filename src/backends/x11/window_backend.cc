@@ -1,5 +1,6 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/extensions/Xdbe.h>
 #include <condition_variable>
 #include <cstddef>
@@ -74,8 +75,8 @@ XWindowBackend::XWindowBackend() {
   }
 
   XClassHint class_hint;
-  class_hint.res_name = config::x11::window_class.data();
-  class_hint.res_class = config::x11::window_class.data();
+  class_hint.res_name = (char *)config::x11::window_class.data();
+  class_hint.res_class = (char *)config::x11::window_class.data();
   XSetClassHint(_display, _window, &class_hint);
 
   for (auto font_name : config::fonts) {
