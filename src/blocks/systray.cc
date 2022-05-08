@@ -46,6 +46,12 @@ void XSystrayBlock::late_init() {
       switch (e.xclient.data.l[1]) {
       case SYSTEM_TRAY_REQUEST_DOCK: {
         Window window = e.xclient.data.l[2];
+        if (_icons.contains(window)) {
+          std::print(warn, "xsystray: Window {} requested docking twice",
+                     window);
+          return;
+        }
+
         xb->trap_errors();
         auto hid = xb->embed(window, _tray);
         XSync(xb->display(), false);
