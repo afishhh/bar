@@ -24,7 +24,17 @@ namespace config {
 // NOTE: While the height might seem configurable you will also need to change
 //       widths of quite a few different independent boxes
 const static size_t height = 24;
+
+// Configuration options specific to the X11 backend
+namespace x11 {
+
+// Whether to set the override-redirect flag on the window
 const static bool override_redirect = false;
+// Window class to set for the window
+// NOTE: This cannot be const due to bad const-correctness in X11
+static std::string window_class = "bar";
+
+} // namespace x11
 
 const static std::initializer_list<const char *> fonts = {
     "monospace:size=10", "Font Awesome 5 Free Solid:style=Solid:size=9"};
