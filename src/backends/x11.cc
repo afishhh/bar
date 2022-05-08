@@ -115,6 +115,7 @@ XWindowBackend::~XWindowBackend() noexcept(false) {
 
   XFreeGC(_display, _gc);
   XUnmapWindow(_display, _window);
+  XDestroyWindow(_display, _window);
   XdbeDeallocateBackBufferName(_display, _back_buffer);
 
   for (XftFont *font : _fonts)
