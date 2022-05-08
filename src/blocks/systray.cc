@@ -96,6 +96,7 @@ void XSystrayBlock::late_init() {
     } else
       return;
 
+  relayout_tray:
     if (!XResizeWindow(xb->display(), _tray,
                        (config::height * _icons.size()) ?: 1, config::height))
       throw std::runtime_error("Failed to resize tray window");
@@ -110,6 +111,8 @@ void XSystrayBlock::late_init() {
       if (auto err = xb->trapped_error()) {
         if (err == BadWindow) {
           std::print(warn, "xsystray: Undocking broken window {}\n", window);
+          _icons.erase(window);
+          goto relayout_tray;
         } else
           std::print(
               warn, "xsystray: Could not move/resize window {} (X error: {})\n",
