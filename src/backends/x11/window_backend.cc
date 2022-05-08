@@ -65,7 +65,7 @@ XWindowBackend::XWindowBackend() {
   _window = XCreateSimpleWindow(_display, RootWindow(_display, screen), 0, 0,
                                 display_width, config::height, 0, 0, 0);
 
-  XStoreName(_display, _window, "Fishhh's custom status bar");
+  XStoreName(_display, _window, config::x11::window_name.c_str());
 
   if (config::x11::override_redirect) {
     XSetWindowAttributes attr;

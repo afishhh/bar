@@ -30,6 +30,8 @@ namespace x11 {
 
 // Whether to set the override-redirect flag on the window
 const static bool override_redirect = false;
+// Controls the bar's window name
+const static std::string window_name = "bar";
 // Window class to set for the window
 // NOTE: This cannot be const due to bad const-correctness in X11
 static std::string window_class = "bar";
