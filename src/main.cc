@@ -104,9 +104,14 @@ int main() {
     for (auto &block : config::left_blocks) {
       auto now = std::chrono::steady_clock::now();
       auto info = block_info[block.get()];
-      x += block->draw(*real_draw, now - info.last_draw);
-      x += block->ddraw(*real_draw, now - info.last_draw, x, false);
+      auto width = block->draw(draw, now - info.last_draw);
+      width += block->ddraw(draw, now - info.last_draw, x, false);
       info.last_draw = now;
+
+      draw.draw_offset(x, 0);
+      draw.clear();
+
+      x += width;
 
       if (&block != &config::left_blocks[sizeof config::left_blocks /
                                              sizeof(config::left_blocks[0]) -
