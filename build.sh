@@ -9,14 +9,14 @@ set -euo pipefail
 IFS=$'\n\t'
 
 function err() {
-	echo "$0: $@" >&2
+	echo "$0: $*" >&2
 	exit 1
 }
 
 opts=$(getopt -a -n "$0" -o "t:,h,j:,g:" -l "type:,help,jobs:,no-dwmipc,generator:" -- "$@")
-eval set -- "$opts"
-
-[[ $? -ne 0 ]] && exit 1
+if ! eval set -- "$opts"; then
+	exit 1
+fi
 
 type=release
 no_dwmipc=false
@@ -85,7 +85,7 @@ if [[ $# -ne 0 ]]; then
 		quoted_args+=("'$1'")
 		shift
 	done
-	err "excess positional arguments: ${quoted_args[@]}"
+	err "excess positional arguments: $*"
 	exit 1
 fi
 
@@ -123,11 +123,11 @@ fi
 [[ $no_dwmipc == false ]] &&
 	cmake_opts+=(-DDWMIPC=ON)
 
-cmake -G"$generator" .. ${cmake_opts[@]} ||
+cmake -G"$generator" .. "${cmake_opts[@]}" ||
 	err "cmake generation failed"
 
 [[ $type == "debug" ]] &&
 	mv compile_commands.json ..
 
-cmake --build . -j$cores ||
+cmake --build . -j"$cores" ||
 	err "cmake build failed"
