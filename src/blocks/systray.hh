@@ -2,6 +2,7 @@
 
 #include <X11/X.h>
 #include <cstddef>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -11,7 +12,10 @@
 class XSystrayBlock : public Block {
   Window _tray{0};
   std::size_t _icon_count;
+
   std::set<Window> _icons;
+  // HACK: Hack until a proper XEmbed API is available in XWindowBackend
+  std::map<Window, EventLoop::callback_id> _icon_embed_callbacks;
 
 public:
   XSystrayBlock() {}

@@ -84,35 +84,35 @@ void CpuBlock::update() {
         temp_file >> _thermal->temperature;
       }
 
-      std::vector<ThermalInfo::TripPoint> points;
-      {
-        auto it = std::filesystem::directory_iterator(entry.path());
-        auto point_range =
-            it | std::views::filter([](const auto &entry) {
-              auto n = entry.path().filename().string();
-              return n.starts_with("trip_point_") && n.ends_with("_type");
-            }) |
-            std::views::transform([](const auto &entry) {
-              auto f = entry.path().string();
-              // remove _type
-              return f.erase(f.size() - 5);
-            }) |
-            std::views::transform([](const auto &path) {
-              ThermalInfo::TripPoint point;
+      class trip_point_temperature_less {
+      public:
+        bool operator()(const ThermalInfo::TripPoint &a,
+                        const ThermalInfo::TripPoint &b) const {
+          return a.temperature < b.temperature;
+        }
+      };
+      std::set<ThermalInfo::TripPoint, trip_point_temperature_less> points;
+      std::ranges::subrange(std::filesystem::directory_iterator(entry.path()),
+                            std::filesystem::directory_iterator()) |
+          std::views::filter([](const auto &entry) {
+            auto n = entry.path().filename().string();
+            return n.starts_with("trip_point_") && n.ends_with("_type");
+          }) |
+          std::views::transform([](const auto &entry) {
+            auto f = entry.path().string();
+            // remove _type
+            return f.erase(f.size() - 5);
+          }) |
+          std::views::transform([&points](const auto &path) {
+            ThermalInfo::TripPoint point;
 
-              std::ifstream(path + "_temp") >> point.temperature;
-              std::ifstream(path + "_type") >> point.type;
-              std::ifstream(path + "_hyst") >> point.hyst;
+            std::ifstream(path + "_temp") >> point.temperature;
+            std::ifstream(path + "_type") >> point.type;
+            std::ifstream(path + "_hyst") >> point.hyst;
 
-              return point;
-            });
-        // TODO: use ranges::to once it's implemented in libstdc++
-        std::ranges::move(point_range, std::back_inserter(points));
-      }
-
-      std::ranges::sort(points, [](const auto &a, const auto &b) {
-        return a.temperature > b.temperature;
-      });
+            points.insert(std::move(point));
+            return 0;
+          });
 
       auto it = std::ranges::find_if(points, [&](const auto &point) {
         return point.temperature < _thermal->temperature;
@@ -153,7 +153,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
         color = 0xCCCCCC;
     }
 
-    x += draw.text(x, y, std::format("{:.1f}°C", _thermal->temperature / 1000.), 
+    x += draw.text(x, y, std::format("{:.1f}°C", _thermal->temperature / 1000.),
                    color);
   }
 

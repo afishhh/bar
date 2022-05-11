@@ -14,6 +14,7 @@
 #include "dwmipcpp/util.hpp"
 
 #include "../format.hh"
+#include "../events.hh"
 #include "../log.hh"
 #include "dwm.hh"
 
@@ -76,7 +77,7 @@ void DwmBlock::late_init() {
   _connection.on_tag_change =
       [update_tag_states](const dwmipc::TagChangeEvent &event) {
         update_tag_states(event.new_state);
-        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+        EV.fire_event(RedrawEvent());
       };
   _connection.subscribe(dwmipc::Event::TAG_CHANGE);
   _connection.on_client_focus_change =
@@ -102,26 +103,26 @@ void DwmBlock::late_init() {
             _focused_client_urgent = false;
           }
         }
-        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+        EV.fire_event(RedrawEvent());
       };
   _connection.subscribe(dwmipc::Event::CLIENT_FOCUS_CHANGE);
   _connection.on_focused_title_change =
       [this](const dwmipc::FocusedTitleChangeEvent &event) {
         _focused_client_title = event.new_name;
-        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+        EV.fire_event(RedrawEvent());
       };
   _connection.subscribe(dwmipc::Event::FOCUSED_TITLE_CHANGE);
   _connection.on_layout_change =
       [this](const dwmipc::LayoutChangeEvent &event) {
         _layout_symbol = event.new_symbol;
-        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+        EV.fire_event(RedrawEvent());
       };
   _connection.subscribe(dwmipc::Event::LAYOUT_CHANGE);
   _connection.on_focused_state_change =
       [this](const dwmipc::FocusedStateChangeEvent &event) {
         _focused_client_floating = event.new_state.is_floating;
         _focused_client_urgent = event.new_state.is_urgent;
-        EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+        EV.fire_event(RedrawEvent());
       };
   _connection.subscribe(dwmipc::Event::FOCUSED_STATE_CHANGE);
 }

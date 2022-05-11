@@ -10,6 +10,7 @@
 #include "../backends/base.hh"
 #include "../backends/x11/window_backend.hh"
 #include "../config.hh"
+#include "../events.hh"
 #include "../format.hh"
 #include "../log.hh"
 #include "systray.hh"
@@ -41,7 +42,8 @@ void XSystrayBlock::late_init() {
     throw std::runtime_error("Failed to select input for tray window");
 
   auto opcode_atom = xb->intern_atom("_NET_SYSTEM_TRAY_OPCODE", false);
-  xb->add_event_handler([xb, this, opcode_atom](XEvent e) {
+  EV.on<LXEvent>([xb, this, opcode_atom](const LXEvent &le) {
+    const XEvent &e = le.xevent();
     if (e.type == ClientMessage && e.xclient.message_type == opcode_atom) {
       switch (e.xclient.data.l[1]) {
       case SYSTEM_TRAY_REQUEST_DOCK: {
@@ -61,7 +63,7 @@ void XSystrayBlock::late_init() {
           XGetErrorText(xb->display(), err, error_buffer, sizeof(error_buffer));
           std::print(warn, "xsystray: Could not dock window {} ({})\n", window,
                      error_buffer);
-          xb->remove_event_handler(hid);
+          EV.off<LXEvent>(hid);
           xb->trap_errors();
           XReparentWindow(xb->display(), window,
                           XDefaultRootWindow(xb->display()), 0, 0);
@@ -90,13 +92,19 @@ void XSystrayBlock::late_init() {
     } else if (e.type == ReparentNotify &&
                _icons.contains(e.xreparent.window) &&
                e.xreparent.parent != _tray) {
-      // The client left us :(
-      _icons.erase(e.xreparent.window);
+      // The client left us for someone else :(
+      auto window = e.xreparent.window;
+      EV.off<LXEvent>(_icon_embed_callbacks[window]);
+      _icon_embed_callbacks.erase(window);
+      _icons.erase(window);
       std::print(info, "xsystray: Undocked reparented window {}\n",
                  e.xreparent.window);
     } else if (e.type == DestroyNotify &&
                _icons.contains(e.xdestroywindow.window)) {
-      _icons.erase(e.xdestroywindow.window);
+      auto window = e.xdestroywindow.window;
+      EV.off<LXEvent>(_icon_embed_callbacks[window]);
+      _icon_embed_callbacks.erase(window);
+      _icons.erase(window);
       std::print(info, "xsystray: Undocked destroyed window {}\n",
                  e.xdestroywindow.window);
     } else
@@ -117,6 +125,8 @@ void XSystrayBlock::late_init() {
       if (auto err = xb->trapped_error()) {
         if (err == BadWindow) {
           std::print(warn, "xsystray: Undocking broken window {}\n", window);
+          EV.off<LXEvent>(_icon_embed_callbacks[window]);
+          _icon_embed_callbacks.erase(window);
           _icons.erase(window);
           goto relayout_tray;
         } else
@@ -128,7 +138,7 @@ void XSystrayBlock::late_init() {
     }
 
     XFlush(xb->display());
-    EventLoop::instance().fire_event(EventLoop::Event::REDRAW);
+    EV.fire_event(RedrawEvent());
   });
 
   auto orientation_atom = xb->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION");

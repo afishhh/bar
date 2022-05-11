@@ -29,6 +29,7 @@
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
+#include "events.hh"
 #include "format.hh"
 #include "guard.hh"
 #include "log.hh"
@@ -65,7 +66,7 @@ int main() {
         last_draw;
   };
   std::unordered_map<Block *, BlockInfo> block_info;
-  auto &loop = EventLoop::instance();
+  auto &loop = EV;
 
   auto setup_block = [&](Block &block) {
     block.late_init();
@@ -82,12 +83,12 @@ int main() {
                          block.update_interval()),
                      [&](auto) {
                        block.update();
-                       loop.fire_event(EventLoop::Event::REDRAW);
+                       loop.fire_event(RedrawEvent());
                      });
     if (auto i = block.animate_interval())
       loop.add_timer(true, std::move(*i), [&](auto delta) {
         block.animate(delta);
-        loop.fire_event(EventLoop::Event::REDRAW);
+        loop.fire_event(RedrawEvent());
       });
   };
 
@@ -96,7 +97,7 @@ int main() {
   for (auto &block : config::right_blocks)
     setup_block(*block);
 
-  loop.on_event(EventLoop::Event::REDRAW, [&]() {
+  loop.on<RedrawEvent>([&](const RedrawEvent &) {
     window_backend->pre_draw();
 
     std::size_t x = 5;

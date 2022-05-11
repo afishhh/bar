@@ -103,8 +103,7 @@ XWindowBackend::XWindowBackend() {
       }
       XNextEvent(_display, &event);
 
-      for (const auto &[id, handler] : _event_handlers)
-        handler(event);
+      EV.fire_event(LXEvent(std::move(event)));
     }
   });
   _event_thread.detach();
@@ -150,31 +149,6 @@ void XWindowBackend::post_draw() {
   XFlush(_display);
 }
 
-std::size_t
-XWindowBackend::add_event_handler(std::function<void(XEvent)> handler) {
-  _event_handlers.emplace(_last_event_handler_id, std::move(handler));
-  return _last_event_handler_id++;
-}
-void XWindowBackend::remove_event_handler(std::size_t id) {
-  _event_handlers.erase(id);
-}
-
-void XWindowBackend::wait_for_event(std::function<bool(XEvent)> predicate) {
-  std::condition_variable cv;
-  std::mutex m;
-
-  auto id = add_event_handler([&](XEvent e) {
-    std::lock_guard<std::mutex> l(m);
-    if (predicate(e))
-      cv.notify_one();
-  });
-
-  std::unique_lock<std::mutex> l(m);
-  cv.wait(l);
-
-  remove_event_handler(id);
-}
-
 Atom XWindowBackend::intern_atom(std::string_view name, bool only_if_exists) {
   Atom atom = XInternAtom(_display, name.data(), only_if_exists);
   if (!atom)
@@ -199,7 +173,8 @@ std::size_t XWindowBackend::embed(Window window, Window parent) {
     throw std::runtime_error("XSelectInput failed");
   // FIXME: This leaks memory as it's never removed!
   //        And is also ugly since we need to return the id in case of failure.
-  auto id = add_event_handler([this, window](XEvent event) {
+  auto id = EV.on<LXEvent>([this, window](const LXEvent &lxevent) {
+    const auto &event = lxevent.xevent();
     if (event.type != PropertyNotify || event.xproperty.window != window)
       return;
 

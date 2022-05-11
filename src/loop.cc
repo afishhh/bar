@@ -9,11 +9,9 @@
 EventLoop::EventLoop() {}
 EventLoop::~EventLoop() {}
 
-EventLoop *EventLoop::_instance = nullptr;
 EventLoop &EventLoop::instance() {
-  if (_instance == nullptr)
-    _instance = new EventLoop();
-  return *_instance;
+  static EventLoop instance;
+  return instance;
 }
 
 void EventLoop::add_timer(bool repeat, duration interval,
@@ -43,10 +41,8 @@ void EventLoop::run() {
       }
     } while (_timers.top().next < clock::now());
 
-    for (auto event : _queued_events)
-      for (const auto &cb : _events[event])
-        cb();
-    _queued_events.clear();
+    for (auto &[index, queue] : _event_queues)
+      queue->flush();
   }
 }
 
@@ -54,8 +50,3 @@ void EventLoop::stop() {
   while (!_timers.empty())
     _timers.pop();
 }
-
-void EventLoop::on_event(Event id, event_callback callback) {
-  _events[id].push_back(callback);
-}
-void EventLoop::fire_event(Event id) { _queued_events.insert(id); }

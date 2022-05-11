@@ -95,29 +95,30 @@ XftFont *XDraw::lookup_font(long codepoint) {
   }
 
   // Convert the utf-8 codepoint into a string
-  const auto &cvt =
-      std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
-          std::locale());
+  const auto &cvt = std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
+      std::locale());
   std::mbstate_t state{};
 
   const wchar_t *last_in;
   char *last_out;
   std::array<char, 5> out{};
   std::codecvt_base::result res =
-      cvt.out(state, (wchar_t *)&codepoint, (wchar_t *)&codepoint + 1,
-              last_in, out.begin(), out.end() - 1, last_out);
-  if (res != std::codecvt_base::ok)
-    throw std::runtime_error("codepoint conversion failed");
-  out[last_out - out.begin()] = '\0';
-  std::string_view sv{out.begin(),
-                      (std::string_view::size_type)(last_out - out.begin())};
+      cvt.out(state, (wchar_t *)&codepoint, (wchar_t *)&codepoint + 1, last_in,
+              out.begin(), out.end() - 1, last_out);
   _font_cache.emplace(codepoint, nullptr);
-  // Ignore some common characters not meant to be handled by fonts.
-  if (sv == "\n" || sv == "\r" || sv == "\t" || sv == "\v" || sv == "\f" ||
-      sv == "\b" || sv == "\0" || sv == "\e" || sv == "\a")
-    return nullptr;
-  std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
-             codepoint, sv);
+  if (res != std::codecvt_base::ok)
+    std::print(warn, "Invalid codepoint 0x{:0>8X}\n", codepoint);
+  else {
+    out[last_out - out.begin()] = '\0';
+    std::string_view sv{out.begin(),
+                        (std::string_view::size_type)(last_out - out.begin())};
+    // Ignore some common characters not meant to be handled by fonts.
+    if (sv == "\n" || sv == "\r" || sv == "\t" || sv == "\v" || sv == "\f" ||
+        sv == "\b" || sv == "\0" || sv == "\e" || sv == "\a")
+      return nullptr;
+    std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
+               codepoint, sv);
+  }
   return nullptr;
 }
 

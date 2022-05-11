@@ -8,11 +8,13 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <thread>
 #include <unordered_map>
 #include <vector>
 
+#include "../../loop.hh"
 #include "../base.hh"
 
 class XWindowBackend : public WindowBackend {
@@ -23,8 +25,6 @@ class XWindowBackend : public WindowBackend {
   std::vector<XftFont *> _fonts;
 
   std::jthread _event_thread;
-  std::size_t _last_event_handler_id{0};
-  std::unordered_map<std::size_t, std::function<void(XEvent)>> _event_handlers;
 
   static int _trapped_error_code;
   static int (*_old_error_handler)(Display *, XErrorEvent *);
@@ -42,10 +42,6 @@ public:
   void pre_draw() override;
   std::unique_ptr<Draw> create_draw() override;
   void post_draw() override;
-
-  std::size_t add_event_handler(std::function<void(XEvent)>);
-  void remove_event_handler(std::size_t);
-  void wait_for_event(std::function<bool(XEvent)>);
 
   Display *display() { return _display; }
   Screen *screen() { return DefaultScreenOfDisplay(_display); }
@@ -69,4 +65,15 @@ public:
   }
   static void untrap_errors() { XSetErrorHandler(_old_error_handler); }
   static int trapped_error() { return _trapped_error_code; }
+};
+
+// This Event wraps an XEvent and makes it accessible via the event loop.
+class LXEvent : public Event {
+  XEvent _event;
+
+  LXEvent(XEvent &&event) : _event(event) {}
+  friend class XWindowBackend;
+
+public:
+  inline const XEvent &xevent() const { return _event; }
 };
