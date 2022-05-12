@@ -43,7 +43,7 @@ public:
   using _derived_event_base = Base;
 
   template <typename... Args>
-  DerivedEvent(Args &&...args) : Base(std::forward<Args>(args)...) {}
+  explicit DerivedEvent(Args &&...args) : Base(std::forward<Args>(args)...) {}
 };
 
 class EventLoop {
