@@ -105,15 +105,17 @@ private:
   //        For now this is hacked together using DerivedEvent.
   template <std::derived_from<Event> E> class EventQueue : public VEventQueue {
     void fire_base_event(const E &event) {
-        if constexpr (std::derived_from<E, detail::DerivedEventTag>) {
-          using base = typename E::_derived_event_base;
+      if constexpr (std::derived_from<E, detail::DerivedEventTag>) {
+        using base = typename E::_derived_event_base;
 
-          const auto &queues = EventLoop::instance()._event_queues;
-          if (auto it = queues.find(typeid(base)); it != queues.end())
-            it->second->into_queue_of<base>()->flush_single(event);
-        }
+        const auto &queues = EventLoop::instance()._event_queues;
+        if (auto it = queues.find(typeid(base)); it != queues.end())
+          it->second->into_queue_of<base>()->flush_single(event);
+      }
     }
 
+    std::function<void(const E &)> *_current_callback = nullptr;
+    bool _remove_current_callback;
 
   public:
     std::mutex _mutex;
@@ -122,7 +124,11 @@ private:
 
     bool try_remove_callback(callback_id id) override {
       std::lock_guard<std::mutex> lock(_mutex);
-      return callbacks.erase(id) != 0;
+      if (_current_callback == &callbacks[id]) {
+        _remove_current_callback = true;
+        return true;
+      } else
+        return callbacks.erase(id) != 0;
     }
     void flush_single(const E &event) {
       _mutex.lock();
@@ -139,13 +145,20 @@ private:
       _mutex.lock();
 
       for (auto &event : queued_events) {
-        for (auto &[_, callback] : callbacks) {
+        for (auto it = callbacks.begin(); it != callbacks.end();) {
+          auto &[_, callback] = *it;
+          _current_callback = &callback;
           _mutex.unlock();
           fire_base_event(event);
           callback(event);
           _mutex.lock();
+          if (_remove_current_callback)
+            it = callbacks.erase(it);
+          else
+            ++it;
         }
       }
+      _current_callback = nullptr;
       _mutex.unlock();
 
       queued_events.clear();
@@ -200,8 +213,7 @@ public:
   }
   template <std::derived_from<Event> E> bool off(callback_id id) {
     auto queue = _event_queues[typeid(E)]->into_queue_of<E>();
-    std::lock_guard<std::mutex> lock(queue->_mutex);
-    return queue->callbacks.erase(id) != 0;
+    return queue->try_remove_callback(id);
   }
 
   void add_timer(bool repeat, duration interval,

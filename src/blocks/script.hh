@@ -22,9 +22,6 @@ class ScriptBlock : public Block {
   std::string _output;
   bool _timed_out = false;
 
-  static void handle_update_signal(int);
-  static void handle_sigchld_signal(int, siginfo_t *, void *);
-
 public:
   ScriptBlock(const std::filesystem::path &path,
               const std::chrono::duration<double> &interval)

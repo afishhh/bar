@@ -1,61 +1,41 @@
+#include <csignal>
 #include <cstddef>
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <unordered_map>
 #include <wait.h>
 
 extern char **environ;
 
-#include <csignal>
 #include <fstream>
 #include <system_error>
 #include <thread>
+#include <unordered_map>
 
 #include "../events.hh"
+#include "../signal.hh"
 #include "../util.hh"
 #include "script.hh"
 
-std::unordered_map<int, ScriptBlock *> signal_block_update_map;
-void ScriptBlock::handle_update_signal(int sig) {
-  if (signal_block_update_map.contains(sig)) {
-    ScriptBlock *block{signal_block_update_map[sig]};
-    block->update();
-    EV.fire_event(RedrawEvent());
-  }
-}
-
-bool sigchld_handler_init{false};
-std::mutex process_map_mutex;
-std::unordered_map<pid_t, ScriptBlock *> process_block_map;
-void ScriptBlock::handle_sigchld_signal(int, siginfo_t *info, void *) {
-  std::lock_guard lock{process_map_mutex};
-  if (process_block_map.contains(info->si_pid)) {
-    ScriptBlock *block{process_block_map[info->si_pid]};
-    block->_process_mutex.unlock();
-    process_block_map.erase(info->si_pid);
-  }
-}
-
 void ScriptBlock::late_init() {
   if (_update_signal) {
-    signal_block_update_map[*_update_signal] = this;
+    SignalEvent::attach(*_update_signal);
 
-    struct sigaction sa;
-    sa.sa_handler = &handle_update_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(*_update_signal, &sa, nullptr);
+    EV.on<SignalEvent>([this](const SignalEvent &ev) {
+      if (ev.signum != _update_signal)
+        return;
+
+      update();
+      EV.fire_event(RedrawEvent());
+    });
   }
-  if (!sigchld_handler_init) {
-    struct sigaction sa;
-    sa.sa_sigaction = &handle_sigchld_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO | SA_NOCLDSTOP;
-    sigaction(SIGCHLD, &sa, nullptr);
-    sigchld_handler_init = true;
+
+  static bool sigchld_registered = false;
+  if (!sigchld_registered) {
+    SignalEvent::attach(SIGCHLD, SA_NOCLDSTOP);
+    sigchld_registered = true;
   }
 }
 
@@ -92,12 +72,18 @@ void ScriptBlock::update() {
       std::string path_str = _path.string();
       char *const argv[] = {path_str.data(), nullptr};
 
-      std::lock_guard lock{process_map_mutex};
       if (posix_spawnp(&pid, this->_path.c_str(), &actions, &attr, argv,
                        environ) < 0)
         throw std::system_error(errno, std::system_category(), "posix_spawnp");
-      process_block_map[pid] = this;
     }
+    EventLoop::callback_id sigchld_handler = EV.on<SignalEvent>(
+        [this, pid, &sigchld_handler](const SignalEvent &ev) {
+          if (ev.signum != SIGCHLD || ev.info.si_pid != pid)
+            return;
+
+          _process_mutex.unlock();
+          EV.off<SignalEvent>(sigchld_handler);
+        });
 
     if (posix_spawn_file_actions_destroy(&actions) < 0)
       throw std::system_error(errno, std::system_category(),
@@ -108,7 +94,7 @@ void ScriptBlock::update() {
 
     if (!_process_mutex.try_lock_for(_interval -
                                      std::chrono::milliseconds(30))) {
-      process_block_map.erase(pid);
+      EV.off<SignalEvent>(sigchld_handler);
       kill(pid, SIGKILL);
       _timed_out = true;
     }
