@@ -35,6 +35,10 @@ class XWindowBackend : public WindowBackend {
 
 public:
   XWindowBackend();
+  XWindowBackend(const WindowBackend &) = delete;
+  XWindowBackend(WindowBackend &&) = delete;
+  XWindowBackend &operator=(const WindowBackend &) = delete;
+  XWindowBackend &operator=(WindowBackend &&) = delete;
   ~XWindowBackend() noexcept(false);
 
   static bool is_available();
