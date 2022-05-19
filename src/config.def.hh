@@ -40,10 +40,9 @@ static std::string window_class = "bar";
 } // namespace x11
 
 const static std::initializer_list<const char *> fonts = {
-    "monospace:size=10", "Font Awesome 5 Free Solid:style=Solid:size=9"};
+    "monospace:size=10", "Font Awesome 6 Free Solid:style=Solid:size=9"};
 
 // clang-format off
-// FIXME: Allow right aligned blocks.
 const static std::unique_ptr<Block> left_blocks[] = {
     std::make_unique<DwmBlock>(
         DwmBlock::Config {
@@ -57,6 +56,8 @@ const static std::unique_ptr<Block> left_blocks[] = {
             .floating_title_prefix = " ",
             .title_color = 0xFFFFFF,
             .floating_title_color = 0xFFFFFF,
+
+            .max_title_length = 100,
         }
     ),
 };
@@ -86,9 +87,6 @@ const static std::unique_ptr<Block> right_blocks[] = {
     std::make_unique<ScriptBlock>("sb-mic-volume", 1s, SIGRTMIN + 20),
     std::make_unique<ScriptBlock>("sb-volume", 1s, 44),
     std::make_unique<NetworkBlock>(),
-    // TODO: NvidiaGpuBlock
-    // TODO: PipewireBlock
-    // TODO: InternetBlock
 };
 // clang-format on
 
