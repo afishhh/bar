@@ -24,8 +24,8 @@ private:
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
   std::unordered_map<color_type, XftColor> _color_cache;
-  std::unordered_map<long, XftFont *> _font_cache;
-  XftFont *lookup_font(long codepoint);
+  std::unordered_map<char32_t, XftFont *> _font_cache;
+  XftFont *lookup_font(char32_t codepoint);
   XftColor *lookup_color(color_type color);
 
 public:
