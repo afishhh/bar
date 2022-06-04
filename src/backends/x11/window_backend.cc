@@ -66,7 +66,7 @@ XWindowBackend::XWindowBackend() {
   _window = XCreateSimpleWindow(_display, RootWindow(_display, screen), 0, 0,
                                 display_width, config::height, 0, 0, 0);
 
-  XStoreName(_display, _window, config::x11::window_name.c_str());
+  XStoreName(_display, _window, config::x11::window_name.data());
 
   if (config::x11::override_redirect) {
     XSetWindowAttributes attr;
@@ -75,8 +75,8 @@ XWindowBackend::XWindowBackend() {
   }
 
   XClassHint class_hint;
-  class_hint.res_name = (char *)config::x11::window_class.data();
-  class_hint.res_class = (char *)config::x11::window_class.data();
+  class_hint.res_name = const_cast<char *>(config::x11::window_class.data());
+  class_hint.res_class = const_cast<char *>(config::x11::window_class.data());
   XSetClassHint(_display, _window, &class_hint);
 
   for (auto font_name : config::fonts) {

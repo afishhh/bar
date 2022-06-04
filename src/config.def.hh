@@ -16,30 +16,32 @@
 #include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <string_view>
 
 using namespace std::literals;
 
 namespace config {
 
 // NOTE: While the height might seem configurable you will also need to change
-//       widths of quite a few different independent boxes
-const static size_t height = 24;
+//       widths of quite a few different independent boxes for them to look
+//       good.
+constexpr static size_t height = 24;
 
 // Configuration options specific to the X11 backend
 namespace x11 {
 
-// Whether to set the override-redirect flag on the window
-const static bool override_redirect = false;
-// Controls the bar's window name
-const static std::string window_name = "bar";
-// Window class to set for the window
+// Whether to set the override-redirect flag on the bar window.
+constexpr static bool override_redirect = false;
+// The window name of the bar window.
+constexpr static std::string_view window_name = "bar";
+// The class name of the bar window.
 // NOTE: I am not sure if this can be const because XClassHint properties aren't
 //       but don't seem to be modified anyway.
-static std::string window_class = "bar";
+constexpr static std::string_view window_class = "bar";
 
 } // namespace x11
 
-const static std::initializer_list<const char *> fonts = {
+constexpr static std::initializer_list<const char*> fonts = {
     "monospace:size=10", "Font Awesome 6 Free Solid:style=Solid:size=9"};
 
 // clang-format off
