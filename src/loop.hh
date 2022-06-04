@@ -110,7 +110,7 @@ private:
 
         const auto &queues = EventLoop::instance()._event_queues;
         if (auto it = queues.find(typeid(base)); it != queues.end())
-          it->second->into_queue_of<base>()->flush_single(event);
+          it->second->into_queue_of<base>()->fire_one(event);
       }
     }
 
@@ -130,7 +130,7 @@ private:
       } else
         return callbacks.erase(id) != 0;
     }
-    void flush_single(const E &event) {
+    void fire_one(const E &event) {
       _mutex.lock();
       for (auto &[_, callback] : callbacks) {
         _mutex.unlock();
