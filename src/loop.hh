@@ -99,7 +99,7 @@ private:
   // FIXME: Propagate event deep inside Event's inheritance hierarchy
   //        to EventQueues of all classes on the path.
   //        The easiest way to do such a thing is to use reflection
-  //        which is yet supported in C++.
+  //        which isn't yet supported in C++.
   //        Once reflection is supported the whole thing can be refactored.
   //
   //        For now this is hacked together using DerivedEvent.
