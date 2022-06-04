@@ -111,7 +111,7 @@ public:
   using difference_type = std::ptrdiff_t;
   using pointer = value_type *;
   using reference = value_type &;
-  using iterator_category = std::bidirectional_iterator_tag;
+  using iterator_category = std::random_access_iterator_tag;
 
   class sentinel {};
 
@@ -148,12 +148,20 @@ public:
   }
 
   codepoint_iterator &operator+=(std::ptrdiff_t n) {
-    std::advance(*this, n);
+    while (n > 0) {
+      _it += utf8_seq_len(*_it);
+      if (_it > _str.end()) {
+        _it = _str.end();
+        break;
+      }
+      --n;
+    }
     return *this;
   }
 
   codepoint_iterator &operator-=(std::ptrdiff_t n) {
-    std::advance(*this, -n);
+    while (n > 0)
+      --(*this), --n;
     return *this;
   }
 
