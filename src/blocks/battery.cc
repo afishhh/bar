@@ -140,9 +140,9 @@ size_t BatteryBlock::draw(Draw &draw, std::chrono::duration<double>) {
     // 0-100 in HSL is the Red-Green range so we can act as if battery_percent
     // is in the HSL hue range and then just map it to a percentage
     auto hue = map_range(battery_percent, 0, 360, 0, 1);
-    unsigned long color = rgb_to_long(hsl_to_rgb(hue, .9, .45));
+    color fill_color = color::hsl(hue, .9, .45);
 
-    draw.frect(left + 1, top + 1, fill_width, height - 1, color);
+    draw.frect(left + 1, top + 1, fill_width, height - 1, fill_color);
 
     if (_config.show_time_left_discharging && !_full) {
       auto time_left_str =

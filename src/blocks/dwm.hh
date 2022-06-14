@@ -35,14 +35,14 @@ public:
     std::filesystem::path socket_path;
 
     bool show_empty_tags;
-    Draw::color_t inactive_tag_color;
-    Draw::color_t selected_tag_color;
-    Draw::color_t urgent_tag_color;
-    Draw::color_t empty_tag_color = inactive_tag_color;
+    color inactive_tag_color;
+    color selected_tag_color;
+    color urgent_tag_color;
+    color empty_tag_color = inactive_tag_color;
 
     std::string floating_title_prefix;
-    Draw::color_t title_color;
-    Draw::color_t floating_title_color = title_color;
+    color title_color;
+    color floating_title_color = title_color;
 
     std::optional<std::size_t> max_title_length = std::nullopt;
   };

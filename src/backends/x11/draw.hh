@@ -23,10 +23,10 @@ private:
   Visual *_visual = DefaultVisual(_dpy, DefaultScreen(_dpy));
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
-  std::unordered_map<color_type, XftColor> _color_cache;
+  std::unordered_map<color, XftColor> _color_cache;
   std::unordered_map<char32_t, XftFont *> _font_cache;
   XftFont *lookup_font(char32_t codepoint);
-  XftColor *lookup_color(color_type color);
+  XftColor *lookup_color(color color);
 
 public:
   friend int main();
@@ -57,23 +57,22 @@ public:
   pos_t vcenter() const override { return height() / 2; }
   pos_t hcenter() const override { return width() / 2; }
 
-  void hrect(pos_t x, pos_t y, pos_t w, pos_t h, color_type color) override {
-    XSetForeground(_dpy, _gc, color);
+  void hrect(pos_t x, pos_t y, pos_t w, pos_t h, color color) override {
+    XSetForeground(_dpy, _gc, color.as_rgb());
     XDrawRectangle(_dpy, _drawable, _gc, x, y, w, h);
   }
   void frect(pos_t x, pos_t y, pos_t width, pos_t height,
-             color_type color) override {
-    XSetForeground(_dpy, _gc, color);
+             color color) override {
+    XSetForeground(_dpy, _gc, color.as_rgb());
     XFillRectangle(_dpy, _drawable, _gc, x, y, width, height);
   }
-  void rect(pos_t x, pos_t y, pos_t width, pos_t height,
-            color_type color = 0xFFFFFF) {
-    frect(x, y, width, height, color);
+  void rect(pos_t x, pos_t y, pos_t width, pos_t height, color color) {
+    frect(x, y, width, height, color.as_rgb());
   }
-  void line(pos_t x1, pos_t y1, pos_t x2, pos_t y2, color_type color) override {
-    XSetForeground(_dpy, _gc, color);
+  void line(pos_t x1, pos_t y1, pos_t x2, pos_t y2, color color) override {
+    XSetForeground(_dpy, _gc, color.as_rgb());
     XDrawLine(_dpy, _drawable, _gc, x1, y1, x2, y2);
   }
-  pos_t text(pos_t x, pos_t y, std::string_view, color_type color) override;
+  pos_t text(pos_t x, pos_t y, std::string_view, color color) override;
   pos_t textw(std::string_view text) override;
 };

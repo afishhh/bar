@@ -109,11 +109,11 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
     draw.hrect(left, top, width, height);
 
-    Draw::color_type color;
+    color color;
     if (!_config.bar_fill_color) {
       // Explained in battery.cc
       auto hue = map_range(map_range(used, 0, total, 100, 0), 0, 360, 0, 1);
-      color = rgb_to_long(hsl_to_rgb(hue, 1, .5));
+      color = color::hsl(hue, 1, .5);
     } else
       color = *_config.bar_fill_color;
 

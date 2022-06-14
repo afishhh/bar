@@ -35,38 +35,6 @@ std::string concatenate(Args... args) {
 }
 // clang-format on
 
-/** @brief Convert HSL color values to RGB.
- *
- * @param h Hue        [0, 1]
- * @param s Saturation [0, 1]
- * @param l Lightness  [0, 1]
- * @returns Tuple of RGB components [0, 255]
- */
-std::tuple<unsigned char, unsigned char, unsigned char>
-hsl_to_rgb(double h, double s, double l);
-
-/** @brief Converts seprate RGB components into a single 32-bit integer.
- *
- * @param r Red component.
- * @param g Green component.
- * @param b Blue component.
- * @return 32-bit integer representing the color.
- */
-inline unsigned long rgb_to_long(unsigned char r, unsigned char g,
-                                 unsigned char b) {
-  return (r << 16) | (g << 8) | b;
-}
-
-/** @brief Converts separate RGB components into a single 32-bit integer.
- *
- * @param rgb Tuple of RGB components.
- * @return 32-bit integer representing the color.
- */
-inline unsigned long
-rgb_to_long(std::tuple<unsigned char, unsigned char, unsigned char> rgb) {
-  return rgb_to_long(std::get<0>(rgb), std::get<1>(rgb), std::get<2>(rgb));
-}
-
 /**
  * @brief Maps number from one range to another.
  *

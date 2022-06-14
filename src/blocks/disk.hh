@@ -23,7 +23,7 @@ public:
     bool show_usage_text;
     bool show_usage_bar;
     size_t bar_width;
-    std::optional<Draw::color_type> bar_fill_color{};
+    std::optional<color> bar_fill_color{};
   };
 
 private:

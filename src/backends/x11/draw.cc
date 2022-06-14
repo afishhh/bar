@@ -25,18 +25,15 @@
 #include "../../util.hh"
 #include "draw.hh"
 
-XftColor *XDraw::lookup_color(color_type color) {
+XftColor *XDraw::lookup_color(color color) {
   if (auto c = _color_cache.find(color); c != _color_cache.end())
     return &c->second;
 
   // This color type juggling here is necessary because XftDrawString8
   // requires an XftColor which requires an XRenderColor
+  color::rgb rgb = color;
+  XRenderColor xrandr_color{rgb.r, rgb.g, rgb.b, 0xffff};
   XftColor xft_color;
-  auto xrandr_color =
-      XRenderColor{.red = (unsigned short)((color >> 16 & 0xFF) * 257),
-                   .green = (unsigned short)((color >> 8 & 0xFF) * 257),
-                   .blue = (unsigned short)((color & 0xFF) * 257),
-                   .alpha = 0xffff};
   if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
     throw std::runtime_error("XftColorAllocValue failed");
 
@@ -53,6 +50,11 @@ XftFont *XDraw::lookup_font(char32_t codepoint) {
       return font;
     }
   }
+
+  if (codepoint == '\n' || codepoint == '\r' || codepoint == '\t' ||
+      codepoint == '\v' || codepoint == '\f' || codepoint == '\b' ||
+      codepoint == '\0' || codepoint == '\e' || codepoint == '\a')
+    return nullptr;
 
   // Convert the utf-8 codepoint into a string
   const auto &cvt =
@@ -74,9 +76,6 @@ XftFont *XDraw::lookup_font(char32_t codepoint) {
     std::string_view sv{out.begin(),
                         (std::string_view::size_type)(last_out - out.begin())};
     // Ignore some common characters not meant to be handled by fonts.
-    if (sv == "\n" || sv == "\r" || sv == "\t" || sv == "\v" || sv == "\f" ||
-        sv == "\b" || sv == "\0" || sv == "\e" || sv == "\a")
-      return nullptr;
     std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
                (std::uint32_t)codepoint, sv);
   }
@@ -209,9 +208,8 @@ public:
   }
 };
 
-Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text,
-                        color_type color) {
-  XSetForeground(_dpy, _gc, color);
+Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
+  XSetForeground(_dpy, _gc, color.as_rgb());
 
   // FIXME: Why?
   --y;

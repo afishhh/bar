@@ -175,8 +175,7 @@ size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
     auto hue =
         map_range(_diff.percore[i].busy(), 0, _diff.percore[i].total(), 120, 0);
-    unsigned long color =
-        rgb_to_long(hsl_to_rgb(map_range(hue, 0, 360, 0, 1), 1, 0.5));
+    color color = color::hsl(map_range(hue, 0, 360, 0, 1), 1, 0.5);
 
     draw.frect(left + 1, top + (maxfill - fill) + 1, width - 1, fill, color);
   }

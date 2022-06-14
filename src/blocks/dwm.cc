@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstddef>
+#include <exception>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -134,7 +135,7 @@ size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double>) {
     if (!(tag.occupied && !_config.show_empty_tags) && !tag.selected &&
         !tag.urgent)
       continue;
-    Draw::color_t color;
+    color color;
     if (tag.urgent)
       color = _config.urgent_tag_color;
     else if (tag.selected)

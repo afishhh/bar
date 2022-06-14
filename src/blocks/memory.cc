@@ -47,7 +47,7 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   auto percent = (double)_used / _total;
   auto fillwidth = (width - 2) * percent;
-  Draw::color_type color;
+  color color;
   if (percent > 0.85) {
     color = 0xCC0000;
   } else if (percent > 0.70) {

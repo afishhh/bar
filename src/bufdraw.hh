@@ -10,20 +10,20 @@ class BufDraw : public Draw {
   struct Line {
     pos_t x1, y1;
     pos_t x2, y2;
-    color_t color;
+    color stroke_color;
   };
   struct Rect {
     pos_t x1, y1, w, h;
-    color_t color;
+    color border_color;
   };
   struct FilledRect {
     pos_t x1, y1, w, h;
-    color_t color;
+    color fill_color;
   };
   struct Text {
     pos_t x, y;
     std::string text;
-    color_t color;
+    color stroke_color;
   };
   using operation = std::variant<Line, Rect, FilledRect, Text>;
 
@@ -33,7 +33,7 @@ class BufDraw : public Draw {
 
 public:
   BufDraw(Draw &draw) : _draw(draw) {}
-  ~BufDraw() { }
+  ~BufDraw() {}
 
   BufDraw(BufDraw &&) = default;
   BufDraw(const BufDraw &) = default;
@@ -43,19 +43,19 @@ public:
       std::visit(overloaded{
                      [&](Line &line) {
                        _draw.line(line.x1 + off_x, line.y1 + off_y,
-                                  line.x2 + off_x, line.y2 + off_y, line.color);
+                                  line.x2 + off_x, line.y2 + off_y, line.stroke_color);
                      },
                      [&](Rect &rect) {
                        _draw.hrect(rect.x1 + off_x, rect.y1 + off_y, rect.w,
-                                   rect.h, rect.color);
+                                   rect.h, rect.border_color);
                      },
                      [&](FilledRect &rect) {
                        _draw.frect(rect.x1 + off_x, rect.y1 + off_y, rect.w,
-                                   rect.h, rect.color);
+                                   rect.h, rect.fill_color);
                      },
                      [&](Text &text) {
                        _draw.text(text.x + off_x, text.y + off_y, text.text,
-                                  text.color);
+                                  text.stroke_color);
                      },
                  },
                  op);
@@ -63,24 +63,24 @@ public:
   }
   void clear() { _buf.clear(); }
 
-  pos_t screen_width() const override;
-  pos_t screen_height() const override;
+  pos_t screen_width() const final override;
+  pos_t screen_height() const final override;
 
-  pos_t height() const override;
-  pos_t width() const override;
+  pos_t height() const final override;
+  pos_t width() const final override;
 
-  pos_t vcenter() const override;
-  pos_t hcenter() const override;
+  pos_t vcenter() const final override;
+  pos_t hcenter() const final override;
 
   void line(pos_t x1, pos_t y1, pos_t x2, pos_t y2,
-            color_type = 0xFFFFFF) override;
+            color = color::rgb(0xFFFFFF)) final override;
 
   void hrect(pos_t x, pos_t y, pos_t w, pos_t h,
-             color_type = 0xFFFFFF) override;
+             color = color::rgb(0xFFFFFF)) final override;
   void frect(pos_t x, pos_t y, pos_t w, pos_t h,
-             color_type = 0xFFFFFF) override;
+             color = color::rgb(0xFFFFFF)) final override;
 
   pos_t text(pos_t x, pos_t y, std::string_view text,
-             color_type = 0xFFFFFF) override;
-  pos_t textw(std::string_view text) override;
+             color = color::rgb(0xFFFFFF)) final override;
+  pos_t textw(std::string_view text) final override;
 };

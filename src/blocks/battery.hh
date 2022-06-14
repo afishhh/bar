@@ -28,7 +28,7 @@ private:
 public:
   struct Config {
     std::string prefix;
-    Draw::color_t prefix_color = 0xFFFFFF;
+    color prefix_color = 0xFFFFFF;
     bool show_percentage;
     bool show_time_left_charging;
     bool show_time_left_discharging;
