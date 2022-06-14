@@ -47,12 +47,13 @@ public:
   std::unique_ptr<Draw> create_draw() override;
   void post_draw() override;
 
-  Display *display() { return _display; }
-  Screen *screen() { return DefaultScreenOfDisplay(_display); }
-  Window window() { return _window; }
-  GC gc() { return _gc; }
+  Display *display() const { return _display; }
+  Screen *screen() const { return DefaultScreenOfDisplay(_display); }
+  Window window() const { return _window; }
+  Window root() const { return RootWindow(_display, DefaultScreen(_display)); }
+  GC gc() const { return _gc; }
 
-  Atom intern_atom(std::string_view name, bool only_if_exists = false);
+  Atom intern_atom(std::string_view name, bool only_if_exists = false) const;
   // TODO: Design a better interface around XEmbed, for example allow to handle
   //        when the client stops being embedded.
   //
