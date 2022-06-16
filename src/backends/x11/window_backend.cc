@@ -149,7 +149,7 @@ void XWindowBackend::post_draw() {
   XFlush(_display);
 }
 
-Atom XWindowBackend::intern_atom(std::string_view name, bool only_if_exists) {
+Atom XWindowBackend::intern_atom(std::string_view name, bool only_if_exists) const {
   Atom atom = XInternAtom(_display, name.data(), only_if_exists);
   if (!atom)
     throw std::runtime_error(
