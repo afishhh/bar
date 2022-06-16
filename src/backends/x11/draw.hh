@@ -23,10 +23,10 @@ private:
   Visual *_visual = DefaultVisual(_dpy, DefaultScreen(_dpy));
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
 
-  std::unordered_map<color, XftColor> _color_cache;
+  std::unordered_map<color, XftColor> _xft_color_cache;
   std::unordered_map<char32_t, XftFont *> _font_cache;
   XftFont *lookup_font(char32_t codepoint);
-  XftColor *lookup_color(color color);
+  XftColor *lookup_xft_color(color color);
 
 public:
   friend int main();
@@ -40,7 +40,7 @@ public:
   }
   ~XDraw() {
     XftDrawDestroy(_xft_draw);
-    for (auto &color : _color_cache) {
+    for (auto &color : _xft_color_cache) {
       XftColorFree(_dpy, _visual, _cmap, &color.second);
     }
     XFreeColormap(_dpy, _cmap);

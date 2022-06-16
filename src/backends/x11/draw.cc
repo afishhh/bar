@@ -1,4 +1,5 @@
 #include <X11/Xft/Xft.h>
+#include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
 #include <algorithm>
@@ -25,19 +26,23 @@
 #include "../../util.hh"
 #include "draw.hh"
 
-XftColor *XDraw::lookup_color(color color) {
-  if (auto c = _color_cache.find(color); c != _color_cache.end())
+XftColor *XDraw::lookup_xft_color(color color) {
+  if (auto c = _xft_color_cache.find(color); c != _xft_color_cache.end())
     return &c->second;
 
   // This color type juggling here is necessary because XftDrawString8
   // requires an XftColor which requires an XRenderColor
   color::rgb rgb = color;
-  XRenderColor xrandr_color{rgb.r, rgb.g, rgb.b, 0xffff};
+  XRenderColor xrandr_color{
+      .red = static_cast<unsigned short>(rgb.r * 0xff)
+    , .green = static_cast<unsigned short>(rgb.g * 0xff)
+    , .blue = static_cast<unsigned short>(rgb.b * 0xff)
+    , .alpha = 0xffff};
   XftColor xft_color;
   if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
     throw std::runtime_error("XftColorAllocValue failed");
 
-  return &_color_cache.emplace(color, std::move(xft_color)).first->second;
+  return &_xft_color_cache.emplace(color, std::move(xft_color)).first->second;
 }
 
 XftFont *XDraw::lookup_font(char32_t codepoint) {
@@ -214,7 +219,7 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
   // FIXME: Why?
   --y;
 
-  auto xft_color = lookup_color(color);
+  auto xft_color = lookup_xft_color(color);
   size_t width = 0;
   XftFont *current_font = nullptr;
   std::string_view::const_iterator current_begin = text.begin();
