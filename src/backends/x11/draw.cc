@@ -203,11 +203,12 @@ public:
     std::codecvt_base::result res =
         cvt.in(state, &*_it, _str.data() + _str.size(), last_in, &codepoint,
                &codepoint + 1, last_out);
-    assert(last_in == &*_it + utf8_seq_len(*_it));
 
     if (res != std::codecvt_base::result::ok &&
         res != std::codecvt_base::result::partial)
       throw std::runtime_error("Invalid UTF-8 string");
+
+    assert(last_in == &*_it + utf8_seq_len(*_it));
 
     return codepoint;
   }
