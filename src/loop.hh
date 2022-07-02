@@ -22,10 +22,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "format.hh"
 #include "log.hh"
+#include "util.hh"
 
 class VEventQueue;
 // Base class for all events to be used in the EventLoop.
@@ -38,7 +40,7 @@ namespace detail {
 class DerivedEventTag {};
 }; // namespace detail
 template <std::derived_from<Event> Base>
-class DerivedEvent : public Base, public detail::DerivedEventTag {
+class DerivedEvent : public Base, virtual public detail::DerivedEventTag {
 public:
   using _derived_event_base = Base;
 
@@ -51,21 +53,91 @@ public:
   using clock = std::chrono::steady_clock;
   using time_point = clock::time_point;
   using duration = clock::duration;
-  using timer_callback = std::function<void(duration)>;
+  // TODO: Rename to event_callback_id
   using callback_id = std::uint32_t;
+  // template <std::derived_from<Event> E>
+  // using event_callback = std::function<void(E const &)>;
 
 private:
-  struct Timer {
-    time_point next;
-    // If empty timer is one-shot
-    std::optional<duration> interval;
-    timer_callback callback;
+  struct task {
+    struct oneshot {
+      using callback = std::function<void()>;
 
-    time_point last = next;
-    auto operator<=>(const Timer &other) const { return next <=> other.next; }
+      callback fn;
+    };
+    struct timed_oneshot {
+      using callback = std::function<void()>;
+
+      callback fn;
+      time_point time;
+    };
+    struct repeated {
+      using callback = std::function<void(duration)>;
+
+      repeated(callback &&fn, duration &&interval, time_point &&next)
+          : fn(fn), next(next), interval(interval) {}
+      repeated(callback &&fn, duration &&interval)
+          : fn(fn), next(clock::now() + interval), interval(interval) {}
+      // NOTE: I'm not making all the possible variations of this
+      repeated(const callback &fn, const duration &interval,
+               const time_point &next)
+          : fn(fn), next(next), interval(interval) {}
+      repeated(const callback &fn, const duration &interval)
+          : fn(fn), next(clock::now() + interval), interval(interval) {}
+
+      callback fn;
+      time_point next;
+      time_point last = next;
+      duration interval;
+    };
+
+  private:
+    using variant = std::variant<oneshot, timed_oneshot, repeated>;
+    variant _v;
+
+  public:
+    task(oneshot const &os) : _v(os) {}
+    task(oneshot &&os) : _v(os) {}
+    task(timed_oneshot const &tos) : _v(tos) {}
+    task(timed_oneshot &&tos) : _v(tos) {}
+    task(repeated const &r) : _v(r) {}
+    task(repeated &&r) : _v(r) {}
+
+    operator variant const &() const { return _v; }
+    operator variant &() { return _v; }
+    variant const &var() const { return _v; }
+    variant &var() { return _v; }
+
+    auto operator<=>(task const &other) const {
+      return std::visit(
+          overloaded{
+              [](oneshot const &, oneshot const &) {
+                return std::strong_ordering::equal;
+              },
+              [](oneshot const &, auto const &) {
+                return std::strong_ordering::less;
+              },
+              [](auto const &, oneshot const &) {
+                return std::strong_ordering::greater;
+              },
+              [](repeated const &lhs, repeated const &rhs) {
+                return lhs.next <=> rhs.next;
+              },
+              [](timed_oneshot const &lhs, timed_oneshot const &rhs) {
+                return lhs.time <=> rhs.time;
+              },
+              [](repeated const &lhs, timed_oneshot const &rhs) {
+                return lhs.next <=> rhs.time;
+              },
+              [](timed_oneshot const &lhs, repeated const &rhs) {
+                return lhs.time <=> rhs.next;
+              },
+          },
+          this->_v, other._v);
+    }
   };
 
-  std::priority_queue<Timer, std::vector<Timer>, std::greater<Timer>> _timers;
+  std::priority_queue<task, std::vector<task>, std::greater<task>> _tasks;
 
   template <std::derived_from<Event>> class EventQueue;
   class VEventQueue {
@@ -216,8 +288,11 @@ public:
     return queue->try_remove_callback(id);
   }
 
-  void add_timer(bool repeat, duration interval,
-                 const timer_callback &callback);
+  void add_oneshot(task::oneshot::callback);
+  void add_oneshot(time_point run_point, task::timed_oneshot::callback);
+  void add_oneshot(duration run_delay, task::timed_oneshot::callback);
+
+  void add_timer(duration interval, task::repeated::callback);
 };
 
 #define EV (EventLoop::instance())

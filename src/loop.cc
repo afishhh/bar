@@ -14,32 +14,62 @@ EventLoop &EventLoop::instance() {
   return instance;
 }
 
-void EventLoop::add_timer(bool repeat, duration interval,
-                          const timer_callback &callback) {
-  _timers.push({
-      .next = clock::now() + interval,
-      .interval = repeat ? std::optional(interval) : std::nullopt,
-      .callback = callback,
-  });
+void EventLoop::add_oneshot(task::oneshot::callback callback) {
+  _tasks.emplace(task::oneshot{callback});
+}
+void EventLoop::add_oneshot(time_point run_point,
+                            task::timed_oneshot::callback callback) {
+  _tasks.emplace(task::timed_oneshot{callback, run_point});
+}
+void EventLoop::add_oneshot(duration run_delay,
+                            task::timed_oneshot::callback callback) {
+  this->add_oneshot(clock::now() + run_delay, callback);
+}
+
+void EventLoop::add_timer(duration interval,
+                          task::repeated::callback callback) {
+  _tasks.emplace(task::repeated(callback, interval));
 }
 
 void EventLoop::run() {
-  while (!_timers.empty()) {
-    std::this_thread::sleep_until(_timers.top().next);
+  while (!_tasks.empty()) {
+    auto next = _tasks.top();
+
+    std::visit(overloaded{
+                   [](task::oneshot const &) {},
+                   [](task::timed_oneshot const &t) {
+                     std::this_thread::sleep_until(t.time);
+                   },
+                   [](task::repeated const &t) {
+                     std::this_thread::sleep_until(t.next);
+                   },
+               },
+               next.var());
+
     do {
-      auto timer = _timers.top();
-      _timers.pop();
+      auto current = _tasks.top();
+      _tasks.pop();
 
-      timer.callback(clock::now() - timer.last);
-      auto now = clock::now();
-      timer.last = now;
+      std::visit(overloaded{[](task::oneshot const &t) { t.fn(); },
+                            [](task::timed_oneshot const &t) { t.fn(); },
+                            [this](task::repeated &t) {
+                              t.fn(clock::now() - t.last);
 
-      if (timer.interval) {
-        while (timer.next < now)
-          timer.next += *timer.interval;
-        _timers.push(std::move(timer));
-      }
-    } while (_timers.top().next < clock::now());
+                              auto now = clock::now();
+                              t.last = now;
+
+                              while (t.next < now)
+                                t.next += t.interval;
+                              _tasks.push(std::move(t));
+                            }},
+                 current.var());
+    } while (std::visit(
+        overloaded{
+            [](task::oneshot const &) { return true; },
+            [](task::timed_oneshot const &t) { return t.time < clock::now(); },
+            [](task::repeated const &t) { return t.next < clock::now(); },
+        },
+        _tasks.top().var()));
 
     for (auto &[index, queue] : _event_queues)
       queue->flush();
@@ -47,6 +77,6 @@ void EventLoop::run() {
 }
 
 void EventLoop::stop() {
-  while (!_timers.empty())
-    _timers.pop();
+  while (!_tasks.empty())
+    _tasks.pop();
 }

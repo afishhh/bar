@@ -78,15 +78,14 @@ int main() {
     info.last_draw = std::chrono::steady_clock::now();
 
     if (block.update_interval() != std::chrono::duration<double>::max())
-      loop.add_timer(true,
-                     std::chrono::duration_cast<EventLoop::duration>(
+      loop.add_timer(std::chrono::duration_cast<EventLoop::duration>(
                          block.update_interval()),
                      [&](auto) {
                        block.update();
                        loop.fire_event(RedrawEvent());
                      });
     if (auto i = block.animate_interval())
-      loop.add_timer(true, std::move(*i), [&](auto delta) {
+      loop.add_timer(*i, [&](auto delta) {
         block.animate(delta);
         loop.fire_event(RedrawEvent());
       });
