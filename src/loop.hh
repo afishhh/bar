@@ -165,6 +165,13 @@ private:
   };
 
   std::map<std::type_index, std::unique_ptr<VEventQueue>> _event_queues;
+
+  template <std::derived_from<Event> E> EventQueue<E> *find_event_queue() {
+    if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end())
+      return it->second->into_queue_of<E>();
+    return nullptr;
+  }
+
   std::atomic<callback_id> _current_event_callback_id =
       std::numeric_limits<callback_id>::min();
 
@@ -180,9 +187,12 @@ private:
       if constexpr (std::derived_from<E, detail::DerivedEventTag>) {
         using base = typename E::_derived_event_base;
 
-        const auto &queues = EventLoop::instance()._event_queues;
-        if (auto it = queues.find(typeid(base)); it != queues.end())
-          it->second->into_queue_of<base>()->fire_one(event);
+        // FIXME: Don't use ::instance() here
+        if (auto queue = EventLoop::instance().find_event_queue<base>())
+          queue->fire_one(event);
+      } else if constexpr(!std::same_as<E, Event>) {
+        if (auto queue = EventLoop::instance().find_event_queue<Event>())
+          queue->fire_one(event);
       }
     }
 
@@ -206,6 +216,7 @@ private:
       _mutex.lock();
       for (auto &[_, callback] : callbacks) {
         _mutex.unlock();
+
         fire_base_event(event);
         callback(event);
         _mutex.lock();
@@ -221,6 +232,7 @@ private:
           auto &[_, callback] = *it;
           _current_callback = &callback;
           _mutex.unlock();
+
           fire_base_event(event);
           callback(event);
           _mutex.lock();
@@ -284,8 +296,13 @@ public:
     return false;
   }
   template <std::derived_from<Event> E> bool off(callback_id id) {
-    auto queue = _event_queues[typeid(E)]->into_queue_of<E>();
-    return queue->try_remove_callback(id);
+    if (auto basic_queue = _event_queues.find(typeid(E));
+        basic_queue != _event_queues.end()) {
+      auto queue = (basic_queue->second)->into_queue_of<E>();
+      return queue->try_remove_callback(id);
+    } else {
+      return false;
+    }
   }
 
   void add_oneshot(task::oneshot::callback);
