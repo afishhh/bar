@@ -78,8 +78,11 @@ const static std::unique_ptr<Block> right_blocks[] = {
     ),
     std::make_unique<DiskBlock>("/",
         DiskBlock::Config {
+            // If the title is not set then it's set to the mountpoint path
+            // .title = "root",
             .show_fs_type = false,
             .show_usage_text = true,
+            .usage_text_in_bar = false,
             .show_usage_bar = true,
             .bar_width = 45,
             // If the color is not set then it's chosen based on the usage percentage.

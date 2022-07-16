@@ -19,10 +19,12 @@ class DiskBlock : public Block {
 
 public:
   struct Config {
+    std::optional<std::string> title{};
     bool show_fs_type;
     bool show_usage_text;
+    bool usage_text_in_bar;
     bool show_usage_bar;
-    size_t bar_width;
+    Draw::pos_t bar_width;
     std::optional<color> bar_fill_color{};
   };
 

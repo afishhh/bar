@@ -11,8 +11,8 @@
 
 #include <sys/vfs.h>
 
-#include "../util.hh"
 #include "../format.hh"
+#include "../util.hh"
 #include "disk.hh"
 
 using namespace std::literals;
@@ -70,36 +70,46 @@ DiskBlock::~DiskBlock() {}
 
 void DiskBlock::update() {
   if (statfs(_mountpoint.c_str(), &_statfs) < 0)
-    throw std::system_error(errno, std::generic_category(), std::format("statfs({})", std::quoted(_mountpoint.string())));
+    throw std::system_error(
+        errno, std::generic_category(),
+        std::format("statfs({})", std::quoted(_mountpoint.string())));
 }
 
 size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
 
-  x += draw.text(x, draw.vcenter(), _mountpoint.string());
+  x += draw.text(x, 
+                 _config.title.value_or(_mountpoint.string()));
 
   if (_config.show_fs_type) {
+    x += 5;
     auto it = fs_type_to_name_map.find(_statfs.f_type);
     if (it != fs_type_to_name_map.end()) {
-      x += draw.text(x, draw.vcenter(), it->second);
+      x += draw.text(x, it->second);
     } else {
-      x += draw.text(x, draw.vcenter(), "unknown");
+      x += draw.text(x, "unknown");
     }
   }
 
   auto used = (_statfs.f_blocks - _statfs.f_bfree) * _statfs.f_bsize;
   auto total = _statfs.f_blocks * _statfs.f_bsize;
 
-  if (_config.show_usage_text) {
+  if (_config.show_usage_text && !_config.usage_text_in_bar) {
     x += 5;
-    x += draw.text(x, draw.vcenter(), to_sensible_unit(used, 1));
-    x += draw.text(x, draw.vcenter(), "/");
-    x += draw.text(x, draw.vcenter(), to_sensible_unit(total, 1));
+    x += draw.text(x, to_sensible_unit(used, 1));
+    x += draw.text(x, "/");
+    x += draw.text(x, to_sensible_unit(total, 1));
   }
 
   if (_config.show_usage_bar) {
     x += 5;
     auto width = _config.bar_width;
+    if (_config.usage_text_in_bar) {
+      auto usage_text_width = draw.text(x, to_sensible_unit(used, 1));
+      usage_text_width += draw.text(x, "/");
+      usage_text_width += draw.text(x, to_sensible_unit(total, 1));
+      width = std::max(usage_text_width + 12, _config.bar_width);
+    }
     auto fillwidth = width * used / total;
     auto top = 3;
     auto bottom = draw.height() - 6;
@@ -113,11 +123,18 @@ size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
     if (!_config.bar_fill_color) {
       // Explained in battery.cc
       auto hue = map_range(map_range(used, 0, total, 100, 0), 0, 360, 0, 1);
-      color = color::hsl(hue, 1, .5);
+      color = color::hsl(hue, .9, .45);
     } else
       color = *_config.bar_fill_color;
 
     draw.frect(left + 1, top + 1, fillwidth, height - 1, color);
+
+    if (_config.usage_text_in_bar) {
+      auto tx = left + 6;
+      tx += draw.text(tx, to_sensible_unit(used, 1));
+      tx += draw.text(tx, "/");
+      draw.text(tx, to_sensible_unit(total, 1));
+    }
   }
 
   return x;

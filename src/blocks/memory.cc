@@ -60,7 +60,7 @@ size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
 
   draw.frect(left + 1, top + 1, fillwidth, height - 1, color);
 
-  draw.text(left + 6, draw.vcenter(), text);
+  draw.text(left + 6, text);
 
   return x;
 }
