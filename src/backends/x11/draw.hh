@@ -4,6 +4,8 @@
 #include <X11/extensions/Xrender.h>
 
 #include <cstddef>
+#include <iterator>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -27,6 +29,14 @@ private:
   std::unordered_map<char32_t, XftFont *> _font_cache;
   XftFont *lookup_font(char32_t codepoint);
   XftColor *lookup_xft_color(color color);
+
+  template <typename Iter, typename End>
+  requires requires(Iter it, End end) {
+    { it != end } -> std::convertible_to<bool>;
+    { *it } -> std::convertible_to<char32_t>;
+    {++it};
+  }
+  pos_t _iterator_textw(Iter begin, End end);
 
 public:
   friend int main();
@@ -73,6 +83,9 @@ public:
     XSetForeground(_dpy, _gc, color.as_rgb());
     XDrawLine(_dpy, _drawable, _gc, x1, y1, x2, y2);
   }
+
   pos_t text(pos_t x, pos_t y, std::string_view, color color) override;
-  pos_t textw(std::string_view text) override;
+
+  pos_t textw(std::string_view text) final override;
+  pos_t textw(std::u32string_view text) final override;
 };

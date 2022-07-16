@@ -3,7 +3,6 @@
 #include <X11/extensions/Xrender.h>
 
 #include <algorithm>
-#include <bits/iterator_concepts.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -33,11 +32,10 @@ XftColor *XDraw::lookup_xft_color(color color) {
   // This color type juggling here is necessary because XftDrawString8
   // requires an XftColor which requires an XRenderColor
   color::rgb rgb = color;
-  XRenderColor xrandr_color{
-      .red = static_cast<unsigned short>(rgb.r * 0xff)
-    , .green = static_cast<unsigned short>(rgb.g * 0xff)
-    , .blue = static_cast<unsigned short>(rgb.b * 0xff)
-    , .alpha = 0xffff};
+  XRenderColor xrandr_color{.red = static_cast<unsigned short>(rgb.r * 0xff),
+                            .green = static_cast<unsigned short>(rgb.g * 0xff),
+                            .blue = static_cast<unsigned short>(rgb.b * 0xff),
+                            .alpha = 0xffff};
   XftColor xft_color;
   if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
     throw std::runtime_error("XftColorAllocValue failed");
@@ -182,6 +180,7 @@ public:
   }
 
   bool operator==(const sentinel &) const { return _it == _str.end(); }
+  bool operator==(std::default_sentinel_t) const { return _it == _str.end(); }
 
   auto operator<=>(const codepoint_iterator &other) const {
     return _it <=> other._it;
@@ -261,11 +260,16 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
   return width;
 }
 
-Draw::pos_t XDraw::textw(std::string_view text) {
+template <typename Iter, typename End>
+requires requires(Iter it, End end) {
+  { it != end } -> std::convertible_to<bool>;
+  { *it } -> std::convertible_to<char32_t>;
+  {++it};
+}
+Draw::pos_t XDraw::_iterator_textw(Iter it, End end) {
   size_t total = 0;
 
-  for (auto it = codepoint_iterator(text); it != codepoint_iterator::sentinel();
-       ++it) {
+  for (; it != end; ++it) {
     if (auto font = lookup_font(*it)) {
       auto codepoint = *it;
       XGlyphInfo info;
@@ -276,4 +280,12 @@ Draw::pos_t XDraw::textw(std::string_view text) {
   }
 
   return total;
+}
+
+Draw::pos_t XDraw::textw(std::string_view text) {
+  return _iterator_textw(codepoint_iterator(text), std::default_sentinel);
+}
+
+Draw::pos_t XDraw::textw(std::u32string_view text) {
+  return _iterator_textw(text.begin(), text.end());
 }

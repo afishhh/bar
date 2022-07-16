@@ -27,3 +27,6 @@ Draw::pos_t BufDraw::text(pos_t x, pos_t y, std::string_view text, color c) {
   return _draw.textw(text);
 }
 Draw::pos_t BufDraw::textw(std::string_view text) { return _draw.textw(text); }
+Draw::pos_t BufDraw::textw(std::u32string_view text) {
+  return _draw.textw(text);
+}

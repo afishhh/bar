@@ -31,10 +31,15 @@ public:
 
   // TODO: Add a text overload returning an output iterator for more efficient
   //       formatting using std::format_to
+  // TODO: Add a text overload accepting a std::u32string_view.
+  //       This could be implemented using the planned text output iterator
   virtual pos_t text(pos_t x, pos_t y, std::string_view text,
                      color = 0xFFFFFF) = 0;
+
   virtual pos_t text(pos_t x, std::string_view text, color color = 0xFFFFFF) {
     return this->text(x, vcenter(), text, color);
   }
+
   virtual pos_t textw(std::string_view text) = 0;
+  virtual pos_t textw(std::u32string_view text) = 0;
 };

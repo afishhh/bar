@@ -1,7 +1,6 @@
 #pragma once
 
 #include "loop.hh"
-#include <bits/types/siginfo_t.h>
 #include <cassert>
 #include <cerrno>
 #include <csignal>

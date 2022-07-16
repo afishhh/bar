@@ -83,4 +83,5 @@ public:
   pos_t text(pos_t x, pos_t y, std::string_view text,
              color = color::rgb(0xFFFFFF)) final override;
   pos_t textw(std::string_view text) final override;
+  pos_t textw(std::u32string_view text) final override;
 };
