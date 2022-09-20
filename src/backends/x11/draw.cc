@@ -216,7 +216,7 @@ public:
 Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
   XSetForeground(_dpy, _gc, color.as_rgb());
 
-  // FIXME: Why?
+  // NOTE: Looks better this way
   --y;
 
   auto xft_color = lookup_xft_color(color);

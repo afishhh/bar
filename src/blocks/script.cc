@@ -76,14 +76,15 @@ void ScriptBlock::update() {
                        environ) < 0)
         throw std::system_error(errno, std::system_category(), "posix_spawnp");
     }
-    EventLoop::callback_id sigchld_handler = EV.on<SignalEvent>(
-        [this, pid, &sigchld_handler](const SignalEvent &ev) {
-          if (ev.signum != SIGCHLD || ev.info.si_pid != pid)
-            return;
 
-          _process_mutex.unlock();
-          EV.off<SignalEvent>(sigchld_handler);
-        });
+    // TODO: Cleaner solution
+    EventLoop::callback_id sigchld_handler;
+    sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
+      if (ev.signum != SIGCHLD || ev.info.si_pid != pid)
+        return;
+
+      _process_mutex.unlock();
+    });
 
     if (posix_spawn_file_actions_destroy(&actions) < 0)
       throw std::system_error(errno, std::system_category(),

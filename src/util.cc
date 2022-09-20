@@ -5,18 +5,20 @@
 #include "util.hh"
 
 std::string to_sensible_unit(size_t bytes, size_t precision) {
-  static const char *units[] = {"B",  "KB", "MB", "GB", "TB",
-                                "PB", "EB", "ZB", "YB"};
+  static const char *units[] = {"B",  "KiB", "MiB", "GiB", "TiB",
+                                "PiB", "EiB", "ZiB", "YiB"};
   size_t unit = 1;
   double result = bytes;
   while (result > 1024) {
     result /= 1024;
     unit++;
   }
+
   return std::format(
       "{:.{}f}{}", result, precision,
       units[std::min(unit, sizeof units / sizeof(units[0])) - 1]);
 }
+
 std::string_view trim_left(std::string_view str, std::string_view ws) {
   const auto it = std::find_if_not(str.begin(), str.end(), [&ws](char c) {
     return ws.find(c) != std::string_view::npos;
