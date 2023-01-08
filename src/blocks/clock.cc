@@ -15,6 +15,6 @@ void ClockBlock::animate(EventLoop::duration) {
   std::format_to(std::back_inserter(_text), "{:%Y %B %d %H:%M:%S}", *tm);
 }
 
-size_t ClockBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t ClockBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   return draw.text(0, draw.vcenter(), _text.data());
 }

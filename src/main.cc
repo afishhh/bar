@@ -70,17 +70,8 @@ int main() {
   ui::draw &real_draw = window->drawer();
   BufDraw draw(real_draw);
 
-  // TODO: Replace this with a font wrapper instead
-  if (auto *xdraw = dynamic_cast<ui::x11::draw *>(&real_draw); xdraw) {
-    auto xconn = (ui::x11::connection *)ui_connection.get();
-
-    for (auto fname : config::fonts) {
-      auto font = XftFontOpenName(xconn->display(), xconn->screen_id(), fname);
-      if (font == nullptr)
-        throw std::runtime_error(
-            std::format("Failed to load font {}", quote(fname)));
-      xdraw->add_font(font);
-    }
+  for (auto fname : config::fonts) {
+    draw.load_font(fname);
   }
 
   struct BlockInfo {

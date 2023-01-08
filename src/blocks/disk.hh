@@ -24,7 +24,7 @@ public:
     bool show_usage_text;
     bool usage_text_in_bar;
     bool show_usage_bar;
-    Draw::pos_t bar_width;
+    ui::draw::pos_t bar_width;
     std::optional<color> bar_fill_color{};
   };
 
@@ -35,7 +35,7 @@ public:
   DiskBlock(const std::filesystem::path &mountpoint, Config config);
   ~DiskBlock();
 
-  size_t draw(Draw &, std::chrono::duration<double> delta) override;
+  size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::seconds(3);

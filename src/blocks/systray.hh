@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "../block.hh"
-#include "../draw.hh"
 #include "../ui/x11/window.hh"
 
 class XSystrayBlock : public Block {
@@ -21,7 +20,7 @@ public:
   XSystrayBlock() {}
 
   void late_init() override;
-  std::size_t draw(Draw &, std::chrono::duration<double>) override { return 0; }
-  std::size_t ddraw(Draw &, std::chrono::duration<double> delta, size_t x,
+  std::size_t draw(ui::draw &, std::chrono::duration<double>) override { return 0; }
+  std::size_t ddraw(ui::draw &, std::chrono::duration<double> delta, size_t x,
                     bool right_aligned) override;
 };

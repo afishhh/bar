@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <optional>
 
-#include "draw.hh"
 #include "loop.hh"
+#include "ui/draw.hh"
 
 class Block {
 public:
@@ -17,11 +17,12 @@ public:
   //        hashmap is accessed and causes a SIGFPE floating point exception.
   virtual void late_init(){};
 
-  virtual size_t draw(Draw &, std::chrono::duration<double> delta) = 0;
+  virtual size_t draw(ui::draw &, std::chrono::duration<double> delta) = 0;
   // HACK: Should this function exist?
   //       Should it have a better name?
   //       Should it have a different signature?
-  virtual size_t ddraw(Draw &, std::chrono::duration<double>, size_t, bool) {
+  virtual size_t ddraw(ui::draw &, std::chrono::duration<double>, size_t,
+                       bool) {
     return 0;
   }
 

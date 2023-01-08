@@ -174,7 +174,7 @@ void XSystrayBlock::late_init() {
   XSync(xconn->display(), false);
 }
 
-std::size_t XSystrayBlock::ddraw(Draw &, std::chrono::duration<double>,
+std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>,
                                  size_t x, bool right_aligned) {
   if (!_tray)
     return 0;

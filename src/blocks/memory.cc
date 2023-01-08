@@ -30,7 +30,7 @@ void MemoryBlock::update() {
   _used = _total - _avail;
 }
 
-size_t MemoryBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t MemoryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   size_t x = draw.text(0, draw.vcenter(), _config.prefix, _config.prefix_color);
 
   std::string text = std::format("{}/{}", to_sensible_unit(_used * 1024),

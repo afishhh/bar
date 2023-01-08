@@ -125,7 +125,7 @@ void CpuBlock::update() {
   }
 }
 
-size_t CpuBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t CpuBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   size_t y = draw.vcenter();
   size_t x = 0;
   auto percentage = 100.0 * _diff.total.busy() / _diff.total.total();

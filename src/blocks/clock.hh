@@ -9,7 +9,7 @@ class ClockBlock : public Block {
   std::string _text;
 
 public:
-  size_t draw(Draw &, std::chrono::duration<double> delta) override;
+  size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
   void animate(EventLoop::duration) override;
   // The animate is only here so that a redraw event is triggered.

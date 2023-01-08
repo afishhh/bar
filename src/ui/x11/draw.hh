@@ -10,11 +10,13 @@
 #include <cassert>
 #include <cstddef>
 #include <iterator>
+#include <stdexcept>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "../../format.hh"
 #include "../draw.hh"
 
 namespace ui::x11 {
@@ -51,7 +53,6 @@ public:
     _gc = XCreateGC(dpy, drawable, 0, nullptr);
     _xft_draw = XftDrawCreate(dpy, drawable, DefaultVisual(dpy, 0),
                               DefaultColormap(dpy, 0));
-    assert(_dpy == XftDrawDisplay(_xft_draw));
   }
 
   ~draw() {
@@ -64,17 +65,17 @@ public:
   }
 
   void set_fonts(std::vector<XftFont *> &&fonts) { _fonts = std::move(fonts); }
-  void add_font(XftFont *font) { _fonts.push_back(font); }
+  void load_font(std::string_view name) override {
+    if (auto *font = XftFontOpenName(_dpy, DefaultScreen(_dpy), name.data());
+        font)
+      _fonts.push_back(font);
+    else
+      throw std::runtime_error(std::format("Failed to load font {}", name));
+  }
 
-  pos_t screen_width() const override {
-    return DisplayWidth(_dpy, DefaultScreen(_dpy));
-  }
-  pos_t screen_height() const override {
-    return DisplayHeight(_dpy, DefaultScreen(_dpy));
-  }
   pos_t width() const override {
     // TODO: get drawable dimensions
-    return screen_width();
+    return DisplayWidth(_dpy, DefaultScreen(_dpy));
   }
   pos_t height() const override { return _height; }
 

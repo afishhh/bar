@@ -75,7 +75,7 @@ void DiskBlock::update() {
         std::format("statfs({})", std::quoted(_mountpoint.string())));
 }
 
-size_t DiskBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t DiskBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
 
   x += draw.text(x, 

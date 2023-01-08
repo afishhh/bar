@@ -41,7 +41,7 @@ void NetworkBlock::update() {
   _last_rx_bytes = old_rx;
 }
 
-size_t NetworkBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t NetworkBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   return draw.text(0, std::format("Tx {: >8}/s Rx {: >8}/s",
                                   to_sensible_unit(_tx_bytes, 1),
                                   to_sensible_unit(_rx_bytes, 1)));

@@ -47,7 +47,7 @@ public:
 
   static std::optional<BatteryBlock> find_first(Config config);
 
-  size_t draw(Draw &, std::chrono::duration<double> delta) override;
+  size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
   void animate(EventLoop::duration delta) override;
   std::optional<EventLoop::duration> animate_interval() override {

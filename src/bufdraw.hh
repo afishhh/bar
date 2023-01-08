@@ -3,11 +3,10 @@
 #include <variant>
 #include <vector>
 
-#include "draw.hh"
 #include "ui/draw.hh"
 #include "util.hh"
 
-class BufDraw : public Draw {
+class BufDraw : public ui::draw {
   struct Line {
     pos_t x1, y1;
     pos_t x2, y2;
@@ -36,9 +35,6 @@ public:
   BufDraw(ui::draw &draw) : _draw(draw) {}
   ~BufDraw() {}
 
-  BufDraw(BufDraw &&) = default;
-  BufDraw(const BufDraw &) = default;
-
   void draw_offset(pos_t off_x, pos_t off_y) {
     for (auto &op : _buf) {
       std::visit(overloaded{
@@ -65,8 +61,7 @@ public:
   }
   void clear() { _buf.clear(); }
 
-  pos_t screen_width() const final override;
-  pos_t screen_height() const final override;
+  void load_font(std::string_view name) final override;
 
   pos_t height() const final override;
   pos_t width() const final override;

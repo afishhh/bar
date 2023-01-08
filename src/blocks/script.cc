@@ -131,7 +131,7 @@ void ScriptBlock::update() {
   update_thread.detach();
 }
 
-size_t ScriptBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t ScriptBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   if (_timed_out)
     return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
 

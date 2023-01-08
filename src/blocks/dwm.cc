@@ -129,7 +129,7 @@ void DwmBlock::late_init() {
 }
 DwmBlock::~DwmBlock() {}
 
-size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double>) {
+size_t DwmBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   size_t x = 0;
   for (const auto &tag : _tags) {
     if (!(tag.occupied && !_config.show_empty_tags) && !tag.selected &&
@@ -154,7 +154,7 @@ size_t DwmBlock::draw(Draw &draw, std::chrono::duration<double>) {
       _focused_client_floating
           ? (_config.floating_title_prefix + _focused_client_title)
           : _focused_client_title;
-  Draw::pos_t width = 0;
+  ui::draw::pos_t width = 0;
   if (_config.max_title_length) {
     auto end = std::min(title.begin() + *_config.max_title_length, title.end());
     title = std::string_view(title.begin(), end);

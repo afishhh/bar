@@ -56,7 +56,7 @@ public:
 
   void late_init() override;
 
-  size_t draw(Draw &, std::chrono::duration<double> delta) override;
+  size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(100);

@@ -1,9 +1,11 @@
 #pragma once
 
-#include "../color.hh"
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <string_view>
+
+#include "../color.hh"
 
 namespace ui {
 
@@ -13,14 +15,18 @@ public:
   using pos_t = pos_type;
 
 public:
+  draw() = default;
+  draw(draw const &) = delete;
+  draw(draw &&) = default;
+  draw &operator=(draw const &) = delete;
+  draw &operator=(draw &&) = delete;
   virtual ~draw() = default;
 
-  virtual pos_t screen_width() const = 0;
-  virtual pos_t screen_height() const = 0;
+  virtual void load_font(std::string_view name) = 0;
 
   // FIXME: How should this work?
   virtual pos_t height() const = 0;
-  virtual pos_t width() const { return screen_width(); }
+  virtual pos_t width() const = 0;
 
   virtual pos_t vcenter() const = 0;
   virtual pos_t hcenter() const = 0;
