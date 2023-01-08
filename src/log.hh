@@ -33,3 +33,4 @@ public:
 extern Logger info;
 extern Logger warn;
 extern Logger error;
+extern Logger debug;

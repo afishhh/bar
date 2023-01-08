@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "backends/x11/window_backend.hh"
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
@@ -34,11 +33,13 @@
 #include "guard.hh"
 #include "log.hh"
 #include "loop.hh"
+#include "ui/connection.hh"
+#include "ui/x11/connection.hh"
 #include "util.hh"
 
-std::unique_ptr<WindowBackend> select_window_backend() {
-  if (XWindowBackend::is_available())
-    return std::make_unique<XWindowBackend>();
+std::unique_ptr<ui::connection> connect_to_ui_backend() {
+  if (auto conn = ui::x11::connection::try_create(); conn)
+    return std::move(*conn);
   else {
     std::print(error, "No suitable window backend found!\n");
     std::exit(1);
@@ -46,16 +47,41 @@ std::unique_ptr<WindowBackend> select_window_backend() {
 }
 
 int main() {
-  std::unique_ptr<WindowBackend> window_backend;
+  std::unique_ptr<ui::connection> ui_connection;
   try {
-    window_backend = select_window_backend();
+    ui_connection = connect_to_ui_backend();
   } catch (std::runtime_error &e) {
     std::print(error, "Failed to initialize window backend: {}\n", e.what());
     std::exit(1);
   }
 
-  std::unique_ptr<Draw> real_draw = window_backend->create_draw();
-  BufDraw draw(*real_draw);
+  auto window = ui_connection->create_window(
+      "bar", {0, 0}, {ui_connection->available_size().x, config::height});
+
+  if (auto *xwin = dynamic_cast<ui::x11::window *>(window.get()); xwin) {
+    xwin->class_hint(config::x11::window_class, config::x11::window_class);
+    if (config::x11::override_redirect) {
+      xwin->override_redirect(true);
+    }
+  }
+
+  window->show();
+
+  ui::draw &real_draw = window->drawer();
+  BufDraw draw(real_draw);
+
+  // TODO: Replace this with a font wrapper instead
+  if (auto *xdraw = dynamic_cast<ui::x11::draw *>(&real_draw); xdraw) {
+    auto xconn = (ui::x11::connection *)ui_connection.get();
+
+    for (auto fname : config::fonts) {
+      auto font = XftFontOpenName(xconn->display(), xconn->screen_id(), fname);
+      if (font == nullptr)
+        throw std::runtime_error(
+            std::format("Failed to load font {}", quote(fname)));
+      xdraw->add_font(font);
+    }
+  }
 
   struct BlockInfo {
     std::chrono::time_point<std::chrono::steady_clock,
@@ -97,8 +123,6 @@ int main() {
     setup_block(*block);
 
   loop.on<RedrawEvent>([&](const RedrawEvent &) {
-    window_backend->pre_draw();
-
     std::size_t x = 5;
 
     for (auto &block : config::left_blocks) {
@@ -117,7 +141,7 @@ int main() {
                                              sizeof(config::left_blocks[0]) -
                                          1]) {
         x += 8;
-        real_draw->frect(x, 3, 2, real_draw->height() - 6, 0xD3D3D3);
+        real_draw.frect(x, 3, 2, real_draw.height() - 6, 0xD3D3D3);
         x += 8 + 2;
       }
     }
@@ -132,18 +156,18 @@ int main() {
       info.last_draw = now;
 
       x -= width;
-      real_draw->frect(x - 8, 0, width + 16, config::height, 0x000000);
+      real_draw.frect(x - 8, 0, width + 16, config::height, 0x000000);
       draw.draw_offset(x, 0);
       draw.clear();
 
       if (&block != &config::right_blocks[0]) {
         x -= 8 + 2;
-        real_draw->frect(x, 3, 2, draw.height() - 6, 0xD3D3D3);
+        real_draw.frect(x, 3, 2, draw.height() - 6, 0xD3D3D3);
         x -= 8;
       }
     }
 
-    window_backend->post_draw();
+    window->flip();
   });
 
   loop.run();

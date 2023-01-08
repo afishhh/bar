@@ -17,3 +17,4 @@ std::string mk_prefix(std::string_view color, std::string_view prefix) {
 Logger info(std::cerr, mk_prefix("\033[1;94m", "[info] "));
 Logger warn(std::cerr, mk_prefix("\033[1;93m", "[warn] "));
 Logger error(std::cerr, mk_prefix("\033[1;91m", "[error] "));
+Logger debug(std::cerr, mk_prefix("\033[1;95m", "[debug] "));

@@ -31,9 +31,9 @@ void EventLoop::add_timer(duration interval,
   _tasks.emplace(task::repeated(callback, interval));
 }
 
-void EventLoop::run() {
-  while (!_tasks.empty()) {
-    auto next = _tasks.top();
+void EventLoop::pump() {
+  if (!_tasks.empty()) {
+    auto const &next = _tasks.top();
 
     std::visit(overloaded{
                    [](task::oneshot const &) {},
@@ -47,7 +47,7 @@ void EventLoop::run() {
                next.var());
 
     do {
-      auto current = _tasks.top();
+      auto current = std::move(_tasks.top());
       _tasks.pop();
 
       std::visit(overloaded{[](task::oneshot const &t) { t.fn(); },
@@ -60,6 +60,7 @@ void EventLoop::run() {
 
                               while (t.next < now)
                                 t.next += t.interval;
+
                               _tasks.push(std::move(t));
                             }},
                  current.var());
@@ -70,10 +71,15 @@ void EventLoop::run() {
             [](task::repeated const &t) { return t.next < clock::now(); },
         },
         _tasks.top().var()));
-
-    for (auto &[index, queue] : _event_queues)
-      queue->flush();
   }
+
+  for (auto &[index, queue] : _event_queues)
+    queue->flush();
+}
+
+void EventLoop::run() {
+  while (!_tasks.empty())
+    this->pump();
 }
 
 void EventLoop::stop() {

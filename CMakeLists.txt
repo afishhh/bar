@@ -37,9 +37,10 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/blocks/systray.cc
-  src/backends/x11/draw.cc
-  src/backends/x11/window_backend.cc
-  src/backends/base.cc
+  src/ui/connection.cc
+  src/ui/x11/connection.cc
+  src/ui/x11/draw.cc
+  src/ui/x11/window.cc
 
   ${EXTRA_SOURCES}
 )
@@ -51,12 +52,16 @@ set_target_properties(
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE
-  -Wall -Wextra -Werror
+  -Wall -Wextra
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
   target_compile_options(${PROJECT_NAME} PRIVATE
     -g -pg
+  )
+else()
+  target_compile_options(${PROJECT_NAME} PRIVATE
+    -Werror
   )
 endif()
 

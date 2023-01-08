@@ -190,7 +190,7 @@ private:
         // FIXME: Don't use ::instance() here
         if (auto queue = EventLoop::instance().find_event_queue<base>())
           queue->fire_one(event);
-      } else if constexpr(!std::same_as<E, Event>) {
+      } else if constexpr (!std::same_as<E, Event>) {
         if (auto queue = EventLoop::instance().find_event_queue<Event>())
           queue->fire_one(event);
       }
@@ -261,6 +261,7 @@ public:
   static EventLoop &instance();
 
   void run();
+  void pump();
   void stop();
 
   template <std::derived_from<Event> E, typename Callback>
@@ -303,6 +304,40 @@ public:
     } else {
       return false;
     }
+  }
+
+  template <std::derived_from<Event> E> void wait() {
+    return wait([](E const &) { return true; });
+  }
+
+  template <std::derived_from<Event> E, typename F>
+  requires requires(F fn, E const &ev) {
+    { fn(ev) } -> std::same_as<bool>;
+  }
+  void wait(F condition) {
+    std::mutex mutex;
+    std::condition_variable condvar;
+    bool done = false;
+
+    auto cid = this->on<E>([&](E const &ev) {
+      if (condition(ev)) {
+        done = true;
+        condvar.notify_all();
+      }
+    });
+
+    while (!done) {
+      {
+        std::unique_lock lock(mutex);
+        if (condvar.wait_for(lock, std::chrono::milliseconds(5)) ==
+            std::cv_status::no_timeout || done)
+          break;
+      }
+
+      this->pump();
+    }
+
+    this->off(cid);
   }
 
   void add_oneshot(task::oneshot::callback);

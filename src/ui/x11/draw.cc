@@ -1,3 +1,4 @@
+#include <X11/X.h>
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
@@ -25,7 +26,9 @@
 #include "../../util.hh"
 #include "draw.hh"
 
-XftColor *XDraw::lookup_xft_color(color color) {
+namespace ui::x11 {
+
+XftColor *draw::lookup_xft_color(color color) {
   if (auto c = _xft_color_cache.find(color); c != _xft_color_cache.end())
     return &c->second;
 
@@ -36,6 +39,7 @@ XftColor *XDraw::lookup_xft_color(color color) {
                             .green = static_cast<unsigned short>(rgb.g * 0xff),
                             .blue = static_cast<unsigned short>(rgb.b * 0xff),
                             .alpha = 0xffff};
+
   XftColor xft_color;
   if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
     throw std::runtime_error("XftColorAllocValue failed");
@@ -43,7 +47,7 @@ XftColor *XDraw::lookup_xft_color(color color) {
   return &_xft_color_cache.emplace(color, std::move(xft_color)).first->second;
 }
 
-XftFont *XDraw::lookup_font(char32_t codepoint) {
+XftFont *draw::lookup_font(char32_t codepoint) {
   if (auto f = _font_cache.find(codepoint); f != _font_cache.end())
     return f->second;
 
@@ -213,10 +217,10 @@ public:
   }
 };
 
-Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
+draw::pos_t draw::text(pos_t x, pos_t y, std::string_view text, color color) {
   XSetForeground(_dpy, _gc, color.as_rgb());
 
-  // NOTE: Looks better this way
+  // Looks better this way but FIXME: why
   --y;
 
   auto xft_color = lookup_xft_color(color);
@@ -224,21 +228,27 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
   XftFont *current_font = nullptr;
   std::string_view::const_iterator current_begin = text.begin();
 
+  auto simple_draw_text = [this, xft_color](pos_t x, pos_t y, XftFont *font,
+                                            std::string_view text) {
+    XGlyphInfo extents;
+    static_assert(sizeof(FcChar32) == sizeof(char32_t));
+    XftTextExtentsUtf8(_dpy, font,
+                       reinterpret_cast<const FcChar8 *>(&*text.begin()),
+                       std::distance(text.begin(), text.end()), &extents);
+    XftDrawStringUtf8(_xft_draw, xft_color, font, x, y + extents.y / 2,
+                      reinterpret_cast<const FcChar8 *>(&*text.begin()),
+                      text.size());
+    return extents.xOff;
+  };
+
   for (auto it = codepoint_iterator(text); it != codepoint_iterator::sentinel();
        ++it) {
     if (auto font = lookup_font(*it)) {
       if (current_font != nullptr && current_font != font) {
-        XGlyphInfo extents;
-        static_assert(sizeof(FcChar32) == sizeof(char32_t));
-        XftTextExtentsUtf8(_dpy, current_font,
-                           reinterpret_cast<const FcChar8 *>(&*current_begin),
-                           std::distance(current_begin, it.base()), &extents);
-        XftDrawStringUtf8(_xft_draw, xft_color, current_font, x,
-                          y + extents.y / 2,
-                          reinterpret_cast<const FcChar8 *>(&*current_begin),
-                          std::distance(current_begin, it.base()));
-        width += extents.xOff;
-        x += extents.xOff;
+        auto off = simple_draw_text(x, y, current_font,
+                                    std::string_view(current_begin, it.base()));
+        width += off;
+        x += off;
 
         current_begin = it.base();
       }
@@ -247,14 +257,9 @@ Draw::pos_t XDraw::text(pos_t x, pos_t y, std::string_view text, color color) {
   }
 
   if (current_font != nullptr) {
-    XGlyphInfo extents;
-    XftTextExtentsUtf8(_dpy, current_font,
-                       reinterpret_cast<const FcChar8 *>(&*current_begin),
-                       std::distance(current_begin, text.end()), &extents);
-    XftDrawStringUtf8(_xft_draw, xft_color, current_font, x, y + extents.y / 2,
-                      reinterpret_cast<const FcChar8 *>(&*current_begin),
-                      std::distance(current_begin, text.end()));
-    width += extents.xOff;
+    auto off = simple_draw_text(x, y, current_font,
+                                std::string_view(current_begin, text.cend()));
+    width += off;
   }
 
   return width;
@@ -266,7 +271,7 @@ requires requires(Iter it, End end) {
   { *it } -> std::convertible_to<char32_t>;
   {++it};
 }
-Draw::pos_t XDraw::_iterator_textw(Iter it, End end) {
+draw::pos_t draw::_iterator_textw(Iter it, End end) {
   size_t total = 0;
 
   for (; it != end; ++it) {
@@ -282,10 +287,12 @@ Draw::pos_t XDraw::_iterator_textw(Iter it, End end) {
   return total;
 }
 
-Draw::pos_t XDraw::textw(std::string_view text) {
+draw::pos_t draw::textw(std::string_view text) {
   return _iterator_textw(codepoint_iterator(text), std::default_sentinel);
 }
 
-Draw::pos_t XDraw::textw(std::u32string_view text) {
+draw::pos_t draw::textw(std::u32string_view text) {
   return _iterator_textw(text.begin(), text.end());
 }
+
+} // namespace ui::x11

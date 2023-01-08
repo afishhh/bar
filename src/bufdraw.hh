@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "draw.hh"
+#include "ui/draw.hh"
 #include "util.hh"
 
 class BufDraw : public Draw {
@@ -29,10 +30,10 @@ class BufDraw : public Draw {
 
   std::vector<operation> _buf;
   // FIXME: Don't store a draw
-  Draw &_draw;
+  ui::draw &_draw;
 
 public:
-  BufDraw(Draw &draw) : _draw(draw) {}
+  BufDraw(ui::draw &draw) : _draw(draw) {}
   ~BufDraw() {}
 
   BufDraw(BufDraw &&) = default;
@@ -43,7 +44,8 @@ public:
       std::visit(overloaded{
                      [&](Line &line) {
                        _draw.line(line.x1 + off_x, line.y1 + off_y,
-                                  line.x2 + off_x, line.y2 + off_y, line.stroke_color);
+                                  line.x2 + off_x, line.y2 + off_y,
+                                  line.stroke_color);
                      },
                      [&](Rect &rect) {
                        _draw.hrect(rect.x1 + off_x, rect.y1 + off_y, rect.w,
