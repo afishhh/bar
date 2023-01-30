@@ -17,7 +17,7 @@ ui::draw &window::drawer() {
   if (!_draw.has_value()) {
     _back_buffer =
         XdbeAllocateBackBufferName(_conn->display(), _xwinid, XdbeBackground);
-    _draw.emplace(_conn->display(), _xwinid, _back_buffer, this->size().y);
+    _draw.emplace(_conn->display(), _xwinid, *_back_buffer, this->size().y);
   }
 
   return _draw.value();

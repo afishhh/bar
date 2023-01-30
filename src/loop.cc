@@ -9,11 +9,6 @@
 EventLoop::EventLoop() {}
 EventLoop::~EventLoop() {}
 
-EventLoop &EventLoop::instance() {
-  static EventLoop instance;
-  return instance;
-}
-
 void EventLoop::add_oneshot(task::oneshot::callback callback) {
   _tasks.emplace(task::oneshot{callback});
 }

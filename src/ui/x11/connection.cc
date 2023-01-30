@@ -123,8 +123,8 @@ Atom connection::intern_atom(std::string_view name, bool only_if_exists) const {
   return atom;
 }
 
-std::size_t connection::embed(window const &client, window const &parent) {
-  if (!XReparentWindow(_display, client.window_id(), parent.window_id(), 0, 0))
+std::size_t connection::embed(XWinID client, XWinID parent) {
+  if (!XReparentWindow(_display, client, parent, 0, 0))
     throw std::runtime_error("XReparentWindow failed");
 
   struct XEmbedInfo {
@@ -132,16 +132,16 @@ std::size_t connection::embed(window const &client, window const &parent) {
     long flags;
   };
 
-  if (!XMapWindow(_display, client.window_id()))
+  if (!XMapWindow(_display, client))
     throw std::runtime_error("XMapWindow failed");
 
-  if (!XSelectInput(_display, client.window_id(), PropertyChangeMask))
+  if (!XSelectInput(_display, client, PropertyChangeMask))
     throw std::runtime_error("XSelectInput failed");
 
   // FIXME: This leaks memory as it's never removed!
   //        And is also ugly since we need to return the id in case of failure.
   auto id =
-      EV.on<xevent>([this, winid = client.window_id()](const xevent &lxevent) {
+      EV.on<xevent>([this, winid = client](const xevent &lxevent) {
         const auto &event = lxevent.raw();
         if (event.type != PropertyNotify || event.xproperty.window != winid)
           return;
@@ -175,10 +175,10 @@ std::size_t connection::embed(window const &client, window const &parent) {
   event.xclient.data.l[0] = CurrentTime;
   event.xclient.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
   event.xclient.data.l[2] = 0;
-  event.xclient.data.l[3] = parent.window_id();
+  event.xclient.data.l[3] = parent;
   event.xclient.data.l[4] = 0;
 
-  if (!XSendEvent(_display, client.window_id(), false, NoEventMask, &event))
+  if (!XSendEvent(_display, client, false, NoEventMask, &event))
     throw std::runtime_error("XSendEvent failed");
   XFlush(_display);
 

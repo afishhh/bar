@@ -258,7 +258,10 @@ public:
   EventLoop(EventLoop &&) = delete;
   EventLoop &operator=(EventLoop &&) = delete;
 
-  static EventLoop &instance();
+  inline static EventLoop &instance() {
+    static EventLoop instance;
+    return instance;
+  }
 
   void run();
   void pump();
@@ -330,7 +333,8 @@ public:
       {
         std::unique_lock lock(mutex);
         if (condvar.wait_for(lock, std::chrono::milliseconds(5)) ==
-            std::cv_status::no_timeout || done)
+                std::cv_status::no_timeout ||
+            done)
           break;
       }
 

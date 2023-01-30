@@ -24,10 +24,6 @@ class window;
 
 class connection final : public ::ui::connection {
   Display *_display;
-  // XWinID _window;
-  // GC _gc;
-  // XdbeBackBuffer _back_buffer;
-  // std::vector<XftFont *> _fonts;
 
   std::jthread _event_thread;
 
@@ -76,7 +72,7 @@ public:
   //       Focus and activate stuff we should be able to safely ignore since
   //       this is a status bar that is not supposed to gain focus either due
   //       to override-redirect or some window manager specific means.
-  std::size_t embed(x11::window const &client, x11::window const &parent);
+  std::size_t embed(XWinID client, XWinID parent);
 
   // FIXME: What if an errors occurs in a different thread?
   //        Is it even possible to handle something like that?
@@ -93,12 +89,11 @@ class xevent : public Event {
   connection *_conn;
   XEvent _event;
 
-  xevent(connection* conn, XEvent &&event) : _conn(conn), _event(event) {}
+  xevent(connection *conn, XEvent &&event) : _conn(conn), _event(event) {}
   friend class connection;
 
 public:
-  ~xevent() { 
-    XFreeEventData(_conn->display(), &_event.xcookie); }
+  ~xevent() { XFreeEventData(_conn->display(), &_event.xcookie); }
 
   inline XEvent const &raw() const { return _event; }
 };

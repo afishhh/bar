@@ -20,14 +20,16 @@ class window final : public ui::window {
   connection *_conn;
   XWinID _xwinid;
   std::optional<x11::draw> _draw;
-  XdbeBackBuffer _back_buffer;
+  std::optional<XdbeBackBuffer> _back_buffer;
 
 public:
   window(connection *conn, XWinID xwinid)
       : ui::window(), _conn(conn), _xwinid(xwinid) {}
   ~window() noexcept(false) {
     XDestroyWindow((_conn->display()), _xwinid);
-    XdbeDeallocateBackBufferName(_conn->display(), _xwinid);
+    // TODO: This should be in a backbuffer_draw or similiar instead
+    if (_back_buffer)
+      XdbeDeallocateBackBufferName(_conn->display(), *_back_buffer);
   }
 
   inline XWinID window_id() const noexcept { return _xwinid; }
