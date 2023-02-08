@@ -55,8 +55,6 @@ public:
   using duration = clock::duration;
   // TODO: Rename to event_callback_id
   using callback_id = std::uint32_t;
-  // template <std::derived_from<Event> E>
-  // using event_callback = std::function<void(E const &)>;
 
 private:
   struct task {
@@ -160,7 +158,7 @@ private:
         std::exit(1);
       }
 #endif
-      return reinterpret_cast<EventQueue<E> *>(this);
+      return static_cast<EventQueue<E> *>(this);
     }
   };
 
