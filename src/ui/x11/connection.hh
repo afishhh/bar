@@ -21,6 +21,7 @@
 namespace ui::x11 {
 
 class window;
+class embedder;
 
 class connection final : public ::ui::connection {
   Display *_display;
@@ -49,6 +50,7 @@ public:
                                             uvec2 size) override;
 
   inline Display *display() const { return _display; }
+  inline operator Display *() const { return display(); }
   inline int screen_id() const { return DefaultScreen(_display); }
   inline Screen *screen() const { return DefaultScreenOfDisplay(_display); }
   // XWinID window() const { return _window; }
@@ -72,7 +74,7 @@ public:
   //       Focus and activate stuff we should be able to safely ignore since
   //       this is a status bar that is not supposed to gain focus either due
   //       to override-redirect or some window manager specific means.
-  std::size_t embed(XWinID client, XWinID parent);
+  embedder embed(XWinID client, XWinID parent);
 
   // FIXME: What if an errors occurs in a different thread?
   //        Is it even possible to handle something like that?
@@ -82,6 +84,42 @@ public:
   }
   static void untrap_errors() { XSetErrorHandler(_old_error_handler); }
   static int trapped_error() { return _trapped_error_code; }
+};
+
+class embedder {
+  connection *_conn;
+  XWinID _child;
+  owned_callback_id _cid;
+
+  friend connection;
+
+  embedder(connection *c, XWinID child, owned_callback_id &&id)
+      : _conn(c), _child(child), _cid(std::move(id)) {}
+
+public:
+  embedder(embedder &&other)
+      : _conn(other._conn), _child(other._child), _cid(std::move(other._cid)) {
+    other._conn = nullptr;
+  }
+  embedder(embedder const &) = delete;
+  embedder &operator=(embedder &&other) {
+    _conn = other._conn;
+    _child = other._child;
+    _cid = std::move(other._cid);
+    other._conn = nullptr;
+    return *this;
+  }
+  embedder &operator=(embedder const &) = delete;
+
+  void drop() {
+    if (_conn) {
+      XReparentWindow(_conn->display(), _child,
+                      DefaultRootWindow(_conn->display()), 0, 0);
+      _conn = nullptr;
+    }
+  }
+
+  inline ~embedder() noexcept(false) { drop(); }
 };
 
 // This Event wraps an XEvent and makes it accessible via the event loop.
@@ -95,7 +133,8 @@ class xevent : public Event {
 public:
   ~xevent() { XFreeEventData(_conn->display(), &_event.xcookie); }
 
-  inline XEvent const &raw() const { return _event; }
+  inline operator XEvent const &() const { return _event; }
+  inline operator XEvent &() { return _event; }
 };
 
 } // namespace ui::x11

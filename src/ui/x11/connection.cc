@@ -123,7 +123,7 @@ Atom connection::intern_atom(std::string_view name, bool only_if_exists) const {
   return atom;
 }
 
-std::size_t connection::embed(XWinID client, XWinID parent) {
+embedder connection::embed(XWinID client, XWinID parent) {
   if (!XReparentWindow(_display, client, parent, 0, 0))
     throw std::runtime_error("XReparentWindow failed");
 
@@ -138,35 +138,31 @@ std::size_t connection::embed(XWinID client, XWinID parent) {
   if (!XSelectInput(_display, client, PropertyChangeMask))
     throw std::runtime_error("XSelectInput failed");
 
-  // FIXME: This leaks memory as it's never removed!
-  //        And is also ugly since we need to return the id in case of failure.
-  auto id =
-      EV.on<xevent>([this, winid = client](const xevent &lxevent) {
-        const auto &event = lxevent.raw();
-        if (event.type != PropertyNotify || event.xproperty.window != winid)
-          return;
+  auto id = EV.on<xevent>([this, winid = client](const XEvent &event) {
+    if (event.type != PropertyNotify || event.xproperty.window != winid)
+      return;
 
-        if (event.xproperty.atom == intern_atom("_XEMBED_INFO") &&
-            event.xproperty.state == PropertyNewValue) {
-          Atom type;
-          unsigned long len, bytes_left;
-          int format;
-          unsigned char *data;
+    if (event.xproperty.atom == intern_atom("_XEMBED_INFO") &&
+        event.xproperty.state == PropertyNewValue) {
+      Atom type;
+      unsigned long len, bytes_left;
+      int format;
+      unsigned char *data;
 
-          if (!XGetWindowProperty(_display, winid, intern_atom("_XEMBED_INFO"),
-                                  0, sizeof(XEmbedInfo), false,
-                                  intern_atom("_XEMBED_INFO"), &type, &format,
-                                  &len, &bytes_left, &data))
-            return; // Happily ignore errors caused by misbehaving clients.
+      if (!XGetWindowProperty(_display, winid, intern_atom("_XEMBED_INFO"), 0,
+                              sizeof(XEmbedInfo), false,
+                              intern_atom("_XEMBED_INFO"), &type, &format, &len,
+                              &bytes_left, &data))
+        return; // Happily ignore errors caused by misbehaving clients.
 
-          XEmbedInfo *info = reinterpret_cast<XEmbedInfo *>(data);
-          if (info->flags & XEMBED_MAPPED) {
-            if (!XMapWindow(_display, winid))
-              throw std::runtime_error("XMapWindow failed");
-          } else if (!XUnmapWindow(_display, winid))
-            throw std::runtime_error("XUnmapWindow failed");
-        }
-      });
+      XEmbedInfo *info = reinterpret_cast<XEmbedInfo *>(data);
+      if (info->flags & XEMBED_MAPPED) {
+        if (!XMapWindow(_display, winid))
+          throw std::runtime_error("XMapWindow failed");
+      } else if (!XUnmapWindow(_display, winid))
+        throw std::runtime_error("XUnmapWindow failed");
+    }
+  });
 
   XEvent event;
   event.xclient.type = ClientMessage;
@@ -182,7 +178,7 @@ std::size_t connection::embed(XWinID client, XWinID parent) {
     throw std::runtime_error("XSendEvent failed");
   XFlush(_display);
 
-  return id;
+  return embedder(this, client, id);
 }
 
 } // namespace ui::x11

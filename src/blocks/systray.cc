@@ -3,8 +3,10 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <chrono>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 
 #include "../bar.hh"
@@ -23,6 +25,53 @@
 #define SYSTEM_TRAY_ORIENTATION_HORZ 0
 #define SYSTEM_TRAY_ORIENTATION_VERT 1
 
+void XSystrayBlock::relayout_tray() {
+  auto &bar = bar::instance();
+  auto *xconn = dynamic_cast<ui::x11::connection *>(&bar.connection());
+  if (!xconn) {
+    std::print(warn, "XSystrayBlock only works on the X11 backend\n");
+    return;
+  }
+
+relayout_tray:
+  if (!XResizeWindow(*xconn, *_tray, (config::height * _icons.size()) ?: 1,
+                     config::height))
+    throw std::runtime_error("Failed to resize tray window");
+
+  std::size_t i = 0;
+  for (auto const &[window, _] : _icons) {
+    std::uint32_t bad_windows = 0;
+
+    while (true) {
+      xconn->trap_errors();
+      XMoveResizeWindow(*xconn, window, i * config::height, 0, config::height,
+                        config::height);
+      XSync(*xconn, false);
+      xconn->untrap_errors();
+
+      if (auto err = xconn->trapped_error()) {
+        if (err == BadWindow) {
+          if (++bad_windows >= 10) {
+            _icons.erase(window);
+            std::print(warn, "xsystray: Undocked broken window {}\n", window);
+            goto relayout_tray;
+          }
+        } else
+          std::print(
+              warn, "xsystray: Could not move/resize window {} (X error: {})\n",
+              window, err);
+      }
+
+      break;
+    }
+
+    ++i;
+  }
+
+  XFlush(*xconn);
+  EV.fire_event(RedrawEvent());
+}
+
 void XSystrayBlock::late_init() {
   auto &bar = bar::instance();
   auto *xconn = dynamic_cast<ui::x11::connection *>(&bar.connection());
@@ -33,20 +82,19 @@ void XSystrayBlock::late_init() {
 
   ui::x11::window &mainw = static_cast<ui::x11::window &>(bar.window());
 
-  _tray = XCreateSimpleWindow(xconn->display(), mainw.window_id(), 0, 0, 10,
+  _tray = XCreateSimpleWindow(*xconn, mainw.window_id(), 0, 0, 10,
                               config::height, 0, 0, 0);
   if (!_tray)
     throw std::runtime_error("Failed to create tray window");
-  if (!XMapWindow(xconn->display(), *_tray))
+  if (!XMapWindow(*xconn, *_tray))
     throw std::runtime_error("Failed to map tray window");
   // Selecting SubstructureNotifyMask will allow us to recieve DestroyNotify and
   // ReparentNotify
-  if (!XSelectInput(xconn->display(), *_tray, SubstructureNotifyMask))
+  if (!XSelectInput(*xconn, *_tray, SubstructureNotifyMask))
     throw std::runtime_error("Failed to select input for tray window");
 
   auto opcode_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_OPCODE", false);
-  EV.on<ui::x11::xevent>([xconn, this, opcode_atom](const ui::x11::xevent &le) {
-    const XEvent &e = le.raw();
+  EV.on<ui::x11::xevent>([xconn, this, opcode_atom](const XEvent &e) {
     if (e.type == ClientMessage && e.xclient.message_type == opcode_atom) {
       switch (e.xclient.data.l[1]) {
       case SYSTEM_TRAY_REQUEST_DOCK: {
@@ -58,26 +106,23 @@ void XSystrayBlock::late_init() {
         }
 
         xconn->trap_errors();
-        auto hid = xconn->embed(window, *_tray);
-        XSync(xconn->display(), false);
+        auto embedder(xconn->embed(window, *_tray));
+        XSync(*xconn, false);
         xconn->untrap_errors();
         if (auto err = xconn->trapped_error()) {
           char error_buffer[256];
-          XGetErrorText(xconn->display(), err, error_buffer,
-                        sizeof(error_buffer));
+          XGetErrorText(*xconn, err, error_buffer, sizeof(error_buffer));
           std::print(warn, "xsystray: Could not dock window {} ({})\n", window,
                      error_buffer);
-          EV.off<ui::x11::xevent>(hid);
           xconn->trap_errors();
-          XReparentWindow(xconn->display(), window,
-                          XDefaultRootWindow(xconn->display()), 0, 0);
+          embedder.drop();
+          XSync(*xconn, false);
           xconn->untrap_errors();
-          return;
+        } else {
+          _icons.emplace(window, std::move(embedder));
+          std::print(info, "xsystray: Docked window {}\n", window);
         }
-        _icons.insert(window);
-        std::print(info, "xsystray: Docked window {}\n", window);
-        break;
-      }
+      } break;
       case SYSTEM_TRAY_BEGIN_MESSAGE:
         std::print(
             info,
@@ -98,71 +143,40 @@ void XSystrayBlock::late_init() {
                e.xreparent.parent != *_tray) {
       // The client left us for someone else :(
       auto window = e.xreparent.window;
-      EV.off<ui::x11::xevent>(_icon_embed_callbacks[window]);
-      _icon_embed_callbacks.erase(window);
       _icons.erase(window);
       std::print(info, "xsystray: Undocked reparented window {}\n",
                  e.xreparent.window);
     } else if (e.type == DestroyNotify &&
                _icons.contains(e.xdestroywindow.window)) {
       auto window = e.xdestroywindow.window;
-      EV.off<ui::x11::xevent>(_icon_embed_callbacks[window]);
-      _icon_embed_callbacks.erase(window);
       _icons.erase(window);
       std::print(info, "xsystray: Undocked destroyed window {}\n",
                  e.xdestroywindow.window);
     } else
       return;
 
-  relayout_tray:
-    if (!XResizeWindow(xconn->display(), *_tray,
-                       (config::height * _icons.size()) ?: 1, config::height))
-      throw std::runtime_error("Failed to resize tray window");
-
-    std::size_t i = 0;
-    for (auto window : _icons) {
-      xconn->trap_errors();
-      XMoveResizeWindow(xconn->display(), window, i * config::height, 0,
-                        config::height, config::height);
-      XSync(xconn->display(), false);
-      xconn->untrap_errors();
-      if (auto err = xconn->trapped_error()) {
-        if (err == BadWindow) {
-          std::print(warn, "xsystray: Undocking broken window {}\n", window);
-          EV.off<ui::x11::xevent>(_icon_embed_callbacks[window]);
-          _icon_embed_callbacks.erase(window);
-          _icons.erase(window);
-          goto relayout_tray;
-        } else
-          std::print(
-              warn, "xsystray: Could not move/resize window {} (X error: {})\n",
-              window, err);
-      }
-      ++i;
-    }
-
-    XFlush(xconn->display());
-    EV.fire_event(RedrawEvent());
+    this->relayout_tray();
   });
+
+  EV.add_timer(1000ms, [this](auto) { this->relayout_tray(); });
 
   auto orientation_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION");
   auto orientation_value_atom =
       xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION_HORZ");
-  XChangeProperty(xconn->display(), *_tray, orientation_atom, XA_CARDINAL, 32,
+  XChangeProperty(*xconn, *_tray, orientation_atom, XA_CARDINAL, 32,
                   PropModeReplace, (unsigned char *)&orientation_value_atom, 1);
 
   auto sn = XScreenNumberOfScreen(xconn->screen());
   auto selection_atom_name = std::format("_NET_SYSTEM_TRAY_S{}", sn);
   auto selection_atom = xconn->intern_atom(selection_atom_name);
-  if (!XSetSelectionOwner(xconn->display(), selection_atom, *_tray,
-                          CurrentTime))
+  if (!XSetSelectionOwner(*xconn, selection_atom, *_tray, CurrentTime))
     throw std::runtime_error("Failed to set system tray selection owner");
-  if (XGetSelectionOwner(xconn->display(), selection_atom) != *_tray)
+  if (XGetSelectionOwner(*xconn, selection_atom) != *_tray)
     throw std::runtime_error("Failed to obtain system tray ownership");
 
   XEvent e;
   e.xclient.type = ClientMessage;
-  e.xclient.window = XRootWindow(xconn->display(), sn);
+  e.xclient.window = XRootWindow(*xconn, sn);
   e.xclient.format = 32;
   e.xclient.message_type = xconn->intern_atom("MANAGER");
   e.xclient.data.l[0] = CurrentTime;
@@ -171,9 +185,8 @@ void XSystrayBlock::late_init() {
   e.xclient.data.l[3] = 0;
   e.xclient.data.l[4] = 0;
 
-  XSendEvent(xconn->display(), e.xclient.window, false, StructureNotifyMask,
-             &e);
-  XSync(xconn->display(), false);
+  XSendEvent(*xconn, e.xclient.window, false, StructureNotifyMask, &e);
+  XSync(*xconn, false);
 }
 
 std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>,
@@ -187,9 +200,9 @@ std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>,
     throw std::logic_error("Could not get X11 connection instance");
 
   auto tray_width = (_icons.size() * config::height) ?: 1;
-  if (!XMoveWindow(xconn->display(), *_tray, x - tray_width * right_aligned, 0))
+  if (!XMoveWindow(*xconn, *_tray, x - tray_width * right_aligned, 0))
     throw std::runtime_error("Failed to move system tray");
 
-  XSync(xconn->display(), false);
-  return tray_width;
+  XSync(*xconn, false);
+  return tray_width + 10;
 }

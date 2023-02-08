@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
+#include <optional>
 #include <string>
 
 #include "../format.hh"
@@ -30,7 +31,7 @@ std::optional<BatteryBlock> BatteryBlock::find_first(Config config) {
   for (auto &entry :
        std::filesystem::directory_iterator("/sys/class/power_supply")) {
     if (entry.path().filename() == "BAT0") {
-      return BatteryBlock(entry.path(), config);
+      return std::make_optional<BatteryBlock>(entry.path(), config);
     }
   }
   return {};

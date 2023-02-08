@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <set>
 #include <vector>
@@ -10,14 +11,12 @@
 
 class XSystrayBlock : public Block {
   std::optional<ui::x11::XWinID> _tray{};
-  std::size_t _icon_count;
-
-  std::set<ui::x11::XWinID> _icons;
-  // HACK: Hack until a proper XEmbed API is available in XWindowBackend
-  std::map<ui::x11::XWinID, EventLoop::callback_id> _icon_embed_callbacks;
+  std::map<ui::x11::XWinID, ui::x11::embedder> _icons;
 
 public:
   XSystrayBlock() {}
+
+  void relayout_tray();
 
   void late_init() override;
   std::size_t draw(ui::draw &, std::chrono::duration<double>) override {

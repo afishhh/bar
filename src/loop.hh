@@ -285,6 +285,7 @@ public:
       return id;
     }
   }
+
   template <std::derived_from<Event> E> void fire_event(const E &event) {
     if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end()) {
       auto queue = it->second->into_queue_of<E>();
@@ -317,28 +318,36 @@ public:
   requires requires(F fn, E const &ev) {
     { fn(ev) } -> std::same_as<bool>;
   }
-  void wait(F condition) {
+  E wait(F condition) {
     std::mutex mutex;
     std::condition_variable condvar;
     bool done = false;
+    std::optional<E> out;
 
     auto cid = this->on<E>([&](E const &ev) {
       if (condition(ev)) {
-        done = true;
-        condvar.notify_all();
+        std::unique_lock lock(mutex);
+        if (!done) {
+          done = true;
+          out = ev;
+          lock.unlock();
+          condvar.notify_all();
+        }
       }
     });
 
+    std::unique_lock lock(mutex);
     while (!done) {
       {
-        std::unique_lock lock(mutex);
         if (condvar.wait_for(lock, std::chrono::milliseconds(5)) ==
                 std::cv_status::no_timeout ||
             done)
           break;
       }
 
+      lock.unlock();
       this->pump();
+      lock.lock();
     }
 
     this->off(cid);
@@ -352,3 +361,18 @@ public:
 };
 
 #define EV (EventLoop::instance())
+
+class owned_callback_id {
+  EventLoop::callback_id _id;
+
+public:
+  owned_callback_id(EventLoop::callback_id id) : _id(id) {}
+  ~owned_callback_id() { EV.off(_id); }
+
+  owned_callback_id(owned_callback_id const &) = delete;
+  owned_callback_id(owned_callback_id &&) = default;
+  owned_callback_id &operator=(owned_callback_id const &) = delete;
+  owned_callback_id &operator=(owned_callback_id &&) = default;
+
+  operator EventLoop::callback_id() const { return _id; }
+};

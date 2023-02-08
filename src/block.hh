@@ -9,7 +9,13 @@
 
 class Block {
 public:
-  virtual ~Block() {}
+  Block() = default;
+  virtual ~Block() = default;
+
+  Block(Block const &) = delete;
+  Block(Block &&) = default;
+  Block &operator=(Block const &) = delete;
+  Block &operator=(Block &&) = default;
 
   // FIXME: Workaroud for "Static Initiaisation Order Fiasco".
   //        dwmipcpp has a static hashmap which is initialised after the blocks
