@@ -91,9 +91,11 @@ void CpuBlock::update() {
           return a.temperature < b.temperature;
         }
       };
-      std::set<ThermalInfo::TripPoint, trip_point_temperature_less> points;
-      std::ranges::subrange(std::filesystem::directory_iterator(entry.path()),
-                            std::filesystem::directory_iterator()) |
+
+      auto point_range =
+          std::ranges::subrange(
+              std::filesystem::directory_iterator(entry.path()),
+              std::filesystem::directory_iterator()) |
           std::views::filter([](const auto &entry) {
             auto n = entry.path().filename().string();
             return n.starts_with("trip_point_") && n.ends_with("_type");
@@ -103,16 +105,19 @@ void CpuBlock::update() {
             // remove _type
             return f.erase(f.size() - 5);
           }) |
-          std::views::transform([&points](const auto &path) {
+          std::views::transform([](const auto &path) {
             ThermalInfo::TripPoint point;
 
             std::ifstream(path + "_temp") >> point.temperature;
             std::ifstream(path + "_type") >> point.type;
             std::ifstream(path + "_hyst") >> point.hyst;
 
-            points.insert(std::move(point));
-            return 0;
+            return point;
           });
+
+      std::set<ThermalInfo::TripPoint, trip_point_temperature_less> points;
+      for (auto point : point_range)
+        points.emplace(std::move(point));
 
       auto it = std::ranges::find_if(points, [&](const auto &point) {
         return point.temperature < _thermal->temperature;
@@ -136,22 +141,10 @@ size_t CpuBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   if (_thermal) {
     x += draw.textw(" ");
 
-    auto color = 0xFFFFFF;
-    // Feels hacky but whatever :)
-    if (auto &point = _thermal->current_trip_point) {
-      if (point->type == "critical")
-        color = 0xFF0000;
-      else if (point->type == "hot")
-        color = 0xFF8800;
-      else if (point->type == "warm")
-        color = 0xFFFF00;
-      else if (point->type == "passive")
-        color = 0x00FF00;
-      else if (point->type == "active")
-        color = 0x00FFFF;
-      else if (point->type == "off")
-        color = 0xCCCCCC;
-    }
+    color color = 0xFFFFFF;
+    if (_thermal)
+      if (auto const &point = _thermal->current_trip_point)
+        color = point->color_by_type();
 
     x += draw.text(x, y, std::format("{:.1f}°C", _thermal->temperature / 1000.),
                    color);
