@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-#include <string>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "../block.hh"
@@ -74,11 +74,29 @@ class CpuBlock : public Block {
       long hyst;
       long temperature;
       std::string type;
-    };
-    std::optional<TripPoint> current_trip_point;
 
+      color color_by_type() const {
+        if (type == "critical")
+          return 0xFF0000;
+        else if (type == "hot")
+          return 0xFF8800;
+        else if (type == "warm")
+          return 0xFFFF00;
+        else if (type == "passive")
+          return 0x00FF00;
+        else if (type == "active")
+          return 0x00FFFF;
+        else if (type == "off")
+          return 0xCCCCCC;
+        else
+          return 0xFFFFFF;
+      }
+    };
+
+    std::optional<TripPoint> current_trip_point;
     long temperature;
   };
+
   std::optional<ThermalInfo> _thermal;
 
 public:
@@ -100,4 +118,8 @@ public:
   std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(500);
   }
+
+  bool has_tooltip() const override { return true; }
+  void draw_tooltip(ui::draw &, std::chrono::duration<double>,
+                    unsigned) const override;
 };
