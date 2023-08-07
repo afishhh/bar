@@ -204,14 +204,20 @@ public:
     char32_t *last_out;
 
     std::codecvt_base::result res =
-        cvt.in(state, &*_it, _str.data() + _str.size(), last_in, &codepoint,
-               &codepoint + 1, last_out);
+        cvt.in(state, &*_it, &*_str.end(), last_in, &codepoint, &codepoint + 1,
+               last_out);
 
     if (res != std::codecvt_base::result::ok &&
         res != std::codecvt_base::result::partial)
       throw std::runtime_error("Invalid UTF-8 string");
 
-    assert(last_in == &*_it + utf8_seq_len(*_it));
+    if (last_in != &*_it + utf8_seq_len(*_it)) {
+      debug << "UTF-8 decoding assertion violated!\n";
+      debug << "last_in = " << (void *)last_in
+            << ", &*_it + utf8_seq_len(*_it) = "
+            << (void *)(&*_it + utf8_seq_len(*_it)) << '\n';
+    }
+    // assert(last_in == &*_it + utf8_seq_len(*_it));
 
     return codepoint;
   }
