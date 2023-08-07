@@ -1,19 +1,23 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <string>
 
 #include "../block.hh"
 
 class ClockBlock : public Block {
-  std::string _text;
+  struct tm *_time;
 
 public:
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
-  void animate(EventLoop::duration) override;
-  // The animate is only here so that a redraw event is triggered.
-  std::optional<EventLoop::duration> animate_interval() override {
+  void update() override;
+  std::chrono::duration<double> update_interval() override {
     return std::chrono::milliseconds(250);
   }
+
+  bool has_tooltip() const override { return true; }
+  void draw_tooltip(ui::draw &, std::chrono::duration<double>,
+                    unsigned int) const override;
 };
