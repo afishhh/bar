@@ -1,9 +1,11 @@
+#include <algorithm>
 #include <cstddef>
 #include <string>
 #include <variant>
 #include <vector>
 
 #include "ui/draw.hh"
+#include "ui/util.hh"
 #include "util.hh"
 
 class BufDraw : public ui::draw {
@@ -20,12 +22,16 @@ class BufDraw : public ui::draw {
     pos_t x1, y1, w, h;
     color fill_color;
   };
+  struct FilledCircle {
+    pos_t x, y, d;
+    color fill_color;
+  };
   struct Text {
     pos_t x, y;
     std::string text;
     color stroke_color;
   };
-  using operation = std::variant<Line, Rect, FilledRect, Text>;
+  using operation = std::variant<Line, Rect, FilledRect, FilledCircle, Text>;
 
   std::vector<operation> _buf;
   // FIXME: Don't store a draw
@@ -51,6 +57,10 @@ public:
                        _draw.frect(rect.x1 + off_x, rect.y1 + off_y, rect.w,
                                    rect.h, rect.fill_color);
                      },
+                     [&](FilledCircle &circle) {
+                       _draw.fcircle(circle.x + off_x, circle.y + off_y, circle.d,
+                                     circle.fill_color);
+                     },
                      [&](Text &text) {
                        _draw.text(text.x + off_x, text.y + off_y, text.text,
                                   text.stroke_color);
@@ -59,6 +69,40 @@ public:
                  op);
     }
   }
+
+  uvec2 calculate_size() {
+    pos_t x{0}, y{0};
+
+    for (auto &op : _buf) {
+      std::visit(overloaded{
+                     [&](Line &line) {
+                       x = std::max({x, line.x1, line.x2});
+                       y = std::max({y, line.y1, line.y2});
+                     },
+                     [&](Rect &rect) {
+                       x = std::max(x, rect.x1 + rect.w);
+                       y = std::max(y, rect.y1 + rect.h);
+                     },
+                     [&](FilledRect &rect) {
+                       x = std::max(x, rect.x1 + rect.w);
+                       y = std::max(y, rect.y1 + rect.h);
+                     },
+                     [&](FilledCircle &circle) {
+                       x = std::max(x, circle.x + circle.d);
+                       y = std::max(y, circle.y + circle.d);
+                     },
+                     [&](Text &text) {
+                       auto [w, h] = textsz(text.text);
+                       x = std::max(x, text.x + w);
+                       y = std::max(y, text.y + h);
+                     },
+                 },
+                 op);
+    }
+
+    return {x, y};
+  }
+
   void clear() { _buf.clear(); }
 
   void load_font(std::string_view name) final override;
@@ -77,8 +121,10 @@ public:
   void frect(pos_t x, pos_t y, pos_t w, pos_t h,
              color = color::rgb(0xFFFFFF)) final override;
 
+  void fcircle(pos_t x, pos_t y, pos_t d, color) final override;
+
   pos_t text(pos_t x, pos_t y, std::string_view text,
              color = color::rgb(0xFFFFFF)) final override;
-  pos_t textw(std::string_view text) final override;
-  pos_t textw(std::u32string_view text) final override;
+  uvec2 textsz(std::string_view text) final override;
+  uvec2 textsz(std::u32string_view text) final override;
 };

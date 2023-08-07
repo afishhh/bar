@@ -1,4 +1,5 @@
 #include "bufdraw.hh"
+#include "ui/util.hh"
 
 #include <string>
 
@@ -21,14 +22,18 @@ void BufDraw::frect(pos_t x, pos_t y, pos_t w, pos_t h, color c) {
   _buf.push_back(FilledRect{x, y, w, h, c});
 }
 
+void BufDraw::fcircle(pos_t x, pos_t y, pos_t d, color c) {
+  _buf.push_back(FilledCircle{x, y, d, c});
+}
+
 ui::draw::pos_t BufDraw::text(pos_t x, pos_t y, std::string_view text,
                               color c) {
   _buf.push_back(Text{x, y, std::string(text), c});
   return _draw.textw(text);
 }
-ui::draw::pos_t BufDraw::textw(std::string_view text) {
-  return _draw.textw(text);
+uvec2 BufDraw::textsz(std::string_view text) {
+  return _draw.textsz(text);
 }
-ui::draw::pos_t BufDraw::textw(std::u32string_view text) {
-  return _draw.textw(text);
+uvec2 BufDraw::textsz(std::u32string_view text) {
+  return _draw.textsz(text);
 }

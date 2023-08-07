@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "../color.hh"
+#include "util.hh"
 
 namespace ui {
 
@@ -37,6 +38,8 @@ public:
   virtual void hrect(pos_t x, pos_t y, pos_t w, pos_t h, color = 0xFFFFFF) = 0;
   virtual void frect(pos_t x, pos_t y, pos_t w, pos_t h, color = 0xFFFFFF) = 0;
 
+  virtual void fcircle(pos_t x, pos_t y, pos_t d, color = 0xFFFFFF) = 0;
+
   // TODO: Add a text overload returning an output iterator for more efficient
   //       formatting using std::format_to
   // TODO: Add a text overload accepting a std::u32string_view.
@@ -47,9 +50,13 @@ public:
   virtual pos_t text(pos_t x, std::string_view text, color color = 0xFFFFFF) {
     return this->text(x, vcenter(), text, color);
   }
+  virtual uvec2 textsz(std::string_view text) = 0;
+  virtual uvec2 textsz(std::u32string_view text) = 0;
 
-  virtual pos_t textw(std::string_view text) = 0;
-  virtual pos_t textw(std::u32string_view text) = 0;
+  pos_t textw(std::string_view text) { return textsz(text).x; }
+  pos_t textw(std::u32string_view text) { return textsz(text).x; }
+  pos_t texth(std::string_view text) { return textsz(text).y; }
+  pos_t texth(std::u32string_view text) { return textsz(text).y; }
 };
 
 } // namespace ui

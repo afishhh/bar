@@ -18,18 +18,21 @@
 
 #include "../../format.hh"
 #include "../draw.hh"
+#include "../util.hh"
 
 namespace ui::x11 {
 
 class draw : public ui::draw {
 private:
+  friend class window;
+
   Display *_dpy;
   Drawable _win;
   Drawable _drw;
   GC _gc;
   std::vector<XftFont *> _fonts;
   XftDraw *_xft_draw;
-  std::size_t _height;
+  uvec2 _size;
 
   Visual *_visual = DefaultVisual(_dpy, DefaultScreen(_dpy));
   Colormap _cmap = XCreateColormap(_dpy, _win, _visual, AllocNone);
@@ -40,16 +43,16 @@ private:
   XftColor *lookup_xft_color(color color);
 
   template <typename Iter, typename End>
-  requires requires(Iter it, End end) {
-    { it != end } -> std::convertible_to<bool>;
-    { *it } -> std::convertible_to<char32_t>;
-    {++it};
-  }
-  pos_t _iterator_textw(Iter begin, End end);
+    requires requires(Iter it, End end) {
+      { it != end } -> std::convertible_to<bool>;
+      { *it } -> std::convertible_to<char32_t>;
+      { ++it };
+    }
+  uvec2 _iterator_textsz(Iter begin, End end);
 
 public:
-  draw(Display *dpy, Window window, Drawable drawable, std::size_t height)
-      : _dpy(dpy), _win(window), _drw(drawable), _height(height) {
+  draw(Display *dpy, Window window, Drawable drawable, uvec2 size)
+      : _dpy(dpy), _win(window), _drw(drawable), _size(size) {
     _gc = XCreateGC(dpy, drawable, 0, nullptr);
     _xft_draw = XftDrawCreate(dpy, drawable, DefaultVisual(dpy, 0),
                               DefaultColormap(dpy, 0));
@@ -73,14 +76,16 @@ public:
       throw std::runtime_error(std::format("Failed to load font {}", name));
   }
 
-  pos_t width() const override {
-    // TODO: get drawable dimensions
-    return DisplayWidth(_dpy, DefaultScreen(_dpy));
-  }
-  pos_t height() const override { return _height; }
+  pos_t width() const override { return _size.x; }
+  pos_t height() const override { return _size.y; }
 
   pos_t vcenter() const override { return height() / 2; }
   pos_t hcenter() const override { return width() / 2; }
+
+  void fcircle(pos_t x, pos_t y, pos_t d, color color) override {
+    XSetForeground(_dpy, _gc, color.as_rgb());
+    XFillArc(_dpy, _drw, _gc, x, y, d, d, 0, 23040);
+  }
 
   void hrect(pos_t x, pos_t y, pos_t w, pos_t h, color color) override {
     XSetForeground(_dpy, _gc, color.as_rgb());
@@ -101,8 +106,8 @@ public:
 
   pos_t text(pos_t x, pos_t y, std::string_view, color color) override;
 
-  pos_t textw(std::string_view text) final override;
-  pos_t textw(std::u32string_view text) final override;
+  uvec2 textsz(std::string_view text) final override;
+  uvec2 textsz(std::u32string_view text) final override;
 };
 
 } // namespace ui::x11

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 
 #include "loop.hh"
 #include "ui/draw.hh"
@@ -41,4 +42,10 @@ public:
   virtual std::chrono::duration<double> update_interval() {
     return std::chrono::duration<double>::max();
   };
+
+  virtual bool has_tooltip() const { return false; }
+  virtual void draw_tooltip(ui::draw &, std::chrono::duration<double>,
+                            unsigned) const {
+    throw std::logic_error("Block::draw_tooltip called but not implemented");
+  }
 };

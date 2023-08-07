@@ -266,13 +266,13 @@ draw::pos_t draw::text(pos_t x, pos_t y, std::string_view text, color color) {
 }
 
 template <typename Iter, typename End>
-requires requires(Iter it, End end) {
-  { it != end } -> std::convertible_to<bool>;
-  { *it } -> std::convertible_to<char32_t>;
-  {++it};
-}
-draw::pos_t draw::_iterator_textw(Iter it, End end) {
-  size_t total = 0;
+  requires requires(Iter it, End end) {
+    { it != end } -> std::convertible_to<bool>;
+    { *it } -> std::convertible_to<char32_t>;
+    { ++it };
+  }
+uvec2 draw::_iterator_textsz(Iter it, End end) {
+  uvec2 result{0, 0};
 
   for (; it != end; ++it) {
     if (auto font = lookup_font(*it)) {
@@ -280,19 +280,21 @@ draw::pos_t draw::_iterator_textw(Iter it, End end) {
       XGlyphInfo info;
       XftTextExtents32(
           _dpy, font, reinterpret_cast<const FcChar32 *>(&codepoint), 1, &info);
-      total += info.xOff;
+
+      result.x += info.xOff,
+          result.y = std::max(result.y, (unsigned)info.height);
     }
   }
 
-  return total;
+  return result;
 }
 
-draw::pos_t draw::textw(std::string_view text) {
-  return _iterator_textw(codepoint_iterator(text), std::default_sentinel);
+uvec2 draw::textsz(std::string_view text) {
+  return _iterator_textsz(codepoint_iterator(text), std::default_sentinel);
 }
 
-draw::pos_t draw::textw(std::u32string_view text) {
-  return _iterator_textw(text.begin(), text.end());
+uvec2 draw::textsz(std::u32string_view text) {
+  return _iterator_textsz(text.begin(), text.end());
 }
 
 } // namespace ui::x11

@@ -1,6 +1,7 @@
 #include <regex>
 #include <string>
 
+#include "color.hh"
 #include "format.hh"
 #include "util.hh"
 

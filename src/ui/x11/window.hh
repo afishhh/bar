@@ -36,6 +36,9 @@ public:
 
   ui::draw &drawer() override;
   uvec2 size() const override;
+  void move(uvec2) override;
+  void resize(uvec2) override;
+  void moveresize(uvec2 pos, uvec2 size) override;
   void flip() override;
 
   void show() override {
@@ -44,7 +47,7 @@ public:
     _conn->flush();
   }
 
-  void hide() {
+  void hide() override {
     XSelectInput(_conn->display(), _xwinid, StructureNotifyMask);
     XUnmapWindow(_conn->display(), _xwinid);
     _conn->flush();
