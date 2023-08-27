@@ -236,14 +236,23 @@ public:
                          _hovered_block->last_size.x);
 
       auto dim = bd.calculate_size();
-      _tooltip_window->moveresize(
-          {_hovered_block->last_pos.x +
-               (_hovered_block->last_size.x - dim.x) / 2 - 8,
-           (unsigned)(_hovered_block->last_pos.y + config::height)},
-          {dim.x + 16, dim.y + 16});
-      _tooltip_window->drawer().frect(0, 0, dim.x + 16, dim.y + 16,
-                                      color(0x000000));
-      _tooltip_window->drawer().hrect(0, 0, dim.x + 15, dim.y + 15,
+
+      uvec2 pos{_hovered_block->last_pos.x +
+                    (signed)(_hovered_block->last_size.x - dim.x - 16) / 2,
+                (unsigned)(_hovered_block->last_pos.y + config::height)};
+      uvec2 size{dim.x + 16, dim.y + 16};
+      auto dsize = _connection->available_size();
+
+      if (pos.x + size.x > dsize.x)
+        pos.x = dsize.x - size.x;
+      // If pos.x overflows then it will surely be bigger than dsize.x and if
+      // something else lead to it being bigger then we won't be able to put it
+      // outside the screen anyway
+      if (pos.x > dsize.x)
+        pos.x = 0;
+
+      _tooltip_window->moveresize(pos, size);
+      _tooltip_window->drawer().hrect(0, 0, size.x - 1, size.y - 1,
                                       color(0xFFAA00));
       bd.draw_offset(8, 8);
 
