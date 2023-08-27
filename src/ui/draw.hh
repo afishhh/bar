@@ -23,8 +23,6 @@ public:
   draw &operator=(draw &&) = delete;
   virtual ~draw() = default;
 
-  virtual void load_font(std::string_view name) = 0;
-
   // FIXME: How should this work?
   virtual pos_t height() const = 0;
   virtual pos_t width() const = 0;

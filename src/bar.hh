@@ -69,17 +69,13 @@ class bar {
           xwin)
         xwin->override_redirect(true);
 
-      {
-        auto &drawer = _window->drawer();
-        for (auto fname : config::fonts)
-          drawer.load_font(fname);
-      }
+      auto fonts = std::make_shared<ui::x11::fonts>(
+          (ui::x11::connection *)_connection.get());
+      for (auto fname : config::fonts)
+        fonts->add(fname);
 
-      {
-        auto &drawer = _tooltip_window->drawer();
-        for (auto fname : config::fonts)
-          drawer.load_font(fname);
-      }
+      ((ui::x11::draw &)_window->drawer()).set_fonts(fonts);
+      ((ui::x11::draw &)_tooltip_window->drawer()).set_fonts(fonts);
 
       // TODO: Abstract this away from X11
       auto x11conn = static_cast<ui::x11::connection *>(_connection.get());

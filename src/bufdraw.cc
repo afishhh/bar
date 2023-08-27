@@ -3,8 +3,6 @@
 
 #include <string>
 
-void BufDraw::load_font(std::string_view name) { _draw.load_font(name); }
-
 ui::draw::pos_t BufDraw::height() const { return _draw.height(); }
 ui::draw::pos_t BufDraw::width() const { return _draw.width(); }
 

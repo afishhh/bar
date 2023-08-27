@@ -51,7 +51,7 @@ XftFont *draw::lookup_font(char32_t codepoint) {
   if (auto f = _font_cache.find(codepoint); f != _font_cache.end())
     return f->second;
 
-  for (const auto &font : _fonts) {
+  for (const auto &font : _fonts->_fonts) {
     if (XftCharExists(_dpy, font, codepoint)) {
       _font_cache.emplace(codepoint, font);
       return font;

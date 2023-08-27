@@ -105,8 +105,6 @@ public:
 
   void clear() { _buf.clear(); }
 
-  void load_font(std::string_view name) final override;
-
   pos_t height() const final override;
   pos_t width() const final override;
 

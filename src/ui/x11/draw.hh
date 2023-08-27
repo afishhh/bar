@@ -19,6 +19,7 @@
 #include "../../format.hh"
 #include "../draw.hh"
 #include "../util.hh"
+#include "fonts.hh"
 
 namespace ui::x11 {
 
@@ -30,7 +31,7 @@ private:
   Drawable _win;
   Drawable _drw;
   GC _gc;
-  std::vector<XftFont *> _fonts;
+  std::shared_ptr<fonts> _fonts;
   XftDraw *_xft_draw;
   uvec2 _size;
 
@@ -51,30 +52,23 @@ private:
   uvec2 _iterator_textsz(Iter begin, End end);
 
 public:
-  draw(Display *dpy, Window window, Drawable drawable, uvec2 size)
-      : _dpy(dpy), _win(window), _drw(drawable), _size(size) {
-    _gc = XCreateGC(dpy, drawable, 0, nullptr);
-    _xft_draw = XftDrawCreate(dpy, drawable, DefaultVisual(dpy, 0),
-                              DefaultColormap(dpy, 0));
+  draw(x11::connection* conn, Window window, Drawable drawable, uvec2 size)
+      : _dpy(conn->display()), _win(window), _drw(drawable),
+        _fonts(std::make_shared<fonts>(conn)), _size(size) {
+    _gc = XCreateGC(conn->display(), drawable, 0, nullptr);
+    _xft_draw = XftDrawCreate(conn->display(), drawable, DefaultVisual(conn->display(), 0),
+                              DefaultColormap(conn->display(), 0));
   }
 
   ~draw() {
     XftDrawDestroy(_xft_draw);
     for (auto &color : _xft_color_cache)
       XftColorFree(_dpy, _visual, _cmap, &color.second);
-    for (auto font : _fonts)
-      XftFontClose(_dpy, font);
     XFreeColormap(_dpy, _cmap);
   }
 
-  void set_fonts(std::vector<XftFont *> &&fonts) { _fonts = std::move(fonts); }
-  void load_font(std::string_view name) override {
-    if (auto *font = XftFontOpenName(_dpy, DefaultScreen(_dpy), name.data());
-        font)
-      _fonts.push_back(font);
-    else
-      throw std::runtime_error(std::format("Failed to load font {}", name));
-  }
+  void set_fonts(std::shared_ptr<fonts> fonts) { _fonts = std::move(fonts); }
+  std::shared_ptr<class fonts> const &get_fonts() { return _fonts; }
 
   pos_t width() const override { return _size.x; }
   pos_t height() const override { return _size.y; }

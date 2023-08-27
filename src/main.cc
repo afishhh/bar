@@ -25,17 +25,17 @@
 #include <utility>
 #include <vector>
 
+#include "bar.hh"
 #include "block.hh"
 #include "config.hh"
 #include "events.hh"
 #include "format.hh"
 #include "log.hh"
 #include "loop.hh"
-#include "bar.hh"
 #include "util.hh"
 
 int main() {
-  bar& bar = bar::instance();
+  bar &bar = bar::instance();
 
   for (auto &block : config::left_blocks)
     bar.add_left(*block);
