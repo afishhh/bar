@@ -5,11 +5,13 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
 #include "events.hh"
-#include "format.hh"
 #include "guard.hh"
 #include "log.hh"
 #include "loop.hh"
@@ -63,7 +65,7 @@ class bar {
       }
 
       _tooltip_window = _connection->create_window(
-          std::format("{} tooltip", config::x11::window_name), {0, 0}, {1, 1});
+          fmt::format("{} tooltip", config::x11::window_name), {0, 0}, {1, 1});
 
       if (auto *xwin = dynamic_cast<ui::x11::window *>(_tooltip_window.get());
           xwin)
@@ -114,7 +116,7 @@ class bar {
         }
       });
     } else {
-      std::print(error, "No suitable window backend found!\n");
+      fmt::print(error, "No suitable window backend found!\n");
       std::exit(1);
     }
   }
@@ -148,7 +150,7 @@ class bar {
     try {
       _init_ui();
     } catch (std::runtime_error &e) {
-      std::print(error, "Failed to initialize window backend: {}\n", e.what());
+      fmt::print(error, "Failed to initialize window backend: {}\n", e.what());
       std::exit(1);
     }
   }

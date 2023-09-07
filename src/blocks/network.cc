@@ -23,7 +23,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "../format.hh"
+#include <fmt/core.h>
+
 #include "../util.hh"
 #include "network.hh"
 
@@ -79,7 +80,7 @@ void iwctl_update_station(WifiStation &station) {
 
   if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
     throw std::runtime_error(
-        std::format("iwctl station {} show exited with non-zero exit status {}",
+        fmt::format("iwctl station {} show exited with non-zero exit status {}",
                     station.name, WEXITSTATUS(wstatus)));
 
   std::unordered_map<std::string, std::string> properties;
@@ -287,8 +288,8 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
       y += 20;
 
       {
-        draw.text(0, 12 + y, std::format("RSSI: {}", conn->rssi));
-        auto t = std::format("Security: {}", conn->security);
+        draw.text(0, 12 + y, fmt::format("RSSI: {}", conn->rssi));
+        auto t = fmt::format("Security: {}", conn->security);
         draw.text(width - draw.textw(t), 12 + y, t);
       }
 
@@ -297,7 +298,7 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
       std::string_view ip = "Unknown";
       if (conn->ipv4_address)
         ip = conn->ipv4_address.value();
-      draw.text(0, 12 + y, std::format("IP: {}", ip));
+      draw.text(0, 12 + y, fmt::format("IP: {}", ip));
 
       y += 20;
     }
@@ -307,7 +308,7 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
     y += 10;
 
   draw.text(0, 12 + y,
-            std::format("Rx {: >8}/s", to_sensible_unit(_rx_bytes, 1)));
-  auto t = std::format("Tx {: >8}/s", to_sensible_unit(_tx_bytes, 1));
+            fmt::format("Rx {: >8}/s", to_sensible_unit(_rx_bytes, 1)));
+  auto t = fmt::format("Tx {: >8}/s", to_sensible_unit(_tx_bytes, 1));
   draw.text((width - draw.textw(t)), 12 + y, t);
 }

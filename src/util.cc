@@ -1,8 +1,9 @@
 #include <regex>
 #include <string>
 
+#include <fmt/core.h>
+
 #include "color.hh"
-#include "format.hh"
 #include "util.hh"
 
 std::string to_sensible_unit(size_t bytes, size_t precision) {
@@ -15,7 +16,7 @@ std::string to_sensible_unit(size_t bytes, size_t precision) {
     unit++;
   }
 
-  return std::format(
+  return fmt::format(
       "{:.{}f}{}", result, precision,
       units[std::min(unit, sizeof units / sizeof(units[0])) - 1]);
 }

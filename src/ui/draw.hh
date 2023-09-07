@@ -5,6 +5,8 @@
 #include <iterator>
 #include <string_view>
 
+#include <fmt/core.h>
+
 #include "../color.hh"
 #include "util.hh"
 
@@ -39,7 +41,7 @@ public:
   virtual void fcircle(pos_t x, pos_t y, pos_t d, color = 0xFFFFFF) = 0;
 
   // TODO: Add a text overload returning an output iterator for more efficient
-  //       formatting using std::format_to
+  //       formatting using fmt::format_to
   // TODO: Add a text overload accepting a std::u32string_view.
   //       This could be implemented using the planned text output iterator
   virtual pos_t text(pos_t x, pos_t y, std::string_view text,

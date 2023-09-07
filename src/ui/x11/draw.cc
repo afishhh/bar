@@ -21,7 +21,9 @@
 #include <unordered_set>
 #include <utility>
 
-#include "../../format.hh"
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include "../../log.hh"
 #include "../../util.hh"
 #include "draw.hh"
@@ -77,13 +79,13 @@ XftFont *draw::lookup_font(char32_t codepoint) {
               last_in, out.begin(), out.end() - 1, last_out);
   _font_cache.emplace(codepoint, nullptr);
   if (res != std::codecvt_base::ok)
-    std::print(warn, "Invalid codepoint 0x{:0>8X}\n", (std::uint32_t)codepoint);
+    fmt::print(warn, "Invalid codepoint 0x{:0>8X}\n", (std::uint32_t)codepoint);
   else {
     out[last_out - out.begin()] = '\0';
     std::string_view sv{out.begin(),
                         (std::string_view::size_type)(last_out - out.begin())};
     // Ignore some common characters not meant to be handled by fonts.
-    std::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
+    fmt::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
                (std::uint32_t)codepoint, sv);
   }
   return nullptr;

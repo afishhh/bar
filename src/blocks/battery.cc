@@ -6,7 +6,8 @@
 #include <optional>
 #include <string>
 
-#include "../format.hh"
+#include <fmt/core.h>
+
 #include "../util.hh"
 #include "battery.hh"
 
@@ -70,14 +71,14 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   x += draw.text(x, draw.vcenter(), _config.prefix, _config.prefix_color);
   if (_config.show_percentage)
     x +=
-        draw.text(x, draw.vcenter(), std::format("{:>5.1f}%", battery_percent));
+        draw.text(x, draw.vcenter(), fmt::format("{:>5.1f}%", battery_percent));
 
   x += 5;
 
   if (_config.show_wattage) {
     double wattage =
         (_voltage_now / 1000. / 1000.) * (_current_now / 1000. / 1000.);
-    x += draw.text(x, draw.vcenter(), std::format("{:>4.1f}W", wattage));
+    x += draw.text(x, draw.vcenter(), fmt::format("{:>4.1f}W", wattage));
   }
 
   x += 5;
@@ -156,7 +157,7 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   if (_config.show_degradation) {
     x += 5;
     double degradation = (double)_charge_full / _charge_full_design * 100.;
-    x += draw.text(x, draw.vcenter(), std::format("{:5>.1f}%", degradation));
+    x += draw.text(x, draw.vcenter(), fmt::format("{:5>.1f}%", degradation));
   }
 
   return x;

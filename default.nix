@@ -1,4 +1,4 @@
-{ stdenv
+{ gcc13Stdenv
 , cmake
 , ninja
 , pkg-config
@@ -21,7 +21,7 @@
 , ...
 }:
 
-stdenv.mkDerivation {
+gcc13Stdenv.mkDerivation {
   name = "fbar";
   version = "0.1.0";
 

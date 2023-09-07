@@ -7,8 +7,9 @@
 #include <mutex>
 #include <optional>
 
+#include <fmt/core.h>
+
 #include "../block.hh"
-#include "../format.hh"
 #include "../util.hh"
 
 class ScriptBlock : public Block {
@@ -30,7 +31,7 @@ public:
               const std::chrono::duration<double> &interval, int update_signal)
       : _path(path), _interval(interval), _update_signal(update_signal) {
     if (*_update_signal > SIGRTMAX || _update_signal < SIGRTMIN)
-      throw std::runtime_error(std::format(
+      throw std::runtime_error(fmt::format(
           "Update signal number out of range! Available range: [{}, {}]",
           SIGRTMIN, SIGRTMAX));
   }

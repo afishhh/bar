@@ -7,7 +7,9 @@
 #include <string>
 #include <string_view>
 
-#include "../format.hh"
+#include <fmt/core.h>
+#include <fmt/chrono.h>
+
 #include "clock.hh"
 
 void ClockBlock::update() {
@@ -17,16 +19,16 @@ void ClockBlock::update() {
 }
 
 size_t ClockBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
-  return draw.text(0, draw.vcenter(), std::format("{:%B %d %H:%M:%S}", *_time));
+  return draw.text(0, draw.vcenter(), fmt::format("{:%B %d %H:%M:%S}", *_time));
 }
 
 std::string_view constexpr WEEKDAYS[] = {"Monday",   "Tuesday", "Wednesday",
                                          "Thursday", "Friday",  "Saturday",
                                          "Sunday"};
-std::string_view constexpr MONTHS[] = {
-    "January", "February", "March",     "April",   "May",      "June",
-    "July",    "August",   "September", "October", "November", "December",
-};
+// std::string_view constexpr MONTHS[] = {
+//     "January", "February", "March",     "April",   "May",      "June",
+//     "July",    "August",   "September", "October", "November", "December",
+// };
 // FIXME: leap years and shit
 unsigned constexpr MONTH_LENGHTS[] = {31, 28, 31, 30, 31, 30,
                                       31, 31, 30, 31, 30, 31};
@@ -36,10 +38,10 @@ void ClockBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   auto const width = 180;
   auto const calendar_cell_size = 24;
 
-  auto title = std::format("{:%B %d %Y}", *_time);
+  auto title = fmt::format("{:%B %d %Y}", *_time);
   draw.text((width - draw.textw(title)) / 2, 9, title);
 
-  auto subtitle = std::format("{:%H:%M:%S}", *_time);
+  auto subtitle = fmt::format("{:%H:%M:%S}", *_time);
   draw.text((width - draw.textw(subtitle)) / 2, 30, subtitle);
 
   auto const calendar_width = 7 * calendar_cell_size;
@@ -47,7 +49,7 @@ void ClockBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   auto const calendar_lmargin = (width - calendar_width) / 2;
 
   for (size_t i = 0; i < 7; ++i) {
-    auto t = std::format("{}", WEEKDAYS[i].substr(0, 2));
+    auto t = fmt::format("{}", WEEKDAYS[i].substr(0, 2));
     draw.text(calendar_lmargin + i * calendar_cell_size +
                   (calendar_cell_size - draw.textw(t)) / 2,
               calendar_tmargin + 12, t);

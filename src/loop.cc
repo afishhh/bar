@@ -42,7 +42,7 @@ void EventLoop::pump() {
                next.var());
 
     do {
-      auto current = std::move(_tasks.top());
+      auto current = _tasks.top();
       _tasks.pop();
 
       std::visit(overloaded{[](task::oneshot const &t) { t.fn(); },

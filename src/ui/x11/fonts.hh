@@ -8,6 +8,8 @@
 #include <string_view>
 #include <vector>
 
+#include <fmt/core.h>
+
 #include "connection.hh"
 
 namespace ui::x11 {
@@ -35,7 +37,7 @@ public:
         font)
       _fonts.push_back(font);
     else
-      throw std::runtime_error(std::format("Failed to load font {}", name));
+      throw std::runtime_error(fmt::format("Failed to load font {}", name));
   }
 };
 

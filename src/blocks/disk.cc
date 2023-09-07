@@ -9,9 +9,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include <sys/vfs.h>
 
-#include "../format.hh"
 #include "../util.hh"
 #include "disk.hh"
 
@@ -72,7 +74,7 @@ void DiskBlock::update() {
   if (statfs(_mountpoint.c_str(), &_statfs) < 0)
     throw std::system_error(
         errno, std::generic_category(),
-        std::format("statfs({})", std::quoted(_mountpoint.string())));
+        fmt::format("statfs({:?})", _mountpoint.string()));
 }
 
 size_t DiskBlock::draw(ui::draw &draw, std::chrono::duration<double>) {

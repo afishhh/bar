@@ -16,7 +16,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../../format.hh"
 #include "../draw.hh"
 #include "../util.hh"
 #include "fonts.hh"

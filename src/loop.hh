@@ -25,7 +25,8 @@
 #include <variant>
 #include <vector>
 
-#include "format.hh"
+#include <fmt/core.h>
+
 #include "log.hh"
 #include "util.hh"
 
@@ -153,7 +154,7 @@ private:
       //       Since we always know what our desired type is and we can just
       //       reinterpret_cast directly to it.
       if (dynamic_cast<EventQueue<E> *>(this) == nullptr) {
-        std::print(error, "Invalid into_queue_of<E> call (this: {}, E: {})",
+        fmt::print(error, "Invalid into_queue_of<E> call (this: {}, E: {})",
                    typeid(*this).name(), typeid(E).name());
         std::exit(1);
       }

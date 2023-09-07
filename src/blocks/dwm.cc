@@ -9,12 +9,14 @@
 #include <string_view>
 #include <vector>
 
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include "dwmipcpp/connection.hpp"
 #include "dwmipcpp/errors.hpp"
 #include "dwmipcpp/types.hpp"
 #include "dwmipcpp/util.hpp"
 
-#include "../format.hh"
 #include "../events.hh"
 #include "../log.hh"
 #include "dwm.hh"
@@ -95,7 +97,7 @@ void DwmBlock::late_init() {
             _focused_client_floating = c->states.is_floating;
             _focused_client_urgent = c->states.is_urgent;
           } catch (dwmipc::ResultFailureError &err) {
-            std::print(
+            fmt::print(
                 warn, "get_client(ClientFocusChangeEvent->client) failed: {}\n",
                 err.what());
 

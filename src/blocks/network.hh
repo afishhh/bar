@@ -3,11 +3,16 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
+#include <filesystem>
 #include <forward_list>
 #include <mutex>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <fmt/core.h>
 
 #include "../block.hh"
 

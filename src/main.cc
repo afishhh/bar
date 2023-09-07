@@ -29,7 +29,6 @@
 #include "block.hh"
 #include "config.hh"
 #include "events.hh"
-#include "format.hh"
 #include "log.hh"
 #include "loop.hh"
 #include "util.hh"

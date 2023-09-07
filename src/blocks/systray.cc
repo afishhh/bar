@@ -9,10 +9,11 @@
 #include <optional>
 #include <stdexcept>
 
+#include <fmt/core.h>
+
 #include "../bar.hh"
 #include "../config.hh"
 #include "../events.hh"
-#include "../format.hh"
 #include "../log.hh"
 #include "../ui/x11/connection.hh"
 #include "../ui/x11/window.hh"
@@ -29,7 +30,7 @@ void XSystrayBlock::relayout_tray() {
   auto &bar = bar::instance();
   auto *xconn = dynamic_cast<ui::x11::connection *>(&bar.connection());
   if (!xconn) {
-    std::print(warn, "XSystrayBlock only works on the X11 backend\n");
+    fmt::print(warn, "XSystrayBlock only works on the X11 backend\n");
     return;
   }
 
@@ -53,11 +54,11 @@ relayout_tray:
         if (err == BadWindow) {
           if (++bad_windows >= 10) {
             _icons.erase(window);
-            std::print(warn, "xsystray: Undocked broken window {}\n", window);
+            fmt::print(warn, "xsystray: Undocked broken window {}\n", window);
             goto relayout_tray;
           }
         } else
-          std::print(
+          fmt::print(
               warn, "xsystray: Could not move/resize window {} (X error: {})\n",
               window, err);
       }
@@ -76,7 +77,7 @@ void XSystrayBlock::late_init() {
   auto &bar = bar::instance();
   auto *xconn = dynamic_cast<ui::x11::connection *>(&bar.connection());
   if (!xconn) {
-    std::print(warn, "XSystrayBlock only works on the X11 backend\n");
+    fmt::print(warn, "XSystrayBlock only works on the X11 backend\n");
     return;
   }
 
@@ -100,7 +101,7 @@ void XSystrayBlock::late_init() {
       case SYSTEM_TRAY_REQUEST_DOCK: {
         auto window = e.xclient.data.l[2];
         if (_icons.contains(window)) {
-          std::print(warn, "xsystray: Window {} requested docking twice",
+          fmt::print(warn, "xsystray: Window {} requested docking twice",
                      window);
           return;
         }
@@ -112,7 +113,7 @@ void XSystrayBlock::late_init() {
         if (auto err = xconn->trapped_error()) {
           char error_buffer[256];
           XGetErrorText(*xconn, err, error_buffer, sizeof(error_buffer));
-          std::print(warn, "xsystray: Could not dock window {} ({})\n", window,
+          fmt::print(warn, "xsystray: Could not dock window {} ({})\n", window,
                      error_buffer);
           xconn->trap_errors();
           embedder.drop();
@@ -120,21 +121,21 @@ void XSystrayBlock::late_init() {
           xconn->untrap_errors();
         } else {
           _icons.emplace(window, std::move(embedder));
-          std::print(info, "xsystray: Docked window {}\n", window);
+          fmt::print(info, "xsystray: Docked window {}\n", window);
         }
       } break;
       case SYSTEM_TRAY_BEGIN_MESSAGE:
-        std::print(
+        fmt::print(
             info,
             "xsystray: System tray BEGIN_MESSAGE (not implemented yet)\n");
         return;
       case SYSTEM_TRAY_CANCEL_MESSAGE:
-        std::print(
+        fmt::print(
             info,
             "xsystray: System tray CANCEL_MESSAGE (not implemented yet)\n");
         return;
       default:
-        std::print(info, "xsystray: Recieved unknown systray opcode: {}\n",
+        fmt::print(info, "xsystray: Recieved unknown systray opcode: {}\n",
                    e.xclient.data.l[1]);
         return;
       }
@@ -144,13 +145,13 @@ void XSystrayBlock::late_init() {
       // The client left us for someone else :(
       auto window = e.xreparent.window;
       _icons.erase(window);
-      std::print(info, "xsystray: Undocked reparented window {}\n",
+      fmt::print(info, "xsystray: Undocked reparented window {}\n",
                  e.xreparent.window);
     } else if (e.type == DestroyNotify &&
                _icons.contains(e.xdestroywindow.window)) {
       auto window = e.xdestroywindow.window;
       _icons.erase(window);
-      std::print(info, "xsystray: Undocked destroyed window {}\n",
+      fmt::print(info, "xsystray: Undocked destroyed window {}\n",
                  e.xdestroywindow.window);
     } else
       return;
@@ -167,7 +168,7 @@ void XSystrayBlock::late_init() {
                   PropModeReplace, (unsigned char *)&orientation_value_atom, 1);
 
   auto sn = XScreenNumberOfScreen(xconn->screen());
-  auto selection_atom_name = std::format("_NET_SYSTEM_TRAY_S{}", sn);
+  auto selection_atom_name = fmt::format("_NET_SYSTEM_TRAY_S{}", sn);
   auto selection_atom = xconn->intern_atom(selection_atom_name);
   if (!XSetSelectionOwner(*xconn, selection_atom, *_tray, CurrentTime))
     throw std::runtime_error("Failed to set system tray selection owner");

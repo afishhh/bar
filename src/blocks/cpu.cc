@@ -11,7 +11,8 @@
 #include <string_view>
 #include <vector>
 
-#include "../format.hh"
+#include <fmt/core.h>
+
 #include "../util.hh"
 #include "cpu.hh"
 
@@ -136,7 +137,7 @@ size_t CpuBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   auto percentage = 100.0 * _diff.total.busy() / _diff.total.total();
 
   x += draw.text(x, y, _config.prefix, _config.prefix_color);
-  x += draw.text(x, y, std::format("{:>5.1f}%", percentage));
+  x += draw.text(x, y, fmt::format("{:>5.1f}%", percentage));
 
   if (_thermal) {
     x += draw.textw(" ");
@@ -146,7 +147,7 @@ size_t CpuBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
       if (auto const &point = _thermal->current_trip_point)
         color = point->color_by_type();
 
-    x += draw.text(x, y, std::format("{:.1f}°C", _thermal->temperature / 1000.),
+    x += draw.text(x, y, fmt::format("{:.1f}°C", _thermal->temperature / 1000.),
                    color);
   }
 
@@ -192,20 +193,20 @@ void CpuBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
     draw.frect(width - bar_width + 1, 4 + yoff, fill, 15, color);
 
     auto percentage = 100.0 * times.busy() / times.total();
-    auto ptext = std::format("{:.1f}%", percentage);
+    auto ptext = fmt::format("{:.1f}%", percentage);
     auto ptextw = draw.textw(ptext);
 
     auto x = width - bar_width - 4 - ptextw;
     draw.text(x, 12 + yoff, ptext);
 
     if (all && _thermal) {
-      auto ttext = std::format("{:.1f}°C", _thermal->temperature / 1000.);
+      auto ttext = fmt::format("{:.1f}°C", _thermal->temperature / 1000.);
       auto ttextw = draw.textw(ttext);
 
       draw.text(x - ttextw - 8, 12 + yoff, ttext);
 
       if (auto const &point = _thermal->current_trip_point) {
-        auto const &tptext = std::format("{} thermal point", point->type);
+        auto const &tptext = fmt::format("{} thermal point", point->type);
         auto tptextw = draw.textw(tptext);
         draw.text(width / 2 - tptextw / 2, 32 + yoff, tptext,
                   point->color_by_type());
@@ -218,15 +219,15 @@ void CpuBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   auto tpoff = (_thermal && _thermal->current_trip_point) * 10;
 
   for (unsigned core = 0; core < _diff.percore.size(); ++core)
-    draw_one(std::format("CORE {}", core), _diff.percore[core],
+    draw_one(fmt::format("CORE {}", core), _diff.percore[core],
              10 + tpoff + 20 * (core + 1), false);
 
   auto yoff = 40 + tpoff + 20 * _diff.percore.size();
   {
     draw.text(0, 12 + yoff,
-              std::format("SYSTEM: {:.1f}%",
+              fmt::format("SYSTEM: {:.1f}%",
                           100.0 * _diff.total.system / _diff.total.total()));
-    auto rtext = std::format("IOWAIT: {:.1f}%",
+    auto rtext = fmt::format("IOWAIT: {:.1f}%",
                              100.0 * _diff.total.iowait / _diff.total.total());
     draw.text(width - draw.textw(rtext), 12 + yoff, rtext);
   }
@@ -234,9 +235,9 @@ void CpuBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   yoff += 20;
   {
     draw.text(0, 12 + yoff,
-              std::format("USER {:.1f}%",
+              fmt::format("USER {:.1f}%",
                           100.0 * _diff.total.user / _diff.total.total()));
-    auto rtext = std::format("IDLE: {:.1f}%",
+    auto rtext = fmt::format("IDLE: {:.1f}%",
                              100.0 * _diff.total.idle / _diff.total.total());
     draw.text(width - draw.textw(rtext), 12 + yoff, rtext);
   }

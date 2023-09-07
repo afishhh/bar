@@ -47,7 +47,7 @@ add_executable(
 
 set_target_properties(
   ${PROJECT_NAME} PROPERTIES
-  CXX_STANDARD 20
+  CXX_STANDARD 23
   CXX_STANDARD_REQUIRED ON
 )
 
@@ -66,28 +66,14 @@ else()
 endif()
 
 find_package(X11 REQUIRED)
-
-include(CheckCXXSymbolExists)
-
-check_cxx_symbol_exists(std::format    "format" HAVE_STD_FORMAT)
-check_cxx_symbol_exists(std::format_to "format" HAVE_STD_FORMAT_TO)
-check_cxx_symbol_exists(std::print     "format" HAVE_STD_PRINT)
-
-if(NOT HAVE_STD_FORMAT OR NOT HAVE_STD_FORMAT_TO OR NOT HAVE_STD_PRINT)
-  message(WARNING "std::format, std::format_to, or std::print is not available.  Using libfmt as polyfill.")
-  find_package(fmt REQUIRED)
-
-  target_link_libraries(
-    ${PROJECT_NAME}
-    fmt::fmt
-  )
-endif()
+find_package(fmt REQUIRED)
 
 target_link_libraries(
   ${PROJECT_NAME}
   X11::X11
   X11::Xft
   X11::Xext
+  fmt::fmt
   ${DWMIPCPP_LIBRARIES}
   pthread
 )

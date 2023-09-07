@@ -11,8 +11,10 @@
 #include <stop_token>
 #include <thread>
 
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include "../../config.hh"
-#include "../../format.hh"
 #include "../../log.hh"
 #include "../draw.hh"
 #include "connection.hh"
@@ -67,7 +69,7 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
   {
     int mayor, minor;
     if (XdbeQueryExtension(display, &mayor, &minor))
-      std::print(info, "Supported Xdbe extension version {}.{}\n", mayor,
+      fmt::print(info, "Supported Xdbe extension version {}.{}\n", mayor,
                  minor);
     else
       throw std::runtime_error("Xdbe extension not supported");
@@ -78,7 +80,7 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
   //   XftFont *font = XftFontOpenName(_display, screen, font_name);
   //   if (font == NULL)
   //     throw std::runtime_error(
-  //         std::format("Cannot load font {}", std::quoted(font_name)));
+  //         fmt::format("Cannot load font {}", std::quoted(font_name)));
   //   _fonts.push_back(font);
   // }
 
@@ -118,8 +120,7 @@ connection::~connection() noexcept(false) {
 Atom connection::intern_atom(std::string_view name, bool only_if_exists) const {
   Atom atom = XInternAtom(_display, name.data(), only_if_exists);
   if (!atom)
-    throw std::runtime_error(
-        std::format("Cannot intern atom {}", std::quoted(name)));
+    throw std::runtime_error(fmt::format("Cannot intern atom {:?}", name));
   return atom;
 }
 
