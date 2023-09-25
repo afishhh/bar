@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include "log.hh"
 #include "util.hh"
