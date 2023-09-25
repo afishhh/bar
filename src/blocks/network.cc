@@ -78,10 +78,12 @@ void iwctl_update_station(WifiStation &station) {
   if (close(memfd) < 0)
     throw std::system_error(errno, std::system_category(), "close");
 
-  if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
-    throw std::runtime_error(
-        fmt::format("iwctl station {} show exited with non-zero exit status {}",
-                    station.name, WEXITSTATUS(wstatus)));
+  if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
+    std::unique_lock lock(station.modify_mutex);
+    station.iwctl_failed = true;
+    station.info = std::nullopt;
+    return;
+  }
 
   std::unordered_map<std::string, std::string> properties;
 
@@ -161,6 +163,7 @@ void iwctl_update_station(WifiStation &station) {
 
   {
     std::unique_lock lock(station.modify_mutex);
+    station.iwctl_failed = false;
     station.info = std::move(new_info);
   }
 
@@ -238,15 +241,22 @@ size_t NetworkBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
 
   for (auto const &station : _wifi_stations) {
     std::unique_lock lock(station.modify_mutex);
-    if (station.info.connection)
-      x += draw.text(x, " ");
-    if (station.info.scanning) {
-      x += draw.text(x, "󰍉 ");
-      if (!station.info.connection)
-        x += draw.text(x, station.name);
+    if (station.info) {
+      if ((station.info->connection || station.info->scanning) && x != 0)
+        x += 10;
+      if (station.info->connection)
+        x += draw.text(x, " ");
+      if (station.info->scanning) {
+        x += draw.text(x, "󰍉 ");
+        if (!station.info->connection)
+          x += draw.text(x, station.name);
+      }
+      if (station.info->connection)
+        x += draw.text(x, station.info->connection->connected_network);
+    } else if (station.iwctl_failed) {
+      x += draw.text(x, fmt::format(" {} unknown", station.name),
+                     color(0xFF0000));
     }
-    if (station.info.connection)
-      x += draw.text(x, station.info.connection->connected_network);
   }
 
   if (x == 0)
@@ -264,7 +274,8 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   for (auto const &station : _wifi_stations) {
     std::unique_lock lock(station.modify_mutex);
 
-    if (!station.info.scanning && !station.info.connection)
+    if (!station.iwctl_failed && !station.info->scanning &&
+        !station.info->connection)
       continue;
 
     auto const &t = station.name;
@@ -272,35 +283,42 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
 
     y += 20;
 
-    if (station.info.scanning) {
-      auto t = "Scanning...";
-      draw.text((width - draw.textw(t)) / 2, 12 + y, t, 0x8888FF);
+    if (station.iwctl_failed) {
+      auto t = fmt::format("'iwctl station show {}' failed", station.name);
+      draw.text((width - draw.textw(t)) / 2, 12 + y, t, 0xFF0000);
       y += 20;
-    }
+    } else {
 
-    if (station.info.connection) {
-      auto const &conn = station.info.connection;
-
-      unsigned x = 0;
-      x += draw.text(x, 12 + y, "Connected to ");
-      draw.text(x, 12 + y, conn->connected_network, 0xFFAA00);
-
-      y += 20;
-
-      {
-        draw.text(0, 12 + y, fmt::format("RSSI: {}", conn->rssi));
-        auto t = fmt::format("Security: {}", conn->security);
-        draw.text(width - draw.textw(t), 12 + y, t);
+      if (station.info->scanning) {
+        auto t = "Scanning...";
+        draw.text((width - draw.textw(t)) / 2, 12 + y, t, 0x8888FF);
+        y += 20;
       }
 
-      y += 20;
+      if (station.info->connection) {
+        auto const &conn = station.info->connection;
 
-      std::string_view ip = "Unknown";
-      if (conn->ipv4_address)
-        ip = conn->ipv4_address.value();
-      draw.text(0, 12 + y, fmt::format("IP: {}", ip));
+        unsigned x = 0;
+        x += draw.text(x, 12 + y, "Connected to ");
+        draw.text(x, 12 + y, conn->connected_network, 0xFFAA00);
 
-      y += 20;
+        y += 20;
+
+        {
+          draw.text(0, 12 + y, fmt::format("RSSI: {}", conn->rssi));
+          auto t = fmt::format("Security: {}", conn->security);
+          draw.text(width - draw.textw(t), 12 + y, t);
+        }
+
+        y += 20;
+
+        std::string_view ip = "Unknown";
+        if (conn->ipv4_address)
+          ip = conn->ipv4_address.value();
+        draw.text(0, 12 + y, fmt::format("IP: {}", ip));
+
+        y += 20;
+      }
     }
   }
 

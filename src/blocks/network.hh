@@ -38,7 +38,8 @@ struct WifiStation {
   std::string name;
   mutable std::mutex modify_mutex;
   std::atomic_bool update_running;
-  IwctlStationInfo info;
+  bool iwctl_failed;
+  std::optional<IwctlStationInfo> info;
 
   WifiStation(std::string const &name) : name(name) {}
 };
