@@ -267,7 +267,7 @@ size_t NetworkBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
 
 void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
                                 unsigned int) const {
-  auto width = 250;
+  ui::draw::pos_t width = 250;
   draw.line(0, 0, width, 0, 0);
 
   auto y = 0;
@@ -284,8 +284,14 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
     y += 20;
 
     if (station.iwctl_failed) {
-      auto t = fmt::format("'iwctl station show {}' failed", station.name);
-      draw.text((width - draw.textw(t)) / 2, 12 + y, t, 0xFF0000);
+      auto t = fmt::format("'iwctl station {} show' failed", station.name);
+      auto w = draw.textw(t);
+      ui::draw::pos_t tx = 0;
+      if (width < w)
+        tx = 0;
+      else
+        tx = (width - draw.textw(t)) / 2;
+      draw.text(tx, 12 + y, t, 0xFF0000);
       y += 20;
     } else {
 
@@ -304,11 +310,11 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
 
         y += 20;
 
-        {
-          draw.text(0, 12 + y, fmt::format("RSSI: {}", conn->rssi));
-          auto t = fmt::format("Security: {}", conn->security);
-          draw.text(width - draw.textw(t), 12 + y, t);
-        }
+        draw.text(0, 12 + y, fmt::format("RSSI: {}", conn->rssi));
+
+        y += 20;
+
+        draw.text(0, 12 + y, fmt::format("Security: {}", conn->security));
 
         y += 20;
 
