@@ -1,3 +1,4 @@
+#include <charconv>
 #include <csignal>
 #include <cstddef>
 #include <fcntl.h>
@@ -164,10 +165,95 @@ void ScriptBlock::update() {
   update_thread.detach();
 }
 
+ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x,
+                                          ui::draw::pos_t const y,
+                                          ui::draw &draw,
+                                          std::string_view text) {
+  auto it = text.begin();
+#define advance_or_bail()                                                      \
+  do {                                                                         \
+    if (++it == text.end())                                                    \
+      goto bail;                                                               \
+  } while (false)
+
+  color current_color = 0xFFFFFF;
+  auto segment_start = text.begin();
+
+  auto flush = [&] {
+    x += draw.text(x, y, std::string_view(segment_start, it), current_color);
+    segment_start = it;
+  };
+
+  while (it != text.end()) {
+    if (*it == '\x1b') {
+      flush();
+
+      advance_or_bail();
+      if (*it == '[') {
+        std::vector<unsigned> modifiers;
+
+        while (true) {
+          advance_or_bail();
+          auto number_start = it;
+          while (std::isdigit(*it))
+            advance_or_bail();
+          std::string_view number_view(number_start, it);
+
+          modifiers.push_back(0);
+          auto [_, ec] = std::from_chars(number_start, it, modifiers.back());
+          // Invalid ANSI escape
+          if (ec != std::errc()) {
+            modifiers.clear();
+            break;
+          }
+
+          if (*it == ';')
+            continue;
+          // End of valid ANSI escape
+          else if (*it == 'm')
+            break;
+          // Invalid ANSI escape
+          else {
+            modifiers.clear();
+            break;
+          }
+        }
+
+        segment_start = ++it;
+
+        constexpr std::array<color, 9> colors8 {
+          0x000000,
+          0xFF7777,
+          0x77FF77,
+          0xFFF93F,
+          0x7777FF,
+          0xC300FF,
+          0x00FFEA,
+          0xFFFFFF,
+          0xFFFFFF
+        };
+        for (auto mod : modifiers) {
+          if(mod >= 30 && mod <= 39)
+            current_color = colors8[mod - 30];
+          if(mod == 0)
+            current_color = colors8.back();
+        }
+      }
+    } else
+      ++it;
+  }
+
+  flush();
+
+bail:;
+  return x;
+}
+
 size_t ScriptBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   return std::visit(
       overloaded{[&draw](SuccessR const &s) {
-                   return draw.text(0, draw.vcenter(), s.output);
+                   return draw_text_with_ansi_color(0, draw.vcenter(), draw,
+                                                    s.output);
                  },
                  [&draw](TimedOut) {
                    return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
