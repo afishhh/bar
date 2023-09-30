@@ -57,8 +57,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
   target_compile_options(${PROJECT_NAME} PRIVATE
-    -g -pg
+    -g -pg -fsanitize=address,undefined
   )
+  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE
     -Werror
