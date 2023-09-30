@@ -181,49 +181,71 @@ public:
     auto &direct_draw = _window->drawer();
     auto buffered_draw = BufDraw(direct_draw);
 
-    for (auto &info : _left_blocks) {
-      auto &block = info.block;
-      auto now = std::chrono::steady_clock::now();
-      auto width = block.draw(buffered_draw, now - info.last_draw);
-      width += block.ddraw(buffered_draw, now - info.last_draw, x, false);
-      info.last_pos = {(unsigned)x, 0};
-      info.last_size = {(unsigned)width, config::height};
-      info.last_draw = now;
+    {
+      auto filtered =
+          _left_blocks | std::views::filter([](BlockInfo const &info) {
+            return !info.block.skip();
+          });
+      auto it = filtered.begin();
+      if (it != filtered.end())
+        while (true) {
+          auto &info = *it;
+          auto &block = info.block;
+          auto now = std::chrono::steady_clock::now();
+          auto width = block.draw(buffered_draw, now - info.last_draw);
+          width += block.ddraw(buffered_draw, now - info.last_draw, x, false);
+          info.last_pos = {(unsigned)x, 0};
+          info.last_size = {(unsigned)width, config::height};
+          info.last_draw = now;
 
-      buffered_draw.draw_offset(x, 0);
-      buffered_draw.clear();
+          buffered_draw.draw_offset(x, 0);
+          buffered_draw.clear();
 
-      x += width;
+          x += width;
 
-      if (&info != &_left_blocks.back()) {
-        x += 8;
-        direct_draw.frect(x, 3, 2, direct_draw.height() - 6, 0xD3D3D3);
-        x += 8 + 2;
-      }
+          if (++it == filtered.end())
+            break;
+
+          x += 8;
+          direct_draw.frect(x, 3, 2, direct_draw.height() - 6, 0xD3D3D3);
+          x += 8 + 2;
+        }
     }
 
     x = direct_draw.width() - 5;
 
-    for (auto &info : _right_blocks) {
-      auto &block = info.block;
-      auto now = std::chrono::steady_clock::now();
-      auto width = block.draw(buffered_draw, now - info.last_draw);
-      width +=
-          block.ddraw(buffered_draw, now - info.last_draw, x - width, true);
-      info.last_pos = {(unsigned)(x - width), 0};
-      info.last_size = {(unsigned)width, config::height};
-      info.last_draw = now;
+    {
+      auto filtered =
+          _right_blocks | std::views::filter([](BlockInfo const &info) {
+            return !info.block.skip();
+          });
+      auto it = filtered.begin();
+      if (it != filtered.end())
+        while (true) {
+          auto &info = *it;
+          auto &block = info.block;
+          auto now = std::chrono::steady_clock::now();
+          auto width = block.draw(buffered_draw, now - info.last_draw);
+          width +=
+              block.ddraw(buffered_draw, now - info.last_draw, x - width, true);
+          info.last_pos = {(unsigned)(x - width), 0};
+          info.last_size = {(unsigned)width, config::height};
+          info.last_draw = now;
 
-      x -= width;
-      direct_draw.frect(x - 8, 0, width + 16, config::height, 0x000000);
-      buffered_draw.draw_offset(x, 0);
-      buffered_draw.clear();
+          x -= width;
+          direct_draw.frect(x - 8, 0, width + 16, config::height, 0x000000);
+          buffered_draw.draw_offset(x, 0);
+          buffered_draw.clear();
 
-      if (&info != &_right_blocks.back() && &info != &_right_blocks.front()) {
-        x -= 8 + 2;
-        direct_draw.frect(x, 3, 2, direct_draw.height() - 6, 0xD3D3D3);
-        x -= 8;
-      }
+          if (++it == filtered.end())
+            break;
+
+          if (it != filtered.begin()) {
+            x -= 8 + 2;
+            direct_draw.frect(x, 3, 2, direct_draw.height() - 6, 0xD3D3D3);
+            x -= 8;
+          }
+        }
     }
 
     if (_hovered_block && _hovered_block->block.has_tooltip()) {
@@ -243,9 +265,9 @@ public:
 
       if (pos.x + size.x > dsize.x)
         pos.x = dsize.x - size.x;
-      // If pos.x overflows then it will surely be bigger than dsize.x and if
-      // something else lead to it being bigger then we won't be able to put it
-      // outside the screen anyway
+      // If pos.x overflows then it will surely be bigger than dsize.x and
+      // if something else lead to it being bigger then we won't be able to
+      // put it outside the screen anyway
       if (pos.x > dsize.x)
         pos.x = 0;
 

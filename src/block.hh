@@ -33,6 +33,8 @@ public:
     return 0;
   }
 
+  virtual bool skip() { return false; }
+
   virtual void animate(EventLoop::duration) {}
   virtual std::optional<EventLoop::duration> animate_interval() {
     return std::nullopt;
