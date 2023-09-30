@@ -58,8 +58,8 @@ public:
                                    rect.h, rect.fill_color);
                      },
                      [&](FilledCircle &circle) {
-                       _draw.fcircle(circle.x + off_x, circle.y + off_y, circle.d,
-                                     circle.fill_color);
+                       _draw.fcircle(circle.x + off_x, circle.y + off_y,
+                                     circle.d, circle.fill_color);
                      },
                      [&](Text &text) {
                        _draw.text(text.x + off_x, text.y + off_y, text.text,

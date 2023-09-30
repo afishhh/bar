@@ -111,7 +111,6 @@ class bar {
           }
         } else if (e.type == LeaveNotify) {
           // TODO: Allow mousing over the tooltip window
-          // if(e.xcrossing.)
           _hovered_block = nullptr;
         }
       });
