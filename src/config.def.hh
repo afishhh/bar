@@ -41,8 +41,10 @@ constexpr static std::string_view window_class = "bar";
 
 } // namespace x11
 
-constexpr static std::initializer_list<const char*> fonts = {
-    "monospace:size=10", "Font Awesome 6 Free Solid:style=Solid:size=9"};
+constexpr static std::initializer_list<const char *> fonts = {
+    "monospace:size=10",
+    "Font Awesome 6 Free Solid:style=Solid:size=9"
+};
 
 // clang-format off
 const static std::unique_ptr<Block> left_blocks[] = {
@@ -89,8 +91,19 @@ const static std::unique_ptr<Block> right_blocks[] = {
             // .bar_fill_color = 0x00FF00,
         }
     ),
-    std::make_unique<ScriptBlock>("sb-mic-volume", 1s, SIGRTMIN + 20),
-    std::make_unique<ScriptBlock>("sb-volume", 1s, 44),
+    std::make_unique<ScriptBlock>(ScriptBlock::Config {
+        .path = "sb-mic-volume",
+        .interval = 1s,
+        // The block will be updated if any of the signals in this vector are received.
+        .update_signals{SIGRTMIN + 20}
+    }),
+    std::make_unique<ScriptBlock>(ScriptBlock::Config {
+        .path = "sb-volume",
+        .interval = 1s,
+        .update_signals{44},
+        // If this flag is set (default) then if the script output would result in an empty block then the block is instead just skipped.
+        // .skip_on_empty = false
+    }),
     std::make_unique<NetworkBlock>(),
 };
 // clang-format on

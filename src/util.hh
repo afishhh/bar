@@ -74,3 +74,20 @@ inline double map_range(double number, double in_start, double in_end,
   return (number - in_start) * (out_end - out_start) / (in_end - in_start) +
          out_start;
 }
+
+namespace _private {
+
+template <std::invocable Fn> class defer {
+private:
+  Fn _func;
+
+public:
+  defer(Fn func) : _func(func) {}
+  ~defer() { _func(); }
+};
+
+} // namespace _detail
+
+#define DEFER3(fn, c) auto _defer__##c = _private::defer((fn))
+#define DEFER2(fn, c) DEFER3((fn), c)
+#define DEFER(fn) DEFER2((fn), __COUNTER__)
