@@ -65,6 +65,11 @@ void ScriptBlock::update() {
     if (memfd < 0)
       throw std::system_error(errno, std::system_category(), "memfd_create");
 
+    DEFER([memfd] {
+      if (close(memfd) < 0)
+        throw std::system_error(errno, std::system_category(), "close");
+    });
+
     if (posix_spawn_file_actions_adddup2(&actions, memfd, STDOUT_FILENO) < 0)
       throw std::system_error(errno, std::system_category(),
                               "posix_spawn_file_actions_adddup2");
@@ -158,9 +163,6 @@ void ScriptBlock::update() {
     ifs.close();
 
     _result = SuccessR{std::string(trim(output))};
-
-    if (close(memfd) < 0)
-      throw std::system_error(errno, std::system_category(), "close");
   });
   update_thread.detach();
 }
@@ -221,21 +223,17 @@ ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x,
 
         segment_start = ++it;
 
-        constexpr std::array<color, 9> colors8 {
-          0x000000,
-          0xFF7777,
-          0x77FF77,
-          0xFFF93F,
-          0x7777FF,
-          0xC300FF,
-          0x00FFEA,
-          0xFFFFFF,
-          0xFFFFFF
+        // clang-format off
+        constexpr std::array<color, 9> colors8{
+          0x000000, 0xFF7777, 0x77FF77,
+          0xFFF93F, 0x7777FF, 0xC300FF,
+          0x00FFEA, 0xFFFFFF, 0xFFFFFF
         };
+        // clang-format on
         for (auto mod : modifiers) {
-          if(mod >= 30 && mod <= 39)
+          if (mod >= 30 && mod <= 39)
             current_color = colors8[mod - 30];
-          if(mod == 0)
+          if (mod == 0)
             current_color = colors8.back();
         }
       }
