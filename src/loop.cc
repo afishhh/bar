@@ -1,4 +1,5 @@
 #include "loop.hh"
+#include "signal.hh"
 
 #include <chrono>
 #include <iostream>
@@ -6,38 +7,59 @@
 #include <ratio>
 #include <thread>
 
+void StopEvent::attach_to_signals() {
+  static bool already_attached = false;
+  if (already_attached)
+    return;
+  else
+    already_attached = true;
+
+  SignalEvent::attach(SIGINT);
+  SignalEvent::attach(SIGTERM);
+  EV.on<SignalEvent>([](SignalEvent const &ev) {
+    if (ev.signum == SIGINT || ev.signum == SIGTERM)
+      EV.fire_event(StopEvent(Cause::SIGNAL));
+  });
+}
+
 EventLoop::EventLoop() {}
 EventLoop::~EventLoop() {}
 
-void EventLoop::add_oneshot(task::oneshot::callback callback) {
-  _tasks.emplace(task::oneshot{callback});
-}
-void EventLoop::add_oneshot(time_point run_point,
-                            task::timed_oneshot::callback callback) {
+void EventLoop::add_oneshot(task::oneshot::callback callback) { _tasks.emplace(task::oneshot{callback}); }
+void EventLoop::add_oneshot(time_point run_point, task::timed_oneshot::callback callback) {
   _tasks.emplace(task::timed_oneshot{callback, run_point});
 }
-void EventLoop::add_oneshot(duration run_delay,
-                            task::timed_oneshot::callback callback) {
+void EventLoop::add_oneshot(duration run_delay, task::timed_oneshot::callback callback) {
   this->add_oneshot(clock::now() + run_delay, callback);
 }
 
-void EventLoop::add_timer(duration interval,
-                          task::repeated::callback callback) {
+void EventLoop::add_timer(duration interval, task::repeated::callback callback) {
   _tasks.emplace(task::repeated(callback, interval));
 }
 
+bool EventLoop::check_stop() {
+  auto stop_queue = _event_queues[std::type_index(typeid(StopEvent))]->into_queue_of<StopEvent>();
+  if (!stop_queue->empty()) {
+    stop_queue->flush();
+    _stopped = true;
+  }
+  return _stopped;
+}
+
 void EventLoop::pump() {
+  if (check_stop())
+    return;
+
   if (!_tasks.empty()) {
     auto const &next = _tasks.top();
 
+    if (check_stop())
+      return;
+
     std::visit(overloaded{
                    [](task::oneshot const &) {},
-                   [](task::timed_oneshot const &t) {
-                     std::this_thread::sleep_until(t.time);
-                   },
-                   [](task::repeated const &t) {
-                     std::this_thread::sleep_until(t.next);
-                   },
+                   [](task::timed_oneshot const &t) { std::this_thread::sleep_until(t.time); },
+                   [](task::repeated const &t) { std::this_thread::sleep_until(t.next); },
                },
                next.var());
 
@@ -45,8 +67,7 @@ void EventLoop::pump() {
       auto current = _tasks.top();
       _tasks.pop();
 
-      std::visit(overloaded{[](task::oneshot const &t) { t.fn(); },
-                            [](task::timed_oneshot const &t) { t.fn(); },
+      std::visit(overloaded{[](task::oneshot const &t) { t.fn(); }, [](task::timed_oneshot const &t) { t.fn(); },
                             [this](task::repeated &t) {
                               t.fn(clock::now() - t.last);
 
@@ -59,25 +80,28 @@ void EventLoop::pump() {
                               _tasks.push(std::move(t));
                             }},
                  current.var());
-    } while (std::visit(
-        overloaded{
-            [](task::oneshot const &) { return true; },
-            [](task::timed_oneshot const &t) { return t.time < clock::now(); },
-            [](task::repeated const &t) { return t.next < clock::now(); },
-        },
-        _tasks.top().var()));
+    } while (std::visit(overloaded{
+                            [](task::oneshot const &) { return true; },
+                            [](task::timed_oneshot const &t) { return t.time < clock::now(); },
+                            [](task::repeated const &t) { return t.next < clock::now(); },
+                        },
+                        _tasks.top().var()));
   }
 
-  for (auto &[index, queue] : _event_queues)
+  for (auto &[index, queue] : _event_queues) {
+    // The StopEvent queue is special cased and checked in every check_stop
+    if (index == std::type_index(typeid(StopEvent)))
+      continue;
     queue->flush();
+  }
+
+  if (check_stop())
+    return;
 }
 
 void EventLoop::run() {
-  while (!_tasks.empty())
+  while (!_tasks.empty() && !_stopped)
     this->pump();
 }
 
-void EventLoop::stop() {
-  while (!_tasks.empty())
-    _tasks.pop();
-}
+void EventLoop::stop() { EV.fire_event(StopEvent(StopEvent::Cause::STOP)); }

@@ -35,8 +35,7 @@ void XSystrayBlock::relayout_tray() {
   }
 
 relayout_tray:
-  if (!XResizeWindow(*xconn, *_tray, (config::height * _icons.size()) ?: 1,
-                     config::height))
+  if (!XResizeWindow(*xconn, *_tray, (config::height * _icons.size()) ?: 1, config::height))
     throw std::runtime_error("Failed to resize tray window");
 
   std::size_t i = 0;
@@ -45,8 +44,7 @@ relayout_tray:
 
     while (true) {
       xconn->trap_errors();
-      XMoveResizeWindow(*xconn, window, i * config::height, 0, config::height,
-                        config::height);
+      XMoveResizeWindow(*xconn, window, i * config::height, 0, config::height, config::height);
       XSync(*xconn, false);
       xconn->untrap_errors();
 
@@ -58,9 +56,7 @@ relayout_tray:
             goto relayout_tray;
           }
         } else
-          fmt::print(
-              warn, "xsystray: Could not move/resize window {} (X error: {})\n",
-              window, err);
+          fmt::print(warn, "xsystray: Could not move/resize window {} (X error: {})\n", window, err);
       }
 
       break;
@@ -83,8 +79,7 @@ void XSystrayBlock::late_init() {
 
   ui::x11::window &mainw = static_cast<ui::x11::window &>(bar.window());
 
-  _tray = XCreateSimpleWindow(*xconn, mainw.window_id(), 0, 0, 10,
-                              config::height, 0, 0, 0);
+  _tray = XCreateSimpleWindow(*xconn, mainw.window_id(), 0, 0, 10, config::height, 0, 0, 0);
   if (!_tray)
     throw std::runtime_error("Failed to create tray window");
   if (!XMapWindow(*xconn, *_tray))
@@ -101,8 +96,7 @@ void XSystrayBlock::late_init() {
       case SYSTEM_TRAY_REQUEST_DOCK: {
         auto window = e.xclient.data.l[2];
         if (_icons.contains(window)) {
-          fmt::print(warn, "xsystray: Window {} requested docking twice",
-                     window);
+          fmt::print(warn, "xsystray: Window {} requested docking twice", window);
           return;
         }
 
@@ -113,8 +107,7 @@ void XSystrayBlock::late_init() {
         if (auto err = xconn->trapped_error()) {
           char error_buffer[256];
           XGetErrorText(*xconn, err, error_buffer, sizeof(error_buffer));
-          fmt::print(warn, "xsystray: Could not dock window {} ({})\n", window,
-                     error_buffer);
+          fmt::print(warn, "xsystray: Could not dock window {} ({})\n", window, error_buffer);
           xconn->trap_errors();
           embedder.drop();
           XSync(*xconn, false);
@@ -125,34 +118,24 @@ void XSystrayBlock::late_init() {
         }
       } break;
       case SYSTEM_TRAY_BEGIN_MESSAGE:
-        fmt::print(
-            info,
-            "xsystray: System tray BEGIN_MESSAGE (not implemented yet)\n");
+        fmt::print(info, "xsystray: System tray BEGIN_MESSAGE (not implemented yet)\n");
         return;
       case SYSTEM_TRAY_CANCEL_MESSAGE:
-        fmt::print(
-            info,
-            "xsystray: System tray CANCEL_MESSAGE (not implemented yet)\n");
+        fmt::print(info, "xsystray: System tray CANCEL_MESSAGE (not implemented yet)\n");
         return;
       default:
-        fmt::print(info, "xsystray: Recieved unknown systray opcode: {}\n",
-                   e.xclient.data.l[1]);
+        fmt::print(info, "xsystray: Recieved unknown systray opcode: {}\n", e.xclient.data.l[1]);
         return;
       }
-    } else if (e.type == ReparentNotify &&
-               _icons.contains(e.xreparent.window) &&
-               e.xreparent.parent != *_tray) {
+    } else if (e.type == ReparentNotify && _icons.contains(e.xreparent.window) && e.xreparent.parent != *_tray) {
       // The client left us for someone else :(
       auto window = e.xreparent.window;
       _icons.erase(window);
-      fmt::print(info, "xsystray: Undocked reparented window {}\n",
-                 e.xreparent.window);
-    } else if (e.type == DestroyNotify &&
-               _icons.contains(e.xdestroywindow.window)) {
+      fmt::print(info, "xsystray: Undocked reparented window {}\n", e.xreparent.window);
+    } else if (e.type == DestroyNotify && _icons.contains(e.xdestroywindow.window)) {
       auto window = e.xdestroywindow.window;
       _icons.erase(window);
-      fmt::print(info, "xsystray: Undocked destroyed window {}\n",
-                 e.xdestroywindow.window);
+      fmt::print(info, "xsystray: Undocked destroyed window {}\n", e.xdestroywindow.window);
     } else
       return;
 
@@ -161,11 +144,18 @@ void XSystrayBlock::late_init() {
 
   EV.add_timer(1000ms, [this](auto) { this->relayout_tray(); });
 
+  EV.on<StopEvent>([this, xconn](StopEvent const &) {
+    xconn->trap_errors();
+    for (auto &[xwin, embedder] : _icons)
+      embedder.drop();
+    XSync(*xconn, false);
+    xconn->untrap_errors();
+  });
+
   auto orientation_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION");
-  auto orientation_value_atom =
-      xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION_HORZ");
-  XChangeProperty(*xconn, *_tray, orientation_atom, XA_CARDINAL, 32,
-                  PropModeReplace, (unsigned char *)&orientation_value_atom, 1);
+  auto orientation_value_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION_HORZ");
+  XChangeProperty(*xconn, *_tray, orientation_atom, XA_CARDINAL, 32, PropModeReplace,
+                  (unsigned char *)&orientation_value_atom, 1);
 
   auto sn = XScreenNumberOfScreen(xconn->screen());
   auto selection_atom_name = fmt::format("_NET_SYSTEM_TRAY_S{}", sn);
@@ -190,13 +180,11 @@ void XSystrayBlock::late_init() {
   XSync(*xconn, false);
 }
 
-std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>,
-                                 size_t x, bool right_aligned) {
+std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>, size_t x, bool right_aligned) {
   if (!_tray)
     return 0;
 
-  ui::x11::connection *xconn =
-      dynamic_cast<ui::x11::connection *>(&bar::instance().connection());
+  ui::x11::connection *xconn = dynamic_cast<ui::x11::connection *>(&bar::instance().connection());
   if (!xconn)
     throw std::logic_error("Could not get X11 connection instance");
 

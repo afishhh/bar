@@ -101,6 +101,7 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
 
       EV.fire_event(xevent(conn, std::move(event)));
     }
+    conn->_event_thread_latch.count_down();
   });
   conn->_event_thread.detach();
 
@@ -109,7 +110,7 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
 
 connection::~connection() noexcept(false) {
   _event_thread.request_stop();
-  _event_thread.join();
+  _event_thread_latch.wait();
 
   // for (XftFont *font : _fonts)
   //   XftFontClose(_display, font);

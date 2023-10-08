@@ -50,6 +50,20 @@ public:
   explicit DerivedEvent(Args &&...args) : Base(std::forward<Args>(args)...) {}
 };
 
+class StopEvent : public Event {
+public:
+  enum class Cause {
+    STOP,
+    SIGNAL,
+  } cause;
+
+  static void attach_to_signals();
+
+private:
+  friend class EventLoop;
+  StopEvent(Cause cause) : cause(cause) {}
+};
+
 class EventLoop {
 public:
   using clock = std::chrono::steady_clock;
@@ -200,9 +214,14 @@ private:
     bool _remove_current_callback;
 
   public:
-    std::mutex _mutex;
+    mutable std::mutex _mutex;
     std::vector<E> queued_events;
     std::map<uint32_t, std::function<void(const E &)>> callbacks;
+
+    bool empty() const {
+      std::lock_guard lg(_mutex);
+      return queued_events.empty();
+    }
 
     bool try_remove_callback(callback_id id) override {
       std::lock_guard<std::mutex> lock(_mutex);
@@ -249,8 +268,12 @@ private:
     }
   };
 
+  bool _stopped{false};
+
   EventLoop();
   ~EventLoop();
+
+  bool check_stop();
 
 public:
   EventLoop(const EventLoop &) = delete;

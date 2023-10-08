@@ -34,6 +34,7 @@
 #include "util.hh"
 
 int main() {
+  StopEvent::attach_to_signals();
   bar &bar = bar::instance();
 
   for (auto &block : config::left_blocks)

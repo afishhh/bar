@@ -26,10 +26,10 @@ public:
   window(connection *conn, XWinID xwinid)
       : ui::window(), _conn(conn), _xwinid(xwinid) {}
   ~window() noexcept(false) {
-    XDestroyWindow((_conn->display()), _xwinid);
     // TODO: This should be in a backbuffer_draw or similiar instead
     if (_back_buffer)
       XdbeDeallocateBackBufferName(_conn->display(), *_back_buffer);
+    XDestroyWindow((_conn->display()), _xwinid);
   }
 
   inline XWinID window_id() const noexcept { return _xwinid; }

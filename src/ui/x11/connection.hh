@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <latch>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -26,6 +27,7 @@ class embedder;
 class connection final : public ::ui::connection {
   Display *_display;
 
+  std::latch _event_thread_latch{1};
   std::jthread _event_thread;
 
   static int _trapped_error_code;
@@ -89,16 +91,16 @@ public:
 class embedder {
   connection *_conn;
   XWinID _child;
-  owned_callback_id _cid;
+  EventLoop::callback_id _cid;
 
   friend connection;
 
-  embedder(connection *c, XWinID child, owned_callback_id &&id)
-      : _conn(c), _child(child), _cid(std::move(id)) {}
+  embedder(connection *c, XWinID child, EventLoop::callback_id id)
+      : _conn(c), _child(child), _cid(id) {}
 
 public:
   embedder(embedder &&other)
-      : _conn(other._conn), _child(other._child), _cid(std::move(other._cid)) {
+      : _conn(other._conn), _child(other._child), _cid(other._cid) {
     other._conn = nullptr;
   }
   embedder(embedder const &) = delete;
@@ -115,6 +117,7 @@ public:
     if (_conn) {
       XReparentWindow(_conn->display(), _child,
                       DefaultRootWindow(_conn->display()), 0, 0);
+      EV.off(_cid);
       _conn = nullptr;
     }
   }
