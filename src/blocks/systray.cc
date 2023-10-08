@@ -144,14 +144,6 @@ void XSystrayBlock::late_init() {
 
   EV.add_timer(1000ms, [this](auto) { this->relayout_tray(); });
 
-  EV.on<StopEvent>([this, xconn](StopEvent const &) {
-    xconn->trap_errors();
-    for (auto &[xwin, embedder] : _icons)
-      embedder.drop();
-    XSync(*xconn, false);
-    xconn->untrap_errors();
-  });
-
   auto orientation_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION");
   auto orientation_value_atom = xconn->intern_atom("_NET_SYSTEM_TRAY_ORIENTATION_HORZ");
   XChangeProperty(*xconn, *_tray, orientation_atom, XA_CARDINAL, 32, PropModeReplace,
@@ -160,6 +152,20 @@ void XSystrayBlock::late_init() {
   auto sn = XScreenNumberOfScreen(xconn->screen());
   auto selection_atom_name = fmt::format("_NET_SYSTEM_TRAY_S{}", sn);
   auto selection_atom = xconn->intern_atom(selection_atom_name);
+
+  EV.on<StopEvent>([this, xconn, selection_atom](StopEvent const &) {
+    if (XGetSelectionOwner(*xconn, selection_atom) == *_tray)
+      if (!XSetSelectionOwner(*xconn, selection_atom, None, CurrentTime))
+        warn << "xsystray: Failed to unset system tray selection owner\n";
+
+    xconn->trap_errors();
+    for (auto &[xwin, embedder] : _icons)
+      embedder.drop();
+    XSync(*xconn, false);
+    xconn->untrap_errors();
+  });
+
+
   if (!XSetSelectionOwner(*xconn, selection_atom, *_tray, CurrentTime))
     throw std::runtime_error("Failed to set system tray selection owner");
   if (XGetSelectionOwner(*xconn, selection_atom) != *_tray)
