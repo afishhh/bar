@@ -10,6 +10,7 @@
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
+#include <vector>
 #include <wait.h>
 
 extern char **environ;
@@ -25,15 +26,13 @@ void ScriptBlock::late_init() {
   }
 
   if (!_update_signals.empty()) {
-    EV.on<SignalEvent>(
-        [this, signals = std::unordered_set<int>(_update_signals.begin(),
-                                                 _update_signals.end())](
-            const SignalEvent &ev) {
-          if (signals.contains(ev.signum)) {
-            update();
-            EV.fire_event(RedrawEvent());
-          }
-        });
+    EV.on<SignalEvent>([this, signals = std::unordered_set<int>(_update_signals.begin(), _update_signals.end())](
+                           const SignalEvent &ev) {
+      if (signals.contains(ev.signum)) {
+        update();
+        EV.fire_event(RedrawEvent());
+      }
+    });
   }
 
   static bool sigchld_registered = false;
@@ -51,15 +50,13 @@ void ScriptBlock::update() {
     DEFER([this] { _update_mutex.unlock(); });
 
     if (!_process_mutex.try_lock())
-      throw std::runtime_error(
-          "ScriptBlock::update() called while a process is still running");
+      throw std::runtime_error("ScriptBlock::update() called while a process is still running");
 
     // Execute script from this->_path and put it's stdout into this->_output
     pid_t pid;
     posix_spawn_file_actions_t actions;
     if (posix_spawn_file_actions_init(&actions) < 0)
-      throw std::system_error(errno, std::system_category(),
-                              "posix_spawn_file_actions_init");
+      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_init");
 
     int memfd = memfd_create("script_output", 0);
     if (memfd < 0)
@@ -71,21 +68,26 @@ void ScriptBlock::update() {
     });
 
     if (posix_spawn_file_actions_adddup2(&actions, memfd, STDOUT_FILENO) < 0)
-      throw std::system_error(errno, std::system_category(),
-                              "posix_spawn_file_actions_adddup2");
+      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_adddup2");
 
     posix_spawnattr_t attr;
     if (posix_spawnattr_init(&attr) < 0)
-      throw std::system_error(errno, std::system_category(),
-                              "posix_spawnattr_init");
+      throw std::system_error(errno, std::system_category(), "posix_spawnattr_init");
 
     {
       std::string path_str = _path.string();
       char *const argv[] = {path_str.data(), nullptr};
 
-      if (int err = posix_spawnp(&pid, this->_path.c_str(), &actions, &attr,
-                                 argv, environ);
-          err != 0) {
+      std::vector<char *> environment;
+      environment.reserve(64 + _extra_environment_variables.size());
+      if (_inherit_environment_variables)
+        for (char **var = environ; *var; ++var)
+          environment.push_back(*var);
+      for (auto &namevalue : _extra_environment_variables)
+        environment.push_back(namevalue.data());
+      environment.push_back(nullptr);
+
+      if (int err = posix_spawnp(&pid, this->_path.c_str(), &actions, &attr, argv, environment.data()); err != 0) {
         _result = SpawnFailed{err};
         _process_mutex.unlock();
         return;
@@ -101,29 +103,26 @@ void ScriptBlock::update() {
       _process_mutex.unlock();
     });
 
-#define CHECK_WSTATUS(wstatus)                                                 \
-  {                                                                            \
-    if (WIFEXITED(wstatus)) {                                                  \
-      auto status = WEXITSTATUS(wstatus);                                      \
-      if (status) {                                                            \
-        _result = NonZeroExit{status};                                         \
-        return;                                                                \
-      }                                                                        \
-    } else if (WIFSIGNALED(wstatus)) {                                         \
-      _result = Signaled{WTERMSIG(wstatus)};                                   \
-      return;                                                                  \
-    }                                                                          \
+#define CHECK_WSTATUS(wstatus)                                                                                         \
+  {                                                                                                                    \
+    if (WIFEXITED(wstatus)) {                                                                                          \
+      auto status = WEXITSTATUS(wstatus);                                                                              \
+      if (status) {                                                                                                    \
+        _result = NonZeroExit{status};                                                                                 \
+        return;                                                                                                        \
+      }                                                                                                                \
+    } else if (WIFSIGNALED(wstatus)) {                                                                                 \
+      _result = Signaled{WTERMSIG(wstatus)};                                                                           \
+      return;                                                                                                          \
+    }                                                                                                                  \
   }
 
     if (posix_spawn_file_actions_destroy(&actions) < 0)
-      throw std::system_error(errno, std::system_category(),
-                              "posix_spawn_file_actions_destroy");
+      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_destroy");
     if (posix_spawnattr_destroy(&attr) < 0)
-      throw std::system_error(errno, std::system_category(),
-                              "posix_spawnattr_destroy");
+      throw std::system_error(errno, std::system_category(), "posix_spawnattr_destroy");
 
-    if (!_process_mutex.try_lock_for(_interval -
-                                     std::chrono::milliseconds(30))) {
+    if (!_process_mutex.try_lock_for(_interval - std::chrono::milliseconds(30))) {
       EV.off<SignalEvent>(sigchld_handler);
       // not safe, check for lock with try lock first!
       _process_mutex.unlock();
@@ -134,6 +133,11 @@ void ScriptBlock::update() {
         CHECK_WSTATUS(wstatus);
 
       kill(pid, SIGKILL);
+
+      // Get rid of the zombie process.
+      while (waitpid(pid, &wstatus, 0) < 0 && errno == EINTR)
+        ;
+
       _result = TimedOut{};
       return;
     }
@@ -149,8 +153,7 @@ void ScriptBlock::update() {
 
     CHECK_WSTATUS(wstatus);
 
-    std::ifstream ifs("/proc/self/fd/" + std::to_string(memfd),
-                      std::ios::binary);
+    std::ifstream ifs("/proc/self/fd/" + std::to_string(memfd), std::ios::binary);
     if (!ifs)
       throw std::runtime_error("Failed to open memfd with script output");
 
@@ -167,15 +170,13 @@ void ScriptBlock::update() {
   update_thread.detach();
 }
 
-ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x,
-                                          ui::draw::pos_t const y,
-                                          ui::draw &draw,
+ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x, ui::draw::pos_t const y, ui::draw &draw,
                                           std::string_view text) {
   auto it = text.begin();
-#define advance_or_bail()                                                      \
-  do {                                                                         \
-    if (++it == text.end())                                                    \
-      goto bail;                                                               \
+#define advance_or_bail()                                                                                              \
+  do {                                                                                                                 \
+    if (++it == text.end())                                                                                            \
+      goto bail;                                                                                                       \
   } while (false)
 
   color current_color = 0xFFFFFF;
@@ -249,31 +250,18 @@ bail:;
 
 size_t ScriptBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   return std::visit(
-      overloaded{[&draw](SuccessR const &s) {
-                   return draw_text_with_ansi_color(0, draw.vcenter(), draw,
-                                                    s.output);
-                 },
-                 [&draw](TimedOut) {
-                   return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000);
-                 },
-                 [&draw](SpawnFailed sf) {
-                   return draw.text(0, draw.vcenter(), std::strerror(sf.error),
-                                    0xFF0000);
-                 },
+      overloaded{[&draw](SuccessR const &s) { return draw_text_with_ansi_color(0, draw.vcenter(), draw, s.output); },
+                 [&draw](TimedOut) { return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000); },
+                 [&draw](SpawnFailed sf) { return draw.text(0, draw.vcenter(), std::strerror(sf.error), 0xFF0000); },
                  [&draw](NonZeroExit nze) {
-                   return draw.text(0, draw.vcenter(),
-                                    fmt::format("EXITED WITH {}", nze.status),
-                                    0xFF0000);
+                   return draw.text(0, draw.vcenter(), fmt::format("EXITED WITH {}", nze.status), 0xFF0000);
                  },
                  [&draw](Signaled s) {
                    char const *name = strsignal(s.signal);
                    if (name == nullptr)
-                     return draw.text(0, draw.vcenter(),
-                                      fmt::format("SIGNALED WITH {}", s.signal),
-                                      0xFF0000);
+                     return draw.text(0, draw.vcenter(), fmt::format("SIGNALED WITH {}", s.signal), 0xFF0000);
                    else
-                     return draw.text(0, draw.vcenter(),
-                                      fmt::format("{}", name), 0xFF0000);
+                     return draw.text(0, draw.vcenter(), fmt::format("{}", name), 0xFF0000);
                  }},
       _result);
 }
