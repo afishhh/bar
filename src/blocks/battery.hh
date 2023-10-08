@@ -27,15 +27,15 @@ private:
 
 public:
   struct Config {
-    std::string prefix;
+    std::string prefix{};
     color prefix_color = 0xFFFFFF;
-    bool show_percentage;
-    bool show_time_left_charging;
-    bool show_time_left_discharging;
-    unsigned short time_precision;
-    size_t bar_width;
-    bool show_wattage;
-    bool show_degradation;
+    bool show_percentage = true;
+    bool show_time_left_charging = true;
+    bool show_time_left_discharging = true;
+    unsigned short time_precision = -1;
+    size_t bar_width = 70;
+    bool show_wattage = true;
+    bool show_degradation = false;
   };
 
 private:
