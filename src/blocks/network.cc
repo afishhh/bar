@@ -237,17 +237,17 @@ size_t NetworkBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   auto x = 0;
 
   if (_ethernet_connected)
-    x += draw.text(x, " ");
+    x += draw.text(x, "");
 
   for (auto const &station : _wifi_stations) {
     std::unique_lock lock(station.modify_mutex);
     if (station.info) {
-      if ((station.info->connection || station.info->scanning) && x != 0)
+      if ((station.info->connection || station.info->scanning) && (x != 0 || _ethernet_connected))
         x += 10;
       if (station.info->connection)
         x += draw.text(x, " ");
       if (station.info->scanning) {
-        x += draw.text(x, "󰍉 ");
+        x += draw.text(x, "󰍉");
         if (!station.info->connection)
           x += draw.text(x, station.name);
       }

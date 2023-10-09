@@ -199,5 +199,5 @@ std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>, size
     throw std::runtime_error("Failed to move system tray");
 
   XSync(*xconn, false);
-  return tray_width + 10;
+  return tray_width;
 }
