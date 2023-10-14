@@ -80,7 +80,10 @@ void iwctl_update_station(WifiStation &station) {
 
   if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
     std::unique_lock lock(station.modify_mutex);
-    station.iwctl_failed = true;
+    if(WIFEXITED(wstatus))
+      station.iwctl_status = WEXITSTATUS(wstatus);
+    else
+      station.iwctl_status = -1;
     station.info = std::nullopt;
     return;
   }
@@ -163,7 +166,7 @@ void iwctl_update_station(WifiStation &station) {
 
   {
     std::unique_lock lock(station.modify_mutex);
-    station.iwctl_failed = false;
+    station.iwctl_status = 0;
     station.info = std::move(new_info);
   }
 
@@ -253,7 +256,7 @@ size_t NetworkBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
       }
       if (station.info->connection)
         x += draw.text(x, station.info->connection->connected_network);
-    } else if (station.iwctl_failed) {
+    } else if (station.iwctl_status) {
       x += draw.text(x, fmt::format(" {} unknown", station.name),
                      color(0xFF0000));
     }
@@ -274,7 +277,7 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   for (auto const &station : _wifi_stations) {
     std::unique_lock lock(station.modify_mutex);
 
-    if (!station.iwctl_failed && !station.info->scanning &&
+    if (!station.iwctl_status && !station.info->scanning &&
         !station.info->connection)
       continue;
 
@@ -283,8 +286,8 @@ void NetworkBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
 
     y += 20;
 
-    if (station.iwctl_failed) {
-      auto t = fmt::format("'iwctl station {} show' failed", station.name);
+    if (station.iwctl_status) {
+      auto t = fmt::format("'iwctl station {} show' exited with {}", station.name, station.iwctl_status);
       auto w = draw.textw(t);
       ui::draw::pos_t tx = 0;
       if (width < w)
