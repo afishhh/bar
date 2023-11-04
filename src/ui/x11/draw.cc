@@ -92,8 +92,16 @@ XftFont *draw::lookup_font(char32_t codepoint) {
 }
 
 class codepoint_iterator {
+public:
+  enum class error_handling {
+    exception,
+    replace,
+  };
+
+private:
   std::string_view _str;
   std::string_view::const_iterator _it{_str.begin()};
+  error_handling _error_handling = error_handling::replace;
 
   inline std::size_t utf8_seq_len(char seq_begin) const {
     if ((seq_begin & 0x80) == 0)
@@ -106,12 +114,13 @@ class codepoint_iterator {
       return 4;
     throw std::runtime_error("Invalid UTF-8 sequence");
   }
+
   inline bool utf8_is_first_char(char seq_begin) const {
-    if ((seq_begin & 0x80) == 0)
-      return true;
-    if ((seq_begin & 0xC0) == 0x80)
-      return false;
-    throw std::runtime_error("Invalid UTF-8 sequence");
+    return (seq_begin & 0xC0) != 0x80;
+  }
+
+  inline bool _is_at_partial_sequence() const {
+    return utf8_seq_len(*_it) > size_t(_str.end() - _it);
   }
 
 public:
@@ -124,6 +133,8 @@ public:
   class sentinel {};
 
   explicit codepoint_iterator(std::string_view str) : _str(str) {}
+  codepoint_iterator(std::string_view str, error_handling eh)
+      : _str(str), _error_handling(eh) {}
 
   std::string_view::const_iterator base() const { return _it; }
 
@@ -141,11 +152,11 @@ public:
   }
 
   codepoint_iterator &operator--() {
-    while (!utf8_is_first_char(*_it)) {
+    do  {
       --_it;
       if (_it == _str.begin())
         break;
-    }
+    } while(!utf8_is_first_char(*_it));
     return *this;
   }
 
@@ -157,11 +168,9 @@ public:
 
   codepoint_iterator &operator+=(std::ptrdiff_t n) {
     while (n > 0) {
-      _it += utf8_seq_len(*_it);
-      if (_it > _str.end()) {
-        _it = _str.end();
+      if(_is_at_partial_sequence())
         break;
-      }
+      _it += utf8_seq_len(*_it);
       --n;
     }
     return *this;
@@ -185,8 +194,8 @@ public:
     return ret;
   }
 
-  bool operator==(const sentinel &) const { return _it == _str.end(); }
-  bool operator==(std::default_sentinel_t) const { return _it == _str.end(); }
+  bool operator==(const sentinel &) const { return _it == _str.end() || _is_at_partial_sequence(); }
+  bool operator==(std::default_sentinel_t) const { return _it == _str.end() || _is_at_partial_sequence(); }
 
   auto operator<=>(const codepoint_iterator &other) const {
     return _it <=> other._it;
@@ -195,6 +204,11 @@ public:
   char32_t operator*() const {
     if (_it == _str.end())
       return 0;
+    if(_is_at_partial_sequence()) {
+      if(_error_handling == error_handling::exception)
+        throw std::runtime_error("Cut off UTF-8 sequence encountered");
+      return 0;
+    }
 
     static auto &cvt =
         std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(
@@ -209,17 +223,16 @@ public:
         cvt.in(state, &*_it, &*_str.end(), last_in, &codepoint, &codepoint + 1,
                last_out);
 
-    if (res != std::codecvt_base::result::ok &&
-        res != std::codecvt_base::result::partial)
-      throw std::runtime_error("Invalid UTF-8 string");
+    if (res != std::codecvt_base::result::ok && res != std::codecvt_base::result::partial) {
+      error << "Invalid UTF-8 value in " << _str << " at byte "  << _it - _str.begin() << '\n';
 
-    if (last_in != &*_it + utf8_seq_len(*_it)) {
-      debug << "UTF-8 decoding assertion violated!\n";
-      debug << "last_in = " << (void *)last_in
-            << ", &*_it + utf8_seq_len(*_it) = "
-            << (void *)(&*_it + utf8_seq_len(*_it)) << '\n';
+      if(_error_handling == error_handling::exception)
+        throw std::runtime_error("Invalid UTF-8 string");
+      else
+        return 0xFFFD;
     }
-    // assert(last_in == &*_it + utf8_seq_len(*_it));
+
+    assert(last_in == &*_it + utf8_seq_len(*_it));
 
     return codepoint;
   }
