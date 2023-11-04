@@ -55,6 +55,7 @@ public:
   enum class Cause {
     STOP,
     SIGNAL,
+    EXCEPTION
   } cause;
 
   static void attach_to_signals();

@@ -38,7 +38,11 @@ void EventLoop::add_timer(duration interval, task::repeated::callback callback) 
 }
 
 bool EventLoop::check_stop() {
-  auto stop_queue = _event_queues[std::type_index(typeid(StopEvent))]->into_queue_of<StopEvent>();
+  auto it = _event_queues.find(std::type_index(typeid(StopEvent)));
+  if (it == _event_queues.end())
+    return false;
+
+  auto stop_queue = it->second->into_queue_of<StopEvent>();
   if (!stop_queue->empty()) {
     stop_queue->flush();
     _stopped = true;
@@ -100,8 +104,14 @@ void EventLoop::pump() {
 }
 
 void EventLoop::run() {
-  while (!_tasks.empty() && !_stopped)
-    this->pump();
+  try {
+    while (!_tasks.empty() && !_stopped)
+      this->pump();
+  } catch(std::exception& e) {
+    fire_event(StopEvent(StopEvent::Cause::EXCEPTION));
+    check_stop();
+    throw;
+  }
 }
 
-void EventLoop::stop() { EV.fire_event(StopEvent(StopEvent::Cause::STOP)); }
+void EventLoop::stop() { fire_event(StopEvent(StopEvent::Cause::STOP)); }
