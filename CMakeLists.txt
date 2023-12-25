@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.1...3.27)
 
 set(PROJECT_NAME bar)
 project(${PROJECT_NAME} CXX)
@@ -62,8 +62,9 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
   target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE
-    -Werror
+    -Werror -flto
   )
+  target_link_options(${PROJECT_NAME} PRIVATE -flto)
 endif()
 
 find_package(X11 REQUIRED)

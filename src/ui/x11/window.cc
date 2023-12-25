@@ -15,8 +15,7 @@ namespace ui::x11 {
 
 ui::draw &window::drawer() {
   if (!_draw.has_value()) {
-    _back_buffer =
-        XdbeAllocateBackBufferName(_conn->display(), _xwinid, XdbeBackground);
+    _back_buffer = XdbeAllocateBackBufferName(_conn->display(), _xwinid, XdbeBackground);
     _draw.emplace(_conn, _xwinid, *_back_buffer, this->size());
   }
 
@@ -28,8 +27,7 @@ uvec2 window::size() const {
   int x, y;
   unsigned int w, h, borderw, depth;
 
-  if (XGetGeometry(_conn->display(), _xwinid, &root, &x, &y, &w, &h, &borderw,
-                   &depth) == 0)
+  if (XGetGeometry(_conn->display(), _xwinid, &root, &x, &y, &w, &h, &borderw, &depth) == 0)
     throw std::runtime_error("window.size: XGetGeometry failed");
 
   return {w, h};
@@ -50,8 +48,7 @@ void window::resize(uvec2 size) {
 }
 
 void window::moveresize(uvec2 pos, uvec2 size) {
-  if (XMoveResizeWindow(_conn->display(), _xwinid, pos.x, pos.y, size.x,
-                        size.y) == 0)
+  if (XMoveResizeWindow(_conn->display(), _xwinid, pos.x, pos.y, size.x, size.y) == 0)
     throw std::runtime_error("window.moveresize: XMoveResizeWindow failed");
   if (_draw) {
     _draw->_size = size;

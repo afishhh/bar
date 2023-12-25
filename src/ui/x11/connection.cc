@@ -45,10 +45,8 @@ namespace ui::x11 {
 int connection::_trapped_error_code{0};
 int (*connection::_old_error_handler)(Display *, XErrorEvent *){nullptr};
 
-std::unique_ptr<ui::window> connection::create_window(std::string_view name,
-                                                      uvec2 pos, uvec2 size) {
-  XWinID w = XCreateSimpleWindow(_display, this->root(), pos.x, pos.y, size.x,
-                                 size.y, 0, 0, 0);
+std::unique_ptr<ui::window> connection::create_window(std::string_view name, uvec2 pos, uvec2 size) {
+  XWinID w = XCreateSimpleWindow(_display, this->root(), pos.x, pos.y, size.x, size.y, 0, 0, 0);
 
   XStoreName(_display, w, name.data());
 
@@ -69,8 +67,7 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
   {
     int mayor, minor;
     if (XdbeQueryExtension(display, &mayor, &minor))
-      fmt::print(info, "Supported Xdbe extension version {}.{}\n", mayor,
-                 minor);
+      fmt::print(info, "Supported Xdbe extension version {}.{}\n", mayor, minor);
     else
       throw std::runtime_error("Xdbe extension not supported");
   }
@@ -144,17 +141,14 @@ embedder connection::embed(XWinID client, XWinID parent) {
     if (event.type != PropertyNotify || event.xproperty.window != winid)
       return;
 
-    if (event.xproperty.atom == intern_atom("_XEMBED_INFO") &&
-        event.xproperty.state == PropertyNewValue) {
+    if (event.xproperty.atom == intern_atom("_XEMBED_INFO") && event.xproperty.state == PropertyNewValue) {
       Atom type;
       unsigned long len, bytes_left;
       int format;
       unsigned char *data;
 
-      if (!XGetWindowProperty(_display, winid, intern_atom("_XEMBED_INFO"), 0,
-                              sizeof(XEmbedInfo), false,
-                              intern_atom("_XEMBED_INFO"), &type, &format, &len,
-                              &bytes_left, &data))
+      if (!XGetWindowProperty(_display, winid, intern_atom("_XEMBED_INFO"), 0, sizeof(XEmbedInfo), false,
+                              intern_atom("_XEMBED_INFO"), &type, &format, &len, &bytes_left, &data))
         return; // Happily ignore errors caused by misbehaving clients.
 
       XEmbedInfo *info = reinterpret_cast<XEmbedInfo *>(data);

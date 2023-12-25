@@ -263,9 +263,8 @@ private:
         }
       }
       _current_callback = nullptr;
-      _mutex.unlock();
-
       queued_events.clear();
+      _mutex.unlock();
     }
   };
 
@@ -310,11 +309,19 @@ public:
     }
   }
 
-  template <std::derived_from<Event> E> void fire_event(const E &event) {
+  template <std::derived_from<Event> E> void fire_event(E const &event) {
     if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end()) {
       auto queue = it->second->into_queue_of<E>();
       std::lock_guard<std::mutex> lock(queue->_mutex);
       queue->queued_events.emplace_back(event);
+    }
+  }
+
+  template <std::derived_from<Event> E> void fire_event(E &&event) {
+    if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end()) {
+      auto queue = it->second->into_queue_of<E>();
+      std::lock_guard<std::mutex> lock(queue->_mutex);
+      queue->queued_events.emplace_back(std::move(event));
     }
   }
 

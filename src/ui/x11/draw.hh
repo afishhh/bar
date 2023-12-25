@@ -51,9 +51,8 @@ private:
   uvec2 _iterator_textsz(Iter begin, End end);
 
 public:
-  draw(x11::connection* conn, Window window, Drawable drawable, uvec2 size)
-      : _dpy(conn->display()), _win(window), _drw(drawable),
-        _fonts(std::make_shared<fonts>(conn)), _size(size) {
+  draw(x11::connection *conn, Window window, Drawable drawable, uvec2 size)
+      : _dpy(conn->display()), _win(window), _drw(drawable), _fonts(std::make_shared<fonts>(conn)), _size(size) {
     _gc = XCreateGC(conn->display(), drawable, 0, nullptr);
     _xft_draw = XftDrawCreate(conn->display(), drawable, DefaultVisual(conn->display(), 0),
                               DefaultColormap(conn->display(), 0));
@@ -84,14 +83,11 @@ public:
     XSetForeground(_dpy, _gc, color.as_rgb());
     XDrawRectangle(_dpy, _drw, _gc, x, y, w, h);
   }
-  void frect(pos_t x, pos_t y, pos_t width, pos_t height,
-             color color) override {
+  void frect(pos_t x, pos_t y, pos_t width, pos_t height, color color) override {
     XSetForeground(_dpy, _gc, color.as_rgb());
     XFillRectangle(_dpy, _drw, _gc, x, y, width, height);
   }
-  void rect(pos_t x, pos_t y, pos_t width, pos_t height, color color) {
-    frect(x, y, width, height, color.as_rgb());
-  }
+  void rect(pos_t x, pos_t y, pos_t width, pos_t height, color color) { frect(x, y, width, height, color); }
   void line(pos_t x1, pos_t y1, pos_t x2, pos_t y2, color color) override {
     XSetForeground(_dpy, _gc, color.as_rgb());
     XDrawLine(_dpy, _drw, _gc, x1, y1, x2, y2);

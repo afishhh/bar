@@ -42,6 +42,7 @@ class ScriptBlock : public Block {
     int signal;
   };
 
+  std::mutex _result_mutex;
   std::variant<SuccessR, TimedOut, SpawnFailed, NonZeroExit, Signaled> _result;
 
 public:

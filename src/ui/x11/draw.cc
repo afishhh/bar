@@ -21,6 +21,9 @@
 #include <unordered_set>
 #include <utility>
 
+// TEMPORARY
+#include <execinfo.h>
+
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
@@ -112,7 +115,11 @@ private:
       return 3;
     if ((seq_begin & 0xF8) == 0xF0)
       return 4;
-    throw std::runtime_error("Invalid UTF-8 sequence");
+
+    if(_error_handling == error_handling::exception)
+      throw std::runtime_error("Invalid UTF-8 sequence");
+    else
+      return 1;
   }
 
   inline bool utf8_is_first_char(char seq_begin) const {
@@ -225,6 +232,10 @@ public:
 
     if (res != std::codecvt_base::result::ok && res != std::codecvt_base::result::partial) {
       error << "Invalid UTF-8 value in " << _str << " at byte "  << _it - _str.begin() << '\n';
+
+      void *stacktrace[60];
+      size_t size = backtrace(stacktrace, 10);
+      backtrace_symbols_fd(stacktrace, size, 2);
 
       if(_error_handling == error_handling::exception)
         throw std::runtime_error("Invalid UTF-8 string");

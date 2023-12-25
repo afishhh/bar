@@ -102,6 +102,7 @@ void XSystrayBlock::late_init() {
 
         xconn->trap_errors();
         auto embedder(xconn->embed(window, *_tray));
+        XSetWindowBackground(xconn->display(), window, config::background_color.as_rgb());
         XSync(*xconn, false);
         xconn->untrap_errors();
         if (auto err = xconn->trapped_error()) {
@@ -164,7 +165,6 @@ void XSystrayBlock::late_init() {
     XSync(*xconn, false);
     xconn->untrap_errors();
   });
-
 
   if (!XSetSelectionOwner(*xconn, selection_atom, *_tray, CurrentTime))
     throw std::runtime_error("Failed to set system tray selection owner");

@@ -14,7 +14,7 @@
 , freetype
 
 , dwmipcpp-src
-# For dwmipcpp
+  # For dwmipcpp
 , jsoncpp
 
 , configFile ? ./src/config.def.hh
@@ -42,11 +42,13 @@ gcc13Stdenv.mkDerivation {
     jsoncpp
   ];
 
+  patchPhase = ''
+    ln -s ${configFile} src/config.hh
+  '';
+ 
   cmakeFlags = [
     "-DDWMIPC=ON"
     "-DFETCHCONTENT_SOURCE_DIR_DWMIPCPP=${dwmipcpp-src}"
     ''-DCMAKE_INSTALL_PREFIX=''${out}''
   ];
-
-  patchPhase = "ln -s ${configFile} src/config.hh";
 }

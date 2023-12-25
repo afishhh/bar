@@ -25,12 +25,8 @@
 class bar {
   struct BlockInfo {
     Block &block;
-    std::chrono::time_point<std::chrono::steady_clock,
-                            std::chrono::duration<double>>
-        last_update;
-    std::chrono::time_point<std::chrono::steady_clock,
-                            std::chrono::duration<double>>
-        last_draw;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> last_update;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> last_draw;
 
     uvec2 last_pos;
     uvec2 last_size;
@@ -44,19 +40,14 @@ class bar {
 
   // Used to implement tooltip drawing
   BlockInfo *_hovered_block;
-  std::chrono::time_point<std::chrono::steady_clock,
-                          std::chrono::duration<double>>
-      _last_mouse_move;
-  std::chrono::time_point<std::chrono::steady_clock,
-                          std::chrono::duration<double>>
-      _last_tooltip_draw;
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_mouse_move;
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_tooltip_draw;
 
   void _init_ui() {
     if (auto conn_opt = ui::x11::connection::try_create(); conn_opt) {
       _connection = std::unique_ptr(std::move(*conn_opt));
-      _window = _connection->create_window(
-          config::x11::window_name, {0, 0},
-          {_connection->available_size().x, config::height});
+      _window = _connection->create_window(config::x11::window_name, {0, 0},
+                                           {_connection->available_size().x, config::height});
 
       if (auto *xwin = dynamic_cast<ui::x11::window *>(_window.get()); xwin) {
         xwin->class_hint(config::x11::window_class, config::x11::window_class);
@@ -64,15 +55,12 @@ class bar {
           xwin->override_redirect(true);
       }
 
-      _tooltip_window = _connection->create_window(
-          fmt::format("{} tooltip", config::x11::window_name), {0, 0}, {1, 1});
+      _tooltip_window = _connection->create_window(fmt::format("{} tooltip", config::x11::window_name), {0, 0}, {1, 1});
 
-      if (auto *xwin = dynamic_cast<ui::x11::window *>(_tooltip_window.get());
-          xwin)
+      if (auto *xwin = dynamic_cast<ui::x11::window *>(_tooltip_window.get()); xwin)
         xwin->override_redirect(true);
 
-      auto fonts = std::make_shared<ui::x11::fonts>(
-          (ui::x11::connection *)_connection.get());
+      auto fonts = std::make_shared<ui::x11::fonts>((ui::x11::connection *)_connection.get());
       for (auto fname : config::fonts)
         fonts->add(fname);
 
@@ -82,28 +70,25 @@ class bar {
       // TODO: Abstract this away from X11
       auto x11conn = static_cast<ui::x11::connection *>(_connection.get());
       auto x11mainwin = static_cast<ui::x11::window *>(_window.get());
-      auto x11tooltipwin =
-          static_cast<ui::x11::window *>(_tooltip_window.get());
-      XSetTransientForHint(x11conn->display(), x11tooltipwin->window_id(),
-                           x11mainwin->window_id());
+      auto x11tooltipwin = static_cast<ui::x11::window *>(_tooltip_window.get());
+
+      XSetWindowBackground(x11conn->display(), x11mainwin->window_id(), config::background_color.as_rgb());
+
+      XSetTransientForHint(x11conn->display(), x11tooltipwin->window_id(), x11mainwin->window_id());
       XSelectInput(x11conn->display(), x11conn->root(), PointerMotionMask);
-      XSelectInput(x11conn->display(), x11mainwin->window_id(),
-                   LeaveWindowMask | EnterWindowMask);
-      XSelectInput(x11conn->display(), x11tooltipwin->window_id(),
-                   LeaveWindowMask | EnterWindowMask);
+      XSelectInput(x11conn->display(), x11mainwin->window_id(), LeaveWindowMask | EnterWindowMask);
+      XSelectInput(x11conn->display(), x11tooltipwin->window_id(), LeaveWindowMask | EnterWindowMask);
       EV.on<ui::x11::xevent>([this](ui::x11::xevent const &ev) {
         XEvent const &e = ev;
         if (e.type == MotionNotify) {
-          auto block_lists = {std::views::all(_right_blocks),
-                              std::views::all(_left_blocks)};
+          auto block_lists = {std::views::all(_right_blocks), std::views::all(_left_blocks)};
           auto all_blocks = std::ranges::join_view(block_lists);
           unsigned x = e.xmotion.x, y = e.xmotion.y;
           _last_mouse_move = std::chrono::steady_clock::now();
 
           _hovered_block = nullptr;
           for (auto &info : all_blocks) {
-            if (info.last_pos.x <= x && info.last_pos.y <= y &&
-                info.last_pos.x + info.last_size.x > x &&
+            if (info.last_pos.x <= x && info.last_pos.y <= y && info.last_pos.x + info.last_size.x > x &&
                 info.last_pos.y + info.last_size.y > y) {
               _hovered_block = &info;
               break;
@@ -132,8 +117,7 @@ class bar {
     info.last_draw = std::chrono::steady_clock::now();
 
     if (info.block.update_interval() != std::chrono::duration<double>::max())
-      EV.add_timer(std::chrono::duration_cast<EventLoop::duration>(
-                       info.block.update_interval()),
+      EV.add_timer(std::chrono::duration_cast<EventLoop::duration>(info.block.update_interval()),
                    [&block = info.block](auto) {
                      block.update();
                      EV.fire_event(RedrawEvent());
@@ -166,13 +150,9 @@ public:
   ui::window &window() { return *_window; }
   ui::window &tooltip_window() { return *_tooltip_window; }
 
-  void add_left(Block &block) {
-    _setup_block(_left_blocks.emplace_back(block));
-  };
+  void add_left(Block &block) { _setup_block(_left_blocks.emplace_back(block)); };
 
-  void add_right(Block &block) {
-    _setup_block(_right_blocks.emplace_back(block));
-  };
+  void add_right(Block &block) { _setup_block(_right_blocks.emplace_back(block)); };
 
   void redraw() {
     std::size_t x = 5;
@@ -181,10 +161,7 @@ public:
     auto buffered_draw = BufDraw(direct_draw);
 
     {
-      auto filtered =
-          _left_blocks | std::views::filter([](BlockInfo const &info) {
-            return !info.block.skip();
-          });
+      auto filtered = _left_blocks | std::views::filter([](BlockInfo const &info) { return !info.block.skip(); });
       auto it = filtered.begin();
       if (it != filtered.end())
         while (true) {
@@ -214,10 +191,7 @@ public:
     x = direct_draw.width() - 5;
 
     {
-      auto filtered =
-          _right_blocks | std::views::filter([](BlockInfo const &info) {
-            return !info.block.skip();
-          });
+      auto filtered = _right_blocks | std::views::filter([](BlockInfo const &info) { return !info.block.skip(); });
       auto it = filtered.begin();
       if (it != filtered.end())
         while (true) {
@@ -225,14 +199,13 @@ public:
           auto &block = info.block;
           auto now = std::chrono::steady_clock::now();
           auto width = block.draw(buffered_draw, now - info.last_draw);
-          width +=
-              block.ddraw(buffered_draw, now - info.last_draw, x - width, true);
+          width += block.ddraw(buffered_draw, now - info.last_draw, x - width, true);
           info.last_pos = {(unsigned)(x - width), 0};
           info.last_size = {(unsigned)width, config::height};
           info.last_draw = now;
 
           x -= width;
-          direct_draw.frect(x - 8, 0, width + 16, config::height, 0x000000);
+          direct_draw.frect(x - 8, 0, width + 16, config::height, config::background_color.as_rgb());
           buffered_draw.draw_offset(x, 0);
           buffered_draw.clear();
 
@@ -251,13 +224,11 @@ public:
       auto now = std::chrono::steady_clock::now();
       auto &block = _hovered_block->block;
       auto bd = BufDraw(_tooltip_window->drawer());
-      block.draw_tooltip(bd, now - _last_tooltip_draw,
-                         _hovered_block->last_size.x);
+      block.draw_tooltip(bd, now - _last_tooltip_draw, _hovered_block->last_size.x);
 
       auto dim = bd.calculate_size();
 
-      uvec2 pos{_hovered_block->last_pos.x +
-                    (signed)(_hovered_block->last_size.x - dim.x - 16) / 2,
+      uvec2 pos{_hovered_block->last_pos.x + (signed)(_hovered_block->last_size.x - dim.x - 16) / 2,
                 (unsigned)(_hovered_block->last_pos.y + config::height)};
       uvec2 size{dim.x + 16, dim.y + 16};
       auto dsize = _connection->available_size();
@@ -271,8 +242,7 @@ public:
         pos.x = 0;
 
       _tooltip_window->moveresize(pos, size);
-      _tooltip_window->drawer().hrect(0, 0, size.x - 1, size.y - 1,
-                                      color(0xFFAA00));
+      _tooltip_window->drawer().hrect(0, 0, size.x - 1, size.y - 1, color(0xFFAA00));
       bd.draw_offset(8, 8);
 
       _last_tooltip_draw = now;

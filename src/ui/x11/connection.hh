@@ -134,6 +134,11 @@ class xevent : public Event {
   friend class connection;
 
 public:
+  xevent(xevent const &) = delete;
+  xevent &operator=(xevent const &) = delete;
+  xevent(xevent &&) = default;
+  xevent &operator=(xevent &&) = default;
+
   ~xevent() { XFreeEventData(_conn->display(), &_event.xcookie); }
 
   inline operator XEvent const &() const { return _event; }

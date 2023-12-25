@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <fcntl.h>
 #include <fstream>
+#include <mutex>
 #include <spawn.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -88,6 +89,7 @@ void ScriptBlock::update() {
       environment.push_back(nullptr);
 
       if (int err = posix_spawnp(&pid, this->_path.c_str(), &actions, &attr, argv, environment.data()); err != 0) {
+        std::unique_lock lock(_result_mutex);
         _result = SpawnFailed{err};
         _process_mutex.unlock();
         return;
@@ -108,10 +110,12 @@ void ScriptBlock::update() {
     if (WIFEXITED(wstatus)) {                                                                                          \
       auto status = WEXITSTATUS(wstatus);                                                                              \
       if (status) {                                                                                                    \
+        std::unique_lock lock(_result_mutex);                                                                          \
         _result = NonZeroExit{status};                                                                                 \
         return;                                                                                                        \
       }                                                                                                                \
     } else if (WIFSIGNALED(wstatus)) {                                                                                 \
+      std::unique_lock lock(_result_mutex);                                                                            \
       _result = Signaled{WTERMSIG(wstatus)};                                                                           \
       return;                                                                                                          \
     }                                                                                                                  \
@@ -138,6 +142,7 @@ void ScriptBlock::update() {
       while (waitpid(pid, &wstatus, 0) < 0 && errno == EINTR)
         ;
 
+      std::unique_lock lock(_result_mutex);
       _result = TimedOut{};
       return;
     }
@@ -165,6 +170,7 @@ void ScriptBlock::update() {
     ifs.read(&output[0], output.size());
     ifs.close();
 
+    std::unique_lock lock(_result_mutex);
     _result = SuccessR{std::string(trim(output))};
   });
   update_thread.detach();
@@ -223,20 +229,20 @@ ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x, ui::draw::pos_t con
         }
 
         segment_start = ++it;
-
-        // clang-format off
-        constexpr std::array<color, 9> colors8{
-          0x000000, 0xFF7777, 0x77FF77,
-          0xFFF93F, 0x7777FF, 0xC300FF,
-          0x00FFEA, 0xFFFFFF, 0xFFFFFF
-        };
-        // clang-format on
-        for (auto mod : modifiers) {
-          if (mod >= 30 && mod <= 39)
-            current_color = colors8[mod - 30];
-          if (mod == 0)
-            current_color = colors8.back();
-        }
+        //
+        // // clang-format off
+        // constexpr std::array<color, 9> colors8{
+        //   0x000000, 0xFF7777, 0x77FF77,
+        //   0xFFF93F, 0x7777FF, 0xC300FF,
+        //   0x00FFEA, 0xFFFFFF, 0xFFFFFF
+        // };
+        // // clang-format on
+        // for (auto mod : modifiers) {
+        //   if (mod >= 30 && mod <= 39)
+        //     current_color = colors8[mod - 30];
+        //   if (mod == 0)
+        //     current_color = colors8.back();
+        // }
       }
     } else
       ++it;
@@ -249,6 +255,7 @@ bail:;
 }
 
 size_t ScriptBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
+  std::unique_lock lock(_result_mutex);
   return std::visit(
       overloaded{[&draw](SuccessR const &s) { return draw_text_with_ansi_color(0, draw.vcenter(), draw, s.output); },
                  [&draw](TimedOut) { return draw.text(0, draw.vcenter(), "TIMED OUT", 0xFF0000); },

@@ -27,6 +27,8 @@ namespace config {
 //       good.
 constexpr static size_t height = 24;
 
+constexpr color background_color = color::rgb(0, 0, 120);
+
 // Configuration options specific to the X11 backend
 namespace x11 {
 
