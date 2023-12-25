@@ -247,7 +247,8 @@ private:
     void flush() override {
       _mutex.lock();
 
-      for (auto &event : queued_events) {
+      auto events = std::move(queued_events);
+      for (auto &event : events) {
         for (auto it = callbacks.begin(); it != callbacks.end();) {
           auto &[_, callback] = *it;
           _current_callback = &callback;
@@ -255,6 +256,7 @@ private:
 
           fire_base_event(event);
           callback(event);
+
           _mutex.lock();
           if (_remove_current_callback)
             it = callbacks.erase(it);
@@ -262,8 +264,8 @@ private:
             ++it;
         }
       }
+
       _current_callback = nullptr;
-      queued_events.clear();
       _mutex.unlock();
     }
   };
