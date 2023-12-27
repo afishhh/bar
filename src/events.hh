@@ -2,4 +2,6 @@
 
 #include "loop.hh"
 
-class RedrawEvent : public Event {};
+class RedrawEvent : public StateEvent {
+  EV_STATE_EVENT(DROP);
+};

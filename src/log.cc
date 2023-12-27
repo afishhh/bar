@@ -14,7 +14,7 @@ std::string mk_prefix(std::string_view color, std::string_view prefix) {
   }
 }
 
-Logger info(std::cerr, mk_prefix("\033[1;94m", "[info] "));
-Logger warn(std::cerr, mk_prefix("\033[1;93m", "[warn] "));
-Logger error(std::cerr, mk_prefix("\033[1;91m", "[error] "));
-Logger debug(std::cerr, mk_prefix("\033[1;95m", "[debug] "));
+thread_local Logger info(std::cerr, mk_prefix("\033[1;94m", "[info] "));
+thread_local Logger warn(std::cerr, mk_prefix("\033[1;93m", "[warn] "));
+thread_local Logger error(std::cerr, mk_prefix("\033[1;91m", "[error] "));
+thread_local Logger debug(std::cerr, mk_prefix("\033[1;95m", "[debug] "));

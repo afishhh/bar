@@ -30,7 +30,7 @@ public:
   }
 };
 
-extern Logger info;
-extern Logger warn;
-extern Logger error;
-extern Logger debug;
+extern thread_local Logger info;
+extern thread_local Logger warn;
+extern thread_local Logger error;
+extern thread_local Logger debug;

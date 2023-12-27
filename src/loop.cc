@@ -1,4 +1,5 @@
 #include "loop.hh"
+#include "executor.hh"
 #include "signal.hh"
 
 #include <chrono>
@@ -44,7 +45,7 @@ bool EventLoop::check_stop() {
 
   auto stop_queue = it->second->into_queue_of<StopEvent>();
   if (!stop_queue->empty()) {
-    stop_queue->flush();
+    stop_queue->flush(*_executor);
     _stopped = true;
   }
   return _stopped;
@@ -92,11 +93,17 @@ void EventLoop::pump() {
                         _tasks.top().var()));
   }
 
-  for (auto &[index, queue] : _event_queues) {
-    // The StopEvent queue is special cased and checked in every check_stop
-    if (index == std::type_index(typeid(StopEvent)))
-      continue;
-    queue->flush();
+  {
+    ScopedExecutor executor(*_executor);
+
+    for (auto &[index, queue] : _event_queues) {
+      // The StopEvent queue is special cased and checked in every check_stop
+      if (index == std::type_index(typeid(StopEvent)))
+        continue;
+
+      if (!queue->empty())
+        executor.execute([this, &queue] { queue->flush(*_executor); });
+    }
   }
 
   if (check_stop())
@@ -104,14 +111,20 @@ void EventLoop::pump() {
 }
 
 void EventLoop::run() {
-  try {
-    while (!_tasks.empty() && !_stopped)
+  while (!_tasks.empty() && !_stopped)
+    try {
       this->pump();
-  } catch(std::exception& e) {
-    fire_event(StopEvent(StopEvent::Cause::EXCEPTION));
-    check_stop();
-    throw;
-  }
+    } catch (std::exception &e) {
+      ExceptionAction act = ExceptionAction::STOP;
+      if (_exception_handler.has_value())
+        act = (*_exception_handler)(e);
+
+      if (act == ExceptionAction::STOP) {
+        fire_event(StopEvent(StopEvent::Cause::EXCEPTION));
+        check_stop();
+        throw;
+      }
+    }
 }
 
 void EventLoop::stop() { fire_event(StopEvent(StopEvent::Cause::STOP)); }
