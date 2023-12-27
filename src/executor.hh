@@ -36,21 +36,29 @@ class ThreadPoolExecutor final : public Executor {
   std::condition_variable_any _condvar;
   std::queue<std::function<void()>> _queue;
   std::vector<std::jthread> _workers;
+  std::atomic_uint _available_workers;
+  unsigned _max_threads;
+
+  void start_worker() {
+    _workers.emplace_back([this](std::stop_token token) {
+      std::unique_lock lg(_mutex);
+      _available_workers.fetch_add(1, std::memory_order_relaxed);
+      while (_condvar.wait(_mutex, token, [this] { return !_queue.empty(); })) {
+        _available_workers.fetch_sub(1, std::memory_order_relaxed);
+        auto job = std::move(_queue.front());
+        _queue.pop();
+
+        lg.unlock();
+        job();
+        lg.lock();
+      }
+    });
+  }
 
 public:
-  ThreadPoolExecutor(unsigned threads) {
-    for (unsigned i = 0; i < threads; ++i)
-      _workers.emplace_back([this](std::stop_token token) {
-        std::unique_lock lg(_mutex);
-        while (_condvar.wait(_mutex, token, [this] { return !_queue.empty(); })) {
-          auto job = std::move(_queue.front());
-          _queue.pop();
-
-          lg.unlock();
-          job();
-          lg.lock();
-        }
-      });
+  ThreadPoolExecutor(unsigned max_threads) : _max_threads(max_threads) {
+    if (max_threads > 0)
+      start_worker();
   }
 
   bool blocking() const override { return false; };
@@ -58,6 +66,8 @@ public:
     std::unique_lock lg(_mutex);
     _queue.push(std::move(job));
     _condvar.notify_one();
+    if (_available_workers.load(std::memory_order_relaxed) == 0 && _workers.size() < _max_threads)
+      start_worker();
   }
 };
 
