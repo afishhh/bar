@@ -55,16 +55,23 @@ target_compile_options(${PROJECT_NAME} PRIVATE
   -Wall -Wextra
 )
 
+set(ASAN_DEFUALT OFF)
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
+  set(ASAN_DEFUALT ON)
   target_compile_options(${PROJECT_NAME} PRIVATE
-    -g -pg -fsanitize=address,undefined
+    -g -pg
   )
-  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE
     -Werror -flto
   )
   target_link_options(${PROJECT_NAME} PRIVATE -flto)
+endif()
+
+option(ASAN "Enable AddressSanitizer" ${ASAN_DEFAULT})
+if(ASAN)
+  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
+  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 endif()
 
 find_package(X11 REQUIRED)
