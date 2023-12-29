@@ -1,14 +1,22 @@
 #pragma once
 
-#include "loop.hh"
 #include <cassert>
 #include <cerrno>
 #include <csignal>
 #include <set>
+#include <sys/signalfd.h>
 #include <system_error>
+#include <unistd.h>
+
+#include "loop.hh"
 
 class SignalEvent : public Event {
   SignalEvent() {}
+
+  static int _sigfd;
+  static sigset_t _mask;
+  struct MaskConstructor;
+  static std::mutex _mask_mutex;
 
   static void _handler(int num, siginfo_t *info, void *) {
     auto event = SignalEvent();
@@ -21,19 +29,57 @@ public:
   int signum;
   siginfo_t info;
 
-  static void attach(int signum, int additional_sa_flags = 0) {
-    assert(signum > 0 && signum <= SIGRTMAX);
-    static std::set<int> already_registered;
+  template <std::same_as<int>... Args> static void attach(Args... signals) {
+    for (int signal : {signals...}) {
+      assert(signal > 0 && signal <= SIGRTMAX);
 
-    if(already_registered.contains(signum))
-      return;
-    already_registered.insert(signum);
+      if (sigismember(&_mask, signal))
+        continue;
 
-    struct sigaction action;
-    action.sa_sigaction = &_handler;
-    sigemptyset(&action.sa_mask);
-    action.sa_flags = SA_SIGINFO | additional_sa_flags;
-    if (sigaction(signum, &action, nullptr) < 0)
-      throw std::system_error(errno, std::system_category());
+      {
+        std::unique_lock lg(_mask_mutex);
+        if (sigismember(&_mask, signal))
+          continue;
+        if (sigaddset(&_mask, signal) < 0)
+          throw std::system_error(errno, std::generic_category(), "sigaddset");
+      }
+
+      if (pthread_sigmask(SIG_BLOCK, &_mask, NULL) < 0)
+        throw std::system_error(errno, std::generic_category(), "sigprocmask");
+
+      int ret = signalfd(_sigfd, &_mask, SFD_CLOEXEC);
+      if (ret < 0)
+        throw std::system_error(errno, std::generic_category(), "signalfd");
+
+      if (_sigfd == -1) {
+        _sigfd = ret;
+
+        std::thread([fd = ret] {
+          signalfd_siginfo info;
+          while (true) {
+            ssize_t ret = read(fd, &info, sizeof info);
+            if (ret < 0) {
+              if (errno == EINTR)
+                continue;
+              else
+                throw std::system_error(errno, std::generic_category(), "read");
+            } else if (ret != sizeof info)
+              throw std::runtime_error("read() on signalfd returned size != sizeof(signalfd_siginfo)");
+          }
+        }).detach();
+      }
+    }
   }
 };
+
+inline sigset_t make_empty_sigset() {
+  sigset_t set;
+  if (sigemptyset(&set) < 0)
+    throw std::system_error(errno, std::generic_category(), "sigemptyset");
+  return set;
+}
+
+inline std::mutex SignalEvent::_mask_mutex;
+inline sigset_t SignalEvent::_mask = make_empty_sigset();
+;
+inline int SignalEvent::_sigfd = -1;
