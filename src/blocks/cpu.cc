@@ -187,12 +187,12 @@ void CpuBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
     draw.text(0, 12 + yoff, title);
     draw.hrect(width - bar_width, 3 + yoff, bar_width, 16);
 
-    size_t fill = (bar_width - 1) * times.busy() / times.total();
+    size_t fill = times.total() == 0 ? 0 : (bar_width - 1) * times.busy() / times.total();
     auto hue = map_range(times.busy(), 0, times.total(), 120, 0);
     color color = color::hsl(map_range(hue, 0, 360, 0, 1), 1, 0.5);
     draw.frect(width - bar_width + 1, 4 + yoff, fill, 15, color);
 
-    auto percentage = 100.0 * times.busy() / times.total();
+    auto percentage = times.total() == 0 ? 0 : 100.0 * times.busy() / times.total();
     auto ptext = fmt::format("{:.1f}%", percentage);
     auto ptextw = draw.textw(ptext);
 
