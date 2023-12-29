@@ -231,7 +231,7 @@ private:
           return;
       }
 
-      queued_events.emplace_back(std::forward<Args...>(args...));
+      queued_events.emplace_back(std::forward<Args>(args)...);
     }
 
     bool empty() const override {
