@@ -220,16 +220,17 @@ public:
         }
     }
 
-    if (_hovered_block && _hovered_block->block.has_tooltip()) {
+    BlockInfo *hovered = _hovered_block;
+    if (hovered && hovered->block.has_tooltip()) {
       auto now = std::chrono::steady_clock::now();
-      auto &block = _hovered_block->block;
+      auto &block = hovered->block;
       auto bd = BufDraw(_tooltip_window->drawer());
-      block.draw_tooltip(bd, now - _last_tooltip_draw, _hovered_block->last_size.x);
+      block.draw_tooltip(bd, now - _last_tooltip_draw, hovered->last_size.x);
 
       auto dim = bd.calculate_size();
 
-      uvec2 pos{_hovered_block->last_pos.x + (signed)(_hovered_block->last_size.x - dim.x - 16) / 2,
-                (unsigned)(_hovered_block->last_pos.y + config::height)};
+      uvec2 pos{hovered->last_pos.x + (signed)(hovered->last_size.x - dim.x - 16) / 2,
+                (unsigned)(hovered->last_pos.y + config::height)};
       uvec2 size{dim.x + 16, dim.y + 16};
       auto dsize = _connection->available_size();
 
