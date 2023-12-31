@@ -44,12 +44,11 @@ void ScriptBlock::late_init() {
 }
 
 void ScriptBlock::update() {
-  if (!_update_mutex.try_lock())
+  std::unique_lock update_lock(_update_mutex, std::try_to_lock);
+  if (!update_lock.owns_lock())
     return;
 
-  std::thread update_thread([&] {
-    DEFER([this] { _update_mutex.unlock(); });
-
+  std::thread update_thread([&, update_lock = std::move(update_lock)] {
     if (!_process_mutex.try_lock())
       throw std::runtime_error("ScriptBlock::update() called while a process is still running");
 
@@ -99,7 +98,7 @@ void ScriptBlock::update() {
     // TODO: Cleaner solution
     EventLoop::callback_id sigchld_handler;
     sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
-      if (ev.signum != SIGCHLD || ev.info.si_pid != pid)
+      if (ev.signum != SIGCHLD || (pid_t)ev.info.ssi_pid != pid)
         return;
 
       _process_mutex.unlock();
@@ -229,20 +228,20 @@ ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x, ui::draw::pos_t con
         }
 
         segment_start = ++it;
-        //
-        // // clang-format off
-        // constexpr std::array<color, 9> colors8{
-        //   0x000000, 0xFF7777, 0x77FF77,
-        //   0xFFF93F, 0x7777FF, 0xC300FF,
-        //   0x00FFEA, 0xFFFFFF, 0xFFFFFF
-        // };
-        // // clang-format on
-        // for (auto mod : modifiers) {
-        //   if (mod >= 30 && mod <= 39)
-        //     current_color = colors8[mod - 30];
-        //   if (mod == 0)
-        //     current_color = colors8.back();
-        // }
+
+        // clang-format off
+        constexpr std::array<color, 9> colors8{
+          0x000000, 0xFF7777, 0x77FF77,
+          0xFFF93F, 0x7777FF, 0xC300FF,
+          0x00FFEA, 0xFFFFFF, 0xFFFFFF
+        };
+        // clang-format on
+        for (auto mod : modifiers) {
+          if (mod >= 30 && mod <= 39)
+            current_color = colors8[mod - 30];
+          if (mod == 0)
+            current_color = colors8.back();
+        }
       }
     } else
       ++it;

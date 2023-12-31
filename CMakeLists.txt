@@ -59,7 +59,7 @@ set(ASAN_DEFUALT OFF)
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
   set(ASAN_DEFUALT ON)
   target_compile_options(${PROJECT_NAME} PRIVATE
-    -g -pg
+    -g
   )
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE

@@ -81,6 +81,7 @@ public:
 
 private:
   friend class EventLoop;
+  friend class SignalEvent;
   StopEvent(Cause cause) : cause(cause) {}
 };
 

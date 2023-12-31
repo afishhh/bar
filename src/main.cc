@@ -32,9 +32,11 @@
 #include "executor.hh"
 #include "log.hh"
 #include "loop.hh"
+#include "signal.hh"
 #include "util.hh"
 
 int main() {
+  SignalEvent::setup();
   StopEvent::attach_to_signals();
   EV.set_executor(std::make_unique<ThreadPoolExecutor>(std::thread::hardware_concurrency() * 2));
   EV.set_exception_handler([](std::exception &e) {
