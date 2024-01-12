@@ -6,8 +6,8 @@
 #include <X11/extensions/Xdbe.h>
 #include <cstddef>
 #include <functional>
-#include <memory>
 #include <latch>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -30,6 +30,7 @@ class connection final : public ::ui::connection {
   std::latch _event_thread_latch{1};
   std::jthread _event_thread;
 
+  static bool _io_error_ocurred;
   static int _trapped_error_code;
   static int (*_old_error_handler)(Display *, XErrorEvent *);
   static int _trapped_error_handler(Display *, XErrorEvent *ev) {
