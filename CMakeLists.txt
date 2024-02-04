@@ -77,14 +77,31 @@ endif()
 find_package(X11 REQUIRED)
 find_package(fmt REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PANGO REQUIRED pango pangoxft)
+
 target_link_libraries(
   ${PROJECT_NAME}
   X11::X11
   X11::Xft
   X11::Xext
   fmt::fmt
+  ${PANGO_LIBRARIES}
   ${DWMIPCPP_LIBRARIES}
   pthread
+)
+
+
+target_include_directories(
+  ${PROJECT_NAME}
+  PUBLIC
+  ${PANGO_INCLUDE_DIRS}
+)
+
+target_compile_options(
+  ${PROJECT_NAME}
+  PUBLIC
+  ${PANGO_CFLAGS_OTHER}
 )
 
 include(GNUInstallDirs)

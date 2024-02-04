@@ -59,5 +59,9 @@ int main() {
 
   EV.run();
 
+  // The event loop may still contain xevents that reference the X11 connection owned by the bar instance that's about
+  // to be destroyed, therefore we reset the event loop before destroying bar to avoid this use-after-free.
+  EV.reset();
+
   return 0;
 }

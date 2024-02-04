@@ -23,7 +23,7 @@ void StopEvent::attach_to_signals() {
   });
 }
 
-EventLoop::EventLoop() {}
+EventLoop::EventLoop() { _event_queues.emplace(typeid(StopEvent), std::make_unique<EventQueue<StopEvent>>()); }
 EventLoop::~EventLoop() {}
 
 void EventLoop::add_oneshot(task::oneshot::callback callback) { _tasks.emplace(task::oneshot{callback}); }
@@ -111,7 +111,7 @@ void EventLoop::pump() {
 }
 
 void EventLoop::run() {
-  while (!_tasks.empty() && !_stopped)
+  while (!_tasks.empty() && !check_stop())
     try {
       this->pump();
     } catch (std::exception &e) {
@@ -122,9 +122,12 @@ void EventLoop::run() {
       if (act == ExceptionAction::STOP) {
         fire_event(StopEvent(StopEvent::Cause::EXCEPTION));
         check_stop();
+        _stopped = false;
         throw;
       }
     }
+
+  _stopped = false;
 }
 
 void EventLoop::stop() { fire_event(StopEvent(StopEvent::Cause::STOP)); }

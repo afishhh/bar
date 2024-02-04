@@ -40,10 +40,6 @@ public:
 
   virtual void fcircle(pos_t x, pos_t y, pos_t d, color = 0xFFFFFF) = 0;
 
-  // TODO: Add a text overload returning an output iterator for more efficient
-  //       formatting using fmt::format_to
-  // TODO: Add a text overload accepting a std::u32string_view.
-  //       This could be implemented using the planned text output iterator
   virtual pos_t text(pos_t x, pos_t y, std::string_view text,
                      color = 0xFFFFFF) = 0;
 
@@ -51,12 +47,9 @@ public:
     return this->text(x, vcenter(), text, color);
   }
   virtual uvec2 textsz(std::string_view text) = 0;
-  virtual uvec2 textsz(std::u32string_view text) = 0;
 
   pos_t textw(std::string_view text) { return textsz(text).x; }
-  pos_t textw(std::u32string_view text) { return textsz(text).x; }
   pos_t texth(std::string_view text) { return textsz(text).y; }
-  pos_t texth(std::u32string_view text) { return textsz(text).y; }
 };
 
 } // namespace ui

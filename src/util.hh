@@ -1,12 +1,15 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <future>
 #include <iomanip>
+#include <list>
+#include <optional>
 #include <span>
 #include <sstream>
 #include <string_view>
@@ -86,3 +89,58 @@ public:
 #define DEFER3(fn, c) auto _defer__##c = _private::defer((fn))
 #define DEFER2(fn, c) DEFER3((fn), c)
 #define DEFER(fn) DEFER2((fn), __COUNTER__)
+
+template <typename K, typename V, std::size_t MaxSize>
+  requires(!std::is_reference_v<K>) && requires(K k) {
+    { std::hash<K>()(k) } -> std::same_as<size_t>;
+  }
+class LRUMap {
+  constexpr static size_t MapSize = MaxSize + MaxSize / 2;
+
+  struct Node {
+    K key;
+    V value;
+    std::list<size_t>::iterator activity_list_entry;
+  };
+
+  std::span<std::optional<Node>> _values;
+  std::list<size_t> _list;
+
+  template <typename KeyComparable> size_t _find(size_t hash, KeyComparable const &key) const {
+    size_t index = hash % MapSize;
+    while (_values[index].has_value()) {
+      if (_values[index]->key == key)
+        return index;
+
+      index = (index + 1) % MapSize;
+    }
+    return index;
+  }
+
+public:
+  LRUMap() { _values = std::span(new std::optional<Node>[MapSize], MapSize); }
+  ~LRUMap() { delete[] _values.data(); }
+
+  V &insert(K &&key, V &&value) {
+    if (_list.size() >= MaxSize) {
+      _values[_list.back()].reset();
+      _list.pop_back();
+    }
+
+    size_t idx = _find(std::hash<K>()(key), key);
+    assert(!_values[idx].has_value());
+
+    auto iterator = _list.emplace(_list.cbegin(), idx);
+    return _values[idx].emplace(std::move(key), std::move(value), iterator).value;
+  }
+
+  template <typename KeyComparable> V *get(KeyComparable const &key) {
+    size_t idx = _find(std::hash<KeyComparable>()(key), key);
+
+    if (_values[idx].has_value()) {
+      _list.splice(_list.begin(), _list, _values[idx]->activity_list_entry);
+      return &_values[idx]->value;
+    } else
+      return nullptr;
+  }
+};

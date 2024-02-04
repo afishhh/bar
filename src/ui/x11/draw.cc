@@ -2,6 +2,8 @@
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
+#include <pango/pango.h>
+#include <pango/pangoxft.h>
 
 #include <algorithm>
 #include <cassert>
@@ -13,6 +15,7 @@
 #include <iostream>
 #include <iterator>
 #include <locale>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -33,300 +36,207 @@
 
 namespace ui::x11 {
 
-XftColor *draw::lookup_xft_color(color color) {
-  if (auto c = _xft_color_cache.find(color); c != _xft_color_cache.end())
-    return &c->second;
+draw::pos_t draw::text(pos_t x, pos_t y, std::string_view text, color color) {
+  auto *cached = _text_cache.get(text);
+  if (cached == NULL)
+    cached = &_text_cache.insert(std::string(text), _text_full(_text_prepare(text)));
 
-  // This color type juggling here is necessary because XftDrawString8
-  // requires an XftColor which requires an XRenderColor
-  color::rgb rgb = color;
-  XRenderColor xrandr_color{.red = static_cast<unsigned short>(rgb.r * 0xff),
-                            .green = static_cast<unsigned short>(rgb.g * 0xff),
-                            .blue = static_cast<unsigned short>(rgb.b * 0xff),
-                            .alpha = 0xffff};
+  // if (std::abs((int)cached->logical_size.x - (int)cached->ink_size.x) > 10)
+  //   debug << "differs on " << std::quoted(text) << ": " << cached->logical_size << ' ' << cached->ink_size << '\n';
 
-  XftColor xft_color;
-  if (XftColorAllocValue(_dpy, _visual, _cmap, &xrandr_color, &xft_color) != 1)
-    throw std::runtime_error("XftColorAllocValue failed");
+  if (cached->ink_size.is_zero())
+    return cached->logical_size.x;
 
-  return &_xft_color_cache.emplace(color, std::move(xft_color)).first->second;
-}
+  XGCValues gcv;
+  XGetGCValues(_dpy, _gc, GCFunction, &gcv);
+  int previous_function = gcv.function;
 
-XftFont *draw::lookup_font(char32_t codepoint) {
-  if (auto f = _font_cache.find(codepoint); f != _font_cache.end())
-    return f->second;
+  Pixmap texture = cached->texture;
+  if (color != 0xFFFFFF) {
+    // debug << "recolor " << cached->size.x << ' ' << cached->size.y << '\n';
+    auto colored = XCreatePixmap(_dpy, _drw, cached->ink_size.x, cached->ink_size.y, XDefaultDepth(_dpy, 0));
+    XSync(_dpy, true);
+    XSetForeground(_dpy, _gc, color.as_rgb());
+    XFillRectangle(_dpy, colored, _gc, 0, 0, cached->ink_size.x, cached->ink_size.y);
 
-  for (const auto &font : _fonts->_fonts) {
-    if (XftCharExists(_dpy, font, codepoint)) {
-      _font_cache.emplace(codepoint, font);
-      return font;
-    }
+    gcv.function = GXand;
+    XChangeGC(_dpy, _gc, GCFunction, &gcv);
+    XCopyArea(_dpy, texture, colored, _gc, 0, 0, cached->ink_size.x, cached->ink_size.y, 0, 0);
+
+    texture = colored;
   }
 
-  if (codepoint == '\n' || codepoint == '\r' || codepoint == '\t' ||
-      codepoint == '\v' || codepoint == '\f' || codepoint == '\b' ||
-      codepoint == '\0' || codepoint == '\e' || codepoint == '\a')
-    return nullptr;
+  // if (text.find("GiB") != std::string_view::npos)
+  //   debug << "\x1b[1mdrawing\x1b[0m " << std::quoted(text) << " with offset " << cached->offset
+  //         << " (is:" << cached->ink_size << ", ls:" << cached->logical_size << ")\n";
 
-  // Convert the utf-8 codepoint into a string
-  const auto &cvt =
-      std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(
-          std::locale());
+  x += cached->offset.x;
+  y += cached->offset.y;
+
+  gcv.function = GXandInverted;
+  XChangeGC(_dpy, _gc, GCFunction, &gcv);
+  XCopyArea(_dpy, texture, _drw, _gc, 0, 0, cached->ink_size.x, cached->ink_size.y, x, y);
+
+  gcv.function = GXor;
+  XChangeGC(_dpy, _gc, GCFunction, &gcv);
+  XCopyArea(_dpy, texture, _drw, _gc, 0, 0, cached->ink_size.x, cached->ink_size.y, x, y);
+
+  gcv.function = previous_function;
+  XChangeGC(_dpy, _gc, GCFunction, &gcv);
+
+  if (texture != cached->texture)
+    XFreePixmap(_dpy, texture);
+
+  return cached->logical_size.x;
+}
+
+std::array<char, 5> codepoint_to_string(char32_t codepoint) {
+  const auto &cvt = std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(std::locale());
   std::mbstate_t state{};
 
   const char32_t *last_in;
   char *last_out;
   std::array<char, 5> out{};
   std::codecvt_base::result res =
-      cvt.out(state, (char32_t *)&codepoint, (char32_t *)&codepoint + 1,
-              last_in, out.begin(), out.end() - 1, last_out);
-  _font_cache.emplace(codepoint, nullptr);
+      cvt.out(state, (char32_t *)&codepoint, (char32_t *)&codepoint + 1, last_in, out.begin(), out.end() - 1, last_out);
   if (res != std::codecvt_base::ok)
-    fmt::print(warn, "Invalid codepoint 0x{:0>8X}\n", (std::uint32_t)codepoint);
-  else {
-    out[last_out - out.begin()] = '\0';
-    std::string_view sv{out.begin(),
-                        (std::string_view::size_type)(last_out - out.begin())};
-    // Ignore some common characters not meant to be handled by fonts.
-    fmt::print(warn, "Could not find font for codepoint 0x{:0>8X} ('{}')\n",
-               (std::uint32_t)codepoint, sv);
-  }
-  return nullptr;
+    throw std::runtime_error("codepoint_to_string: invalid codepoint");
+  out[last_out - out.begin()] = '\0';
+  return out;
 }
 
-class codepoint_iterator {
-public:
-  enum class error_handling {
-    exception,
-    replace,
-  };
+draw::PreparedText draw::_text_prepare(std::string_view text) {
+  PangoAttrIterator *iterator = pango_attr_list_get_iterator(_pango_itemize_attrs);
+  GList *items = pango_itemize(_fonts->_pango, text.data(), 0, text.size(), _pango_itemize_attrs, iterator);
+  pango_attr_iterator_destroy(iterator);
 
-private:
-  std::string_view _str;
-  std::string_view::const_iterator _it{_str.begin()};
-  error_handling _error_handling = error_handling::replace;
+  std::vector<PangoGlyphString *> item_glyphs;
+  for (GList *it = items; it; it = it->next) {
+    PangoItem *item = (PangoItem *)it->data;
+    PangoGlyphString *glyphs = pango_glyph_string_new();
+    // debug << "shaping item " << text.substr(item->offset, item->length) << '\n';
+    pango_shape_full(text.data() + item->offset, item->length, text.data(), text.size(), &item->analysis, glyphs);
+    item_glyphs.push_back(glyphs);
+  }
 
-  inline std::size_t utf8_seq_len(char seq_begin) const {
-    if ((seq_begin & 0x80) == 0)
-      return 1;
-    if ((seq_begin & 0xE0) == 0xC0)
-      return 2;
-    if ((seq_begin & 0xF0) == 0xE0)
-      return 3;
-    if ((seq_begin & 0xF8) == 0xF0)
-      return 4;
+#define PPROP(r, p) #p ": " << r.p
+#define PRECT(r) PPROP(r, x) << ' ' << PPROP(r, y) << ' ' << PPROP(r, width) << ' ' << PPROP(r, height)
+  std::vector<ivec2> item_offsets;
+  PangoRectangle ink{};
+  PangoRectangle logical{};
 
-    if(_error_handling == error_handling::exception)
-      throw std::runtime_error("Invalid UTF-8 sequence");
+  int i = 0;
+  for (auto *it = items; it; it = it->next, ++i) {
+    auto *item = (PangoItem *)it->data;
+    PangoRectangle current_ink;
+    PangoRectangle current_logical;
+
+    PangoGlyphString *glyphs = item_glyphs[i];
+    // debug << "glyph count: " << glyphs->num_glyphs << '\n';
+    // debug << "glyphs:";
+    // for (auto glyph : std::span(glyphs->glyphs, glyphs->num_glyphs))
+    //   debug << ' ' << glyph.glyph << " (" << glyph.geometry.width << ")";
+    // debug << '\n';
+    // debug << "getting extents for item of length " << item->num_chars << "(" << item->length << ") at " <<
+    // item->offset
+    //       << '\n';
+    // debug << "analysis chose font: "
+    //       << pango_font_family_get_name(pango_font_face_get_family(pango_font_get_face(item->analysis.font))) <<
+    //       '\n';
+
+    pango_glyph_string_extents(glyphs, item->analysis.font, &current_ink, &current_logical);
+    // debug << "pango logical: " << PRECT(current_logical) << '\n';
+    // debug << PRECT(ink) << " + " << PRECT(current_ink) << '\n';
+
+    item_offsets.push_back({logical.width, current_ink.y});
+    // debug << "pango offset: " << item_offsets.back() << '\n';
+
+    logical.height = std::max(logical.height, current_logical.height);
+    logical.width += current_logical.width + current_logical.x;
+    logical.y = std::min(current_logical.y, logical.y);
+
+    if (it == items)
+      ink.width += current_ink.width;
+    else if (it->next == NULL)
+      ink.width += current_ink.width + current_ink.x;
     else
-      return 1;
+      ink.width += current_logical.width;
+    ink.height = std::max(ink.height, current_ink.height);
+    ink.y = std::min(current_ink.y, ink.y);
+    if (it == items)
+      ink.x = current_ink.x;
+
+    // debug << "= " << PRECT(ink) << '\n';
   }
 
-  inline bool utf8_is_first_char(char seq_begin) const {
-    return (seq_begin & 0xC0) != 0x80;
-  }
+  pango_extents_to_pixels(&ink, &logical);
 
-  inline bool _is_at_partial_sequence() const {
-    return utf8_seq_len(*_it) > size_t(_str.end() - _it);
-  }
+  if (ink.width > 10000 || ink.height > 10000)
+    g_error("THE EXTENTS ARE FUCKED UP AGAIN");
 
-public:
-  using value_type = char32_t;
-  using difference_type = std::ptrdiff_t;
-  using pointer = value_type *;
-  using reference = value_type &;
-  using iterator_category = std::random_access_iterator_tag;
+  // debug << "pixels ink " << PRECT(ink) << '\n';
+  // debug << "pixels logical " << PRECT(logical) << '\n';
 
-  class sentinel {};
-
-  explicit codepoint_iterator(std::string_view str) : _str(str) {}
-  codepoint_iterator(std::string_view str, error_handling eh)
-      : _str(str), _error_handling(eh) {}
-
-  std::string_view::const_iterator base() const { return _it; }
-
-  codepoint_iterator &operator++() {
-    _it += utf8_seq_len(*_it);
-    if (_it > _str.end())
-      _it = _str.end();
-    return *this;
-  }
-
-  codepoint_iterator operator++(int) {
-    auto ret = *this;
-    ++(*this);
-    return ret;
-  }
-
-  codepoint_iterator &operator--() {
-    do  {
-      --_it;
-      if (_it == _str.begin())
-        break;
-    } while(!utf8_is_first_char(*_it));
-    return *this;
-  }
-
-  codepoint_iterator operator--(int) {
-    auto ret = *this;
-    --(*this);
-    return ret;
-  }
-
-  codepoint_iterator &operator+=(std::ptrdiff_t n) {
-    while (n > 0) {
-      if(_is_at_partial_sequence())
-        break;
-      _it += utf8_seq_len(*_it);
-      --n;
-    }
-    return *this;
-  }
-
-  codepoint_iterator &operator-=(std::ptrdiff_t n) {
-    while (n > 0)
-      --(*this), --n;
-    return *this;
-  }
-
-  codepoint_iterator operator+(std::ptrdiff_t n) const {
-    auto ret = *this;
-    ret += n;
-    return ret;
-  }
-
-  codepoint_iterator operator-(std::ptrdiff_t n) const {
-    auto ret = *this;
-    ret -= n;
-    return ret;
-  }
-
-  bool operator==(const sentinel &) const { return _it == _str.end() || _is_at_partial_sequence(); }
-  bool operator==(std::default_sentinel_t) const { return _it == _str.end() || _is_at_partial_sequence(); }
-
-  auto operator<=>(const codepoint_iterator &other) const {
-    return _it <=> other._it;
-  }
-
-  char32_t operator*() const {
-    if (_it == _str.end())
-      return 0;
-    if(_is_at_partial_sequence()) {
-      if(_error_handling == error_handling::exception)
-        throw std::runtime_error("Cut off UTF-8 sequence encountered");
-      return 0;
-    }
-
-    static auto &cvt =
-        std::use_facet<std::codecvt<char32_t, char, std::mbstate_t>>(
-            std::locale());
-    static std::mbstate_t state{};
-
-    const char *last_in;
-    char32_t codepoint;
-    char32_t *last_out;
-
-    std::codecvt_base::result res =
-        cvt.in(state, &*_it, &*_str.end(), last_in, &codepoint, &codepoint + 1,
-               last_out);
-
-    if (res != std::codecvt_base::result::ok && res != std::codecvt_base::result::partial) {
-      error << "Invalid UTF-8 value in " << _str << " at byte "  << _it - _str.begin() << '\n';
-
-      void *stacktrace[60];
-      size_t size = backtrace(stacktrace, 10);
-      backtrace_symbols_fd(stacktrace, size, 2);
-
-      if(_error_handling == error_handling::exception)
-        throw std::runtime_error("Invalid UTF-8 string");
-      else
-        return 0xFFFD;
-    }
-
-    assert(last_in == &*_it + utf8_seq_len(*_it));
-
-    return codepoint;
-  }
-};
-
-draw::pos_t draw::text(pos_t x, pos_t y, std::string_view text, color color) {
-  XSetForeground(_dpy, _gc, color.as_rgb());
-
-  // Looks better this way but FIXME: why
-  --y;
-
-  auto xft_color = lookup_xft_color(color);
-  size_t width = 0;
-  XftFont *current_font = nullptr;
-  std::string_view::const_iterator current_begin = text.begin();
-
-  auto simple_draw_text = [this, xft_color](pos_t x, pos_t y, XftFont *font,
-                                            std::string_view text) {
-    XGlyphInfo extents;
-    static_assert(sizeof(FcChar32) == sizeof(char32_t));
-    XftTextExtentsUtf8(_dpy, font,
-                       reinterpret_cast<const FcChar8 *>(&*text.begin()),
-                       std::distance(text.begin(), text.end()), &extents);
-    XftDrawStringUtf8(_xft_draw, xft_color, font, x, y + extents.y / 2,
-                      reinterpret_cast<const FcChar8 *>(&*text.begin()),
-                      text.size());
-    return extents.xOff;
-  };
-
-  for (auto it = codepoint_iterator(text); it != codepoint_iterator::sentinel();
-       ++it) {
-    if (auto font = lookup_font(*it)) {
-      if (current_font != nullptr && current_font != font) {
-        auto off = simple_draw_text(x, y, current_font,
-                                    std::string_view(current_begin, it.base()));
-        width += off;
-        x += off;
-
-        current_begin = it.base();
-      }
-      current_font = font;
-    }
-  }
-
-  if (current_font != nullptr) {
-    auto off = simple_draw_text(x, y, current_font,
-                                std::string_view(current_begin, text.cend()));
-    width += off;
-  }
-
-  return width;
+  return PreparedText(std::string(text), std::move(item_glyphs), items, std::move(item_offsets), ink, logical);
 }
 
-template <typename Iter, typename End>
-  requires requires(Iter it, End end) {
-    { it != end } -> std::convertible_to<bool>;
-    { *it } -> std::convertible_to<char32_t>;
-    { ++it };
+void draw::_text_at(XftDraw *draw, PreparedText const &text, pos_t x, pos_t y, color color) {
+  color::rgb rgb = color.as_rgb();
+
+  PangoRenderer *renderer = pango_xft_renderer_new(_dpy, XDefaultScreen(_dpy));
+  PangoColor pango_color;
+  char color_spec[8];
+  snprintf(color_spec, 8, "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
+  // debug << "color: " << color_spec << '\n';
+  g_assert(pango_color_parse(&pango_color, color_spec));
+  pango_xft_renderer_set_default_color((PangoXftRenderer *)renderer, &pango_color);
+  pango_xft_renderer_set_draw((PangoXftRenderer *)renderer, draw);
+
+  int i = 0;
+  for (auto *it = text.items; it; it = it->next, ++i) {
+    auto *item = (PangoItem *)it->data;
+
+    PangoGlyphItem glyph_item{
+        .item = item,
+        .glyphs = text.item_glyphs[i],
+        .y_offset = 0,
+        .start_x_offset = 0,
+        .end_x_offset = 0,
+    };
+    // debug << "drawing " << std::quoted(text.original_text.substr(item->offset, item->length)) << " at x offset "
+    //       << (int)x + text.item_offsets[i].x / PANGO_SCALE << '\n';
+    pango_renderer_draw_glyph_item(renderer, text.original_text.data(), &glyph_item,
+                                   (int)x * PANGO_SCALE + text.item_offsets[i].x, y * PANGO_SCALE);
   }
-uvec2 draw::_iterator_textsz(Iter it, End end) {
-  uvec2 result{0, 0};
+}
 
-  for (; it != end; ++it) {
-    if (auto font = lookup_font(*it)) {
-      auto codepoint = *it;
-      XGlyphInfo info;
-      XftTextExtents32(
-          _dpy, font, reinterpret_cast<const FcChar32 *>(&codepoint), 1, &info);
+draw::CachedText draw::_text_full(draw::PreparedText const &prep) {
+  if (prep.ink_extents.width > 0 && prep.ink_extents.height > 0) {
+    Pixmap pixmap = XCreatePixmap(_dpy, _drw, prep.ink_extents.width, prep.ink_extents.height, XDefaultDepth(_dpy, 0));
+    XSync(_dpy, true);
+    XSetForeground(_dpy, _gc, 0x000000);
+    XFillRectangle(_dpy, pixmap, _gc, 0, 0, prep.ink_extents.width, prep.ink_extents.height);
+    XSetForeground(_dpy, _gc, 0xFFFFFF);
+    auto xft_draw = XftDrawCreate(_dpy, pixmap, DefaultVisual(_dpy, 0), DefaultColormap(_dpy, 0));
 
-      result.x += info.xOff,
-          result.y = std::max(result.y, (unsigned)info.height);
-    }
-  }
+    _text_at(xft_draw, prep, -prep.ink_extents.x, -prep.ink_extents.y, 0xFFFFFF);
 
-  return result;
+    XftDrawDestroy(xft_draw);
+
+    auto off = -prep.logical_extents.y - prep.logical_extents.height / 2;
+    // debug << "[HELP ME] BASELINE WILL BE OFFSET BY " << off << '\n';
+    return CachedText(_dpy, pixmap, {prep.ink_offset().x, prep.ink_offset().y + off}, prep.ink_size(),
+                      prep.logical_size());
+  } else
+    return CachedText(uvec2{0, 0}, prep.logical_size());
 }
 
 uvec2 draw::textsz(std::string_view text) {
-  return _iterator_textsz(codepoint_iterator(text), std::default_sentinel);
-}
+  auto *cached = _text_cache.get(text);
+  if (cached == NULL)
+    cached = &_text_cache.insert(std::string(text), _text_full(_text_prepare(text)));
 
-uvec2 draw::textsz(std::u32string_view text) {
-  return _iterator_textsz(text.begin(), text.end());
+  return cached->logical_size;
 }
 
 } // namespace ui::x11

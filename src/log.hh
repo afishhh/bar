@@ -30,7 +30,12 @@ public:
   }
 };
 
-extern thread_local Logger info;
-extern thread_local Logger warn;
-extern thread_local Logger error;
-extern thread_local Logger debug;
+extern thread_local Logger _bar_debug_stream;
+extern thread_local Logger _bar_info_stream;
+extern thread_local Logger _bar_warn_stream;
+extern thread_local Logger _bar_error_stream;
+
+#define debug _bar_debug_stream
+#define info _bar_info_stream
+#define warn _bar_warn_stream
+#define error _bar_error_stream

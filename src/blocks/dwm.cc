@@ -159,6 +159,8 @@ size_t DwmBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   ui::draw::pos_t width = 0;
   if (_config.max_title_length) {
     auto end = std::min(title.begin() + *_config.max_title_length, title.end());
+    while((*end & 0xC0) == 0x80)
+      ++end;
     title = std::string_view(title.begin(), end);
     std::string xs(*_config.max_title_length, 'x');
     width = draw.textw(xs);

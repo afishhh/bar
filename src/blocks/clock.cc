@@ -19,7 +19,9 @@ void ClockBlock::update() {
 }
 
 size_t ClockBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
-  return draw.text(0, draw.vcenter(), fmt::format("{:%B %d %H:%M:%S}", *_time));
+  // return draw.text(0, draw.vcenter(), fmt::format("{:%B %d %H:%M:%S}", *_time));
+  std::locale::global(std::locale("ja_JP.UTF-8"));
+  return draw.text(0, draw.vcenter(), fmt::format(std::locale(), "{:%c}", *_time));
 }
 
 std::string_view constexpr WEEKDAYS[] = {"Monday",   "Tuesday", "Wednesday",
@@ -38,10 +40,10 @@ void ClockBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>,
   auto const width = 180;
   auto const calendar_cell_size = 24;
 
-  auto title = fmt::format("{:%B %d %Y}", *_time);
+  auto title = fmt::format(std::locale(), "{:%x %A}", *_time);
   draw.text((width - draw.textw(title)) / 2, 9, title);
 
-  auto subtitle = fmt::format("{:%H:%M:%S}", *_time);
+  auto subtitle = fmt::format(std::locale(), "{:%X}", *_time);
   draw.text((width - draw.textw(subtitle)) / 2, 30, subtitle);
 
   auto const calendar_width = 7 * calendar_cell_size;

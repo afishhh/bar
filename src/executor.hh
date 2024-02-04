@@ -18,6 +18,7 @@
 
 class Executor {
 public:
+  virtual ~Executor() = default;
   virtual bool blocking() const = 0;
   virtual void execute(std::function<void()> &&) = 0;
   virtual void execute(std::function<void()> const &f) { return execute(std::function<void()>(f)); }
@@ -80,7 +81,7 @@ class ScopedExecutor final : public Executor {
 
 public:
   ScopedExecutor(Executor &executor) : _executor(executor) {}
-  ~ScopedExecutor() noexcept(false) { close(); }
+  ~ScopedExecutor() { close(); }
 
   void close() {
     if (!_executor.blocking()) {

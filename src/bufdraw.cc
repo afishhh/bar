@@ -32,6 +32,3 @@ ui::draw::pos_t BufDraw::text(pos_t x, pos_t y, std::string_view text,
 uvec2 BufDraw::textsz(std::string_view text) {
   return _draw.textsz(text);
 }
-uvec2 BufDraw::textsz(std::u32string_view text) {
-  return _draw.textsz(text);
-}

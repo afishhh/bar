@@ -326,6 +326,13 @@ public:
     return instance;
   }
 
+  inline void reset() {
+    _event_queues.clear();
+    _tasks = decltype(_tasks)();
+    _uncaught_exceptions.clear();
+    _stopped = false;
+  }
+
   // NOT THREAD SAFE
   inline void set_executor(std::unique_ptr<Executor> &&new_executor) { _executor = std::move(new_executor); }
   // NOT THREAD SAFE

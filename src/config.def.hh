@@ -59,7 +59,7 @@ const static std::unique_ptr<Block> left_blocks[] = {
             .urgent_tag_color = 0xFF0000,
             .empty_tag_color = 0xFFFFFF,
 
-            .floating_title_prefix = " ",
+            .floating_title_prefix = " ",
             .title_color = 0xFFFFFF,
             .floating_title_color = 0xFFFFFF,
 

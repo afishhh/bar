@@ -17,6 +17,9 @@
   # For dwmipcpp
 , jsoncpp
 
+, pango
+, glib
+
 , configFile ? ./src/config.def.hh
 , ...
 }:
@@ -40,6 +43,8 @@ gcc13Stdenv.mkDerivation {
     fontconfig
     freetype
     jsoncpp
+    pango
+    glib
   ];
 
   patchPhase = ''
