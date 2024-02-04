@@ -42,7 +42,6 @@
 
 namespace ui::x11 {
 
-bool connection::_io_error_ocurred{false};
 int connection::_trapped_error_code{0};
 int (*connection::_old_error_handler)(Display *, XErrorEvent *){nullptr};
 
@@ -85,7 +84,6 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
   // ------- Setup event handling -------
 
   XSetIOErrorHandler([](Display *) -> int {
-    _io_error_ocurred = true;
     exit(1);
   });
 
@@ -103,21 +101,15 @@ std::optional<std::unique_ptr<connection>> connection::try_create() {
 
       EV.fire_event(xevent(conn, std::move(event)));
     }
-    conn->_event_thread_latch.count_down();
+
+    XCloseDisplay(conn->_display);
   });
-  conn->_event_thread.detach();
 
   return std::unique_ptr<x11::connection>(conn);
 }
 
 connection::~connection() noexcept(false) {
   _event_thread.request_stop();
-
-  if (!_io_error_ocurred) {
-    _event_thread_latch.wait();
-
-    XCloseDisplay(_display);
-  }
 }
 
 Atom connection::intern_atom(std::string_view name, bool only_if_exists) const {
