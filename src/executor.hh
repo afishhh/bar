@@ -79,6 +79,14 @@ class ScopedExecutor final : public Executor {
   std::binary_semaphore _waiter = std::binary_semaphore(0);
   Executor &_executor;
 
+  void _on_async_job_done() {
+    unsigned state = _state.fetch_sub(1, std::memory_order_acq_rel);
+    // debug << "SE " << (void *)this << " REL: " << (state bitand (compl WAITING))
+    //       << " W?: " << (bool)(state bitand WAITING) << '\n';
+    if (state == (WAITING + 1))
+      _waiter.release();
+  }
+
 public:
   ScopedExecutor(Executor &executor) : _executor(executor) {}
   ~ScopedExecutor() { close(); }
@@ -107,12 +115,14 @@ public:
         throw std::logic_error("ScopedExecutor::execute called after the executor was closed");
 
       _executor.execute([this, job = std::move(job)] {
-        job();
+        try {
+          job();
+        } catch (...) {
+          _on_async_job_done();
+          throw;
+        }
 
-        unsigned state = _state.fetch_sub(1, std::memory_order_acq_rel);
-        // debug << "SE " << (void *)this << " REL: " << val << '\n';
-        if (state == (WAITING + 1))
-          _waiter.release();
+        _on_async_job_done();
       });
     }
   }
