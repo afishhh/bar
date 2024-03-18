@@ -16,7 +16,6 @@ class SignalEvent : public Event {
 
   static int _sigfd;
   static sigset_t _attached_mask;
-  struct MaskConstructor;
   static std::mutex _mask_mutex;
 
 public:
@@ -68,7 +67,7 @@ public:
           ev.signum = info.ssi_signo;
           ev.info = info;
           EV.fire_event(std::move(ev));
-        } else
+        } else if (info.ssi_signo != SIGWINCH)
           warn << "Unhandled signal SIG" << sigabbrev_np(info.ssi_signo) << " received\n";
       }
     }).detach();
@@ -101,5 +100,4 @@ inline sigset_t make_empty_sigset() {
 
 inline std::mutex SignalEvent::_mask_mutex;
 inline sigset_t SignalEvent::_attached_mask = make_empty_sigset();
-;
 inline int SignalEvent::_sigfd = -1;
