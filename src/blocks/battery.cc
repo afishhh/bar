@@ -11,9 +11,7 @@
 #include "../util.hh"
 #include "battery.hh"
 
-BatteryBlock::BatteryBlock(std::filesystem::path path,
-                           BatteryBlock::Config config)
-    : _path(path), _config(config) {}
+BatteryBlock::BatteryBlock(std::filesystem::path path, BatteryBlock::Config config) : _path(path), _config(config) {}
 BatteryBlock::~BatteryBlock() {}
 
 static size_t read_int(std::filesystem::path path) {
@@ -28,9 +26,10 @@ static size_t read_int(std::filesystem::path path) {
   return std::stoul(line);
 }
 
+static double read_micro(std::filesystem::path path) { return (double)read_int(path) / 1000000.; }
+
 std::optional<BatteryBlock> BatteryBlock::find_first(Config config) {
-  for (auto &entry :
-       std::filesystem::directory_iterator("/sys/class/power_supply")) {
+  for (auto &entry : std::filesystem::directory_iterator("/sys/class/power_supply")) {
     if (entry.path().filename() == "BAT0") {
       return std::make_optional<BatteryBlock>(entry.path(), config);
     }
@@ -39,12 +38,6 @@ std::optional<BatteryBlock> BatteryBlock::find_first(Config config) {
 }
 
 void BatteryBlock::update() {
-  _charge_now = read_int(_path / "charge_now");
-  _charge_full = read_int(_path / "charge_full");
-  _charge_full_design = read_int(_path / "charge_full_design");
-  _current_now = read_int(_path / "current_now");
-  _voltage_now = read_int(_path / "voltage_now");
-
   std::ifstream ifs(_path / "status");
   if (!ifs.is_open())
     throw std::runtime_error("Could not open battery status file");
@@ -52,34 +45,70 @@ void BatteryBlock::update() {
   std::getline(ifs, line);
   _charging = line == "Charging";
   _full = line == "Full";
+
+  if (std::filesystem::exists(_path / "charge_now")) {
+    // case 1 = charge is available
+    size_t charge_now = read_int(_path / "charge_now");
+    size_t charge_full = read_int(_path / "charge_full");
+    size_t charge_full_design = read_int(_path / "charge_full_design");
+    size_t current_now = read_int(_path / "current_now");
+    size_t voltage_now = read_int(_path / "voltage_now");
+
+    _charge_level = (double)charge_now / charge_full;
+    _wattage_now = (voltage_now / 1000. / 1000.) * (current_now / 1000. / 1000.);
+
+    if (_charging)
+      _seconds_left = (double)(charge_full - charge_now) / current_now * 3600;
+    else
+      _seconds_left = (double)charge_now / current_now * 3600;
+
+    _degradation = (double)charge_full / charge_full_design * 100.;
+  } else if (std::filesystem::exists(_path / "energy_now")) {
+    // case 2 = energy is available
+    double energy_now = read_micro(_path / "energy_now");
+    double energy_full = read_micro(_path / "energy_full");
+    double energy_full_design = read_micro(_path / "energy_full_design");
+    double power_now = read_micro(_path / "power_now");
+
+    _charge_level = energy_now / energy_full;
+    _wattage_now = power_now;
+
+    if (_charging)
+      _seconds_left = (energy_full - energy_now) / power_now * 3600;
+    else
+      _seconds_left = energy_now / power_now * 3600;
+
+    _degradation = energy_full / energy_full_design * 100.;
+  } else {
+    // case 3 = we don't have enough (or don't know where to look)
+    // TODO: Display an error
+  }
+
+  if (std::filesystem::exists(_path / "charge_control_end_threshold"))
+    _max_charge_level = (double)read_int(_path / "charge_control_end_threshold") / 100.;
+  else
+    _max_charge_level = 1.0;
 }
 
 void BatteryBlock::animate(EventLoop::duration delta) {
   if (_charging)
     _charging_gradient_offset =
-        (_charging_gradient_offset +
-         std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() /
-             2500000) %
-        size_t(((double)_charge_now / _charge_full * (_config.bar_width - 1) *
-                20));
+        (_charging_gradient_offset + std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() / 2500000) %
+        size_t(map_range(_charge_level, 0, _max_charge_level, 0, (_config.bar_width - 1) * 20));
 }
 
 size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
-  double battery_percent = (double)_charge_now / _charge_full * 100;
+  double battery_percent = map_range(_charge_level, 0, _max_charge_level, 0, 100);
   size_t x = 0;
 
   x += draw.text(x, draw.vcenter(), _config.prefix, _config.prefix_color);
   if (_config.show_percentage)
-    x +=
-        draw.text(x, draw.vcenter(), fmt::format("{:>5.1f}%", battery_percent));
+    x += draw.text(x, draw.vcenter(), fmt::format("{:>5.1f}%", battery_percent));
 
   x += 5;
 
-  if (_config.show_wattage) {
-    double wattage =
-        (_voltage_now / 1000. / 1000.) * (_current_now / 1000. / 1000.);
-    x += draw.text(x, draw.vcenter(), fmt::format("{:>4.1f}W", wattage));
-  }
+  if (_config.show_wattage)
+    x += draw.text(x, draw.vcenter(), fmt::format("{:>4.1f}W", _wattage_now));
 
   x += 5;
 
@@ -133,10 +162,8 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
     }
 
     if (_config.show_time_left_charging && !_full) {
-      auto time_left_str = format_time((double)(_charge_full - _charge_now) /
-                                       _current_now * 3600);
-      draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
-                draw.vcenter(), time_left_str);
+      auto time_left_str = format_time(_seconds_left);
+      draw.text(left + width / 2 - draw.textw(time_left_str) / 2, draw.vcenter(), time_left_str);
     }
   } else {
     // 0-100 in HSL is the Red-Green range so we can act as if battery_percent
@@ -146,18 +173,15 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
 
     draw.frect(left + 1, top + 1, fill_width, height - 1, fill_color);
 
-    if (_config.show_time_left_discharging && !_full) {
-      auto time_left_str =
-          format_time((double)_charge_now / _current_now * 3600);
-      draw.text(left + width / 2 - draw.textw(time_left_str) / 2,
-                draw.vcenter(), time_left_str);
+    if (_config.show_time_left_discharging && !_full && _wattage_now > 0) {
+      auto time_left_str = format_time(_seconds_left);
+      draw.text(left + width / 2 - draw.textw(time_left_str) / 2, draw.vcenter(), time_left_str);
     }
   }
 
   if (_config.show_degradation) {
     x += 5;
-    double degradation = (double)_charge_full / _charge_full_design * 100.;
-    x += draw.text(x, draw.vcenter(), fmt::format("{:5>.1f}%", degradation));
+    x += draw.text(x, draw.vcenter(), fmt::format("{:5>.1f}%", _degradation));
   }
 
   return x;

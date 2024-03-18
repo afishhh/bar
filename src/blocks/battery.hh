@@ -20,8 +20,10 @@ enum class BatteryStatus {
 class BatteryBlock : public Block {
 private:
   std::filesystem::path _path;
-  size_t _charge_full, _charge_full_design, _charge_now;
-  size_t _current_now, _voltage_now;
+  // size_t _charge_full, _charge_full_design, _charge_now;
+  // size_t _current_now, _voltage_now;
+  double _charge_level, _max_charge_level, _wattage_now, _degradation;
+  size_t _seconds_left;
   bool _charging, _full;
   size_t _charging_gradient_offset;
 
