@@ -49,7 +49,7 @@ class NetworkBlock : public Block {
   size_t _last_tx_bytes = 0, _last_rx_bytes = 0;
   size_t _tx_bytes, _rx_bytes;
 
-  bool _ethernet_connected;
+  bool _ethernet_connected = 0;
   std::forward_list<WifiStation> _wifi_stations;
 
   struct Config {
