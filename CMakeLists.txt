@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1...3.27)
+cmake_minimum_required(VERSION 3.27)
 
 set(PROJECT_NAME bar)
 project(${PROJECT_NAME} CXX)
@@ -28,6 +28,7 @@ add_executable(
   src/guard.cc
   src/util.cc
   src/log.cc
+  src/bar.cc
   src/bufdraw.cc
   src/blocks/memory.cc
   src/blocks/battery.cc
@@ -37,10 +38,8 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/blocks/systray.cc
-  src/ui/connection.cc
-  src/ui/x11/connection.cc
-  src/ui/x11/draw.cc
-  src/ui/x11/window.cc
+  src/ui/window.cc
+  src/ui/text.cc
 
   ${EXTRA_SOURCES}
 )
@@ -78,24 +77,42 @@ find_package(X11 REQUIRED)
 find_package(fmt REQUIRED)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(PANGO REQUIRED pango pangoxft)
+find_package(glfw3 REQUIRED)
+pkg_check_modules(PANGO REQUIRED pango pangocairo)
+pkg_check_modules(cairo REQUIRED cairo)
+
+if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/glad-generated")
+  execute_process(
+    COMMAND glad --api gl:core=3.0 --reproducible --out-path "${CMAKE_CURRENT_BINARY_DIR}/glad-generated" c
+  )
+endif()
+
+if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/glad.o")
+  execute_process(
+    COMMAND cc "-I${CMAKE_CURRENT_BINARY_DIR}/glad-generated/include" "${CMAKE_CURRENT_BINARY_DIR}/glad-generated/src/gl.c" -c -o "${CMAKE_CURRENT_BINARY_DIR}/glad.o"
+  )
+endif()
+
+target_link_options("${PROJECT_NAME}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/glad.o")
 
 target_link_libraries(
   ${PROJECT_NAME}
   X11::X11
-  X11::Xft
   X11::Xext
+  X11::Xrandr
   fmt::fmt
   ${PANGO_LIBRARIES}
+  ${cairo_LIBRARIES}
   ${DWMIPCPP_LIBRARIES}
   pthread
+  glfw
 )
-
 
 target_include_directories(
   ${PROJECT_NAME}
   PUBLIC
   ${PANGO_INCLUDE_DIRS}
+  "${CMAKE_CURRENT_BINARY_DIR}/glad-generated/include"
 )
 
 target_compile_options(

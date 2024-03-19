@@ -33,11 +33,20 @@
 #include "log.hh"
 #include "loop.hh"
 #include "signal.hh"
+#include "ui/gl.hh"
+#include "ui/ui.hh"
 #include "util.hh"
 
 int main() {
   SignalEvent::setup();
   StopEvent::attach_to_signals();
+
+  // TODO: Implement the UI thread sepearately
+  // (not via a PinnedThreadExecutor)
+  ui::ui_thread.execute_now([] { glfwInit(); });
+  EV.add_timer(10ms, [](auto) { ui::ui_thread.execute_now([] { glfwPollEvents(); }); });
+  EV.on<StopEvent>([](auto) { ui::ui_thread.execute_now([] { glfwTerminate(); }); });
+
   EV.set_executor(std::make_unique<ThreadPoolExecutor>(std::thread::hardware_concurrency() * 2));
   EV.set_exception_handler([](std::exception &e) {
     error << "Uncaught exception of type " << typeid(e).name() << " in event loop\n";
@@ -55,7 +64,7 @@ int main() {
 
   bar.show();
 
-  EV.on<RedrawEvent>([&](const RedrawEvent &) { bar.redraw(); });
+  EV.on<RedrawEvent>([&](const RedrawEvent &) { ui::ui_thread.execute_now([&] { bar.redraw(); }); });
 
   EV.run();
 

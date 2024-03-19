@@ -72,6 +72,62 @@ public:
   }
 };
 
+class PinnedThreadExecutor final : public Executor {
+  std::jthread _thread;
+  std::queue<std::function<void()>> _lazy;
+  std::function<void()> _now;
+  std::mutex _mutex;
+  std::condition_variable_any _condvar;
+
+  void _worker_main(std::stop_token token) {
+    std::unique_lock lg(_mutex);
+
+    auto run = [&lg](auto work) {
+      lg.unlock();
+      try {
+        work();
+      } catch (std::exception &ex) {
+        error << "Pinned executor caught an exception: " << ex.what() << "\n";
+      } catch (...) {
+        error << "Pinned executor caught an something!\n";
+      }
+      lg.lock();
+    };
+
+    while (true) {
+      _condvar.wait(lg, token, [&] { return _now != nullptr || !_lazy.empty() || token.stop_requested(); });
+      if (token.stop_requested())
+        return;
+
+      if (_now != nullptr) {
+        run(_now);
+        _now = nullptr;
+        _condvar.notify_one();
+      } else {
+        auto work = std::move(_lazy.front());
+        _lazy.pop();
+      }
+    }
+  }
+
+public:
+  PinnedThreadExecutor() : _thread([this](std::stop_token t) { _worker_main(t); }) {}
+
+  bool blocking() const override { return false; }
+  void execute(std::function<void()> &&job) override {
+    std::unique_lock lg(_mutex);
+    _lazy.emplace(job);
+    _condvar.notify_one();
+  }
+
+  void execute_now(std::function<void()> &&job) {
+    std::unique_lock lg(_mutex);
+    _now = std::move(job);
+    _condvar.notify_one();
+    _condvar.wait(_mutex, [this] { return _now == nullptr; });
+  }
+};
+
 class ScopedExecutor final : public Executor {
   // FIXME: Is acquire/release memory ordering appriopriate here?
   constexpr static unsigned WAITING = 1U << 31;

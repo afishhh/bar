@@ -1,7 +1,5 @@
 #pragma once
 
-#include <X11/Xft/Xft.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -9,28 +7,27 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <pango/pango-context.h>
+#include <pango/pango-font.h>
+#include <pango/pango-fontmap.h>
 #include <pango/pango.h>
+#include <pango/pangocairo.h>
 
-#include "connection.hh"
-#include "pango/pango-context.h"
-#include "pango/pango-font.h"
-#include "pango/pango-fontmap.h"
-#include "pango/pangoxft.h"
+#include "../log.hh"
 
-namespace ui::x11 {
+namespace ui {
 
 class fonts final {
-  friend class draw;
+  friend class TextRenderer;
 
-  x11::connection *_conn;
   std::vector<PangoFont *> _fonts;
   std::vector<PangoFontDescription *> _descriptions;
   PangoContext *_pango;
 
 public:
-  fonts(x11::connection *conn) : _conn(conn) {
+  fonts() {
     _pango = pango_context_new();
-    pango_context_set_font_map(_pango, pango_xft_get_font_map(conn->display(), conn->screen_id()));
+    pango_context_set_font_map(_pango, pango_cairo_font_map_new());
   };
   fonts(fonts const &) = delete;
   fonts(fonts &&) = default;
@@ -44,13 +41,15 @@ public:
     g_object_unref(_pango);
   }
 
-  void add(std::string_view name) {
+  void add(std::string_view name, float scale) {
     PangoFontMap *font_map = pango_context_get_font_map(_pango);
     PangoFontDescription *description = pango_font_description_from_string(name.data());
     debug << "pango description for " << name << ":\n";
     debug << "  family: " << pango_font_description_get_family(description) << '\n';
     debug << "  style: " << pango_font_description_get_style(description) << '\n';
     debug << "  size: " << pango_font_description_get_size(description) << '\n';
+    pango_font_description_set_size(description, pango_font_description_get_size(description) * scale);
+    debug << "  scaled size: " << pango_font_description_get_size(description) << '\n';
     PangoFont *font = pango_font_map_load_font(font_map, _pango, description);
     _descriptions.push_back(description);
 
@@ -64,4 +63,4 @@ public:
   }
 };
 
-} // namespace ui::x11
+} // namespace ui

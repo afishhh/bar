@@ -1,10 +1,11 @@
-{ gcc13Stdenv
+{ pkgs
+, gcc13Stdenv
 , cmake
 , ninja
 , pkg-config
 , libX11
-, libXft
 , libXext
+, libXrandr
 
 , fmt
 
@@ -19,6 +20,9 @@
 
 , pango
 , glib
+, glfw
+, glad2 ? pkgs.python3Packages.glad2
+, cairo
 
 , configFile ? ./src/config.def.hh
 , ...
@@ -33,18 +37,21 @@ gcc13Stdenv.mkDerivation {
     cmake
     ninja
     pkg-config
+    glad2
   ];
   buildInputs = [
     libX11
-    libXft
     libXext
     fmt.dev
     libXrender
+    libXrandr
     fontconfig
     freetype
     jsoncpp
     pango
     glib
+    glfw
+    cairo
   ];
 
   patchPhase = ''
