@@ -43,9 +43,10 @@ class TextRenderer {
     }
   };
 
-  // TODO: See if a separate "long term" and "short term" cache would make sense
-  //       std::unordered_map<size_t, size_t> _text_hash_frequency;
-  LRUMap<std::string, CachedText, 1024> _text_cache;
+  // TODO: A time-based cache instead?
+  //       Or a "cycle"-based one instead.
+  //       Maybe if a certain texture is not reused after a few redraws it gets deleted.
+  LRUMap<std::string, CachedText, 512> _text_cache;
 
   PangoAttrList *_pango_itemize_attrs;
   std::shared_ptr<fonts> _fonts;
