@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "log.hh"
+#include "util.hh"
 
 class Executor {
 public:
@@ -37,15 +38,15 @@ class ThreadPoolExecutor final : public Executor {
   std::condition_variable_any _condvar;
   std::queue<std::function<void()>> _queue;
   std::vector<std::jthread> _workers;
-  std::atomic_uint _available_workers;
+  unsigned _available_workers;
   unsigned _max_threads;
 
   void start_worker() {
     _workers.emplace_back([this](std::stop_token token) {
       std::unique_lock lg(_mutex);
-      _available_workers.fetch_add(1, std::memory_order_relaxed);
+      _available_workers += 1;
       while (_condvar.wait(_mutex, token, [this] { return !_queue.empty(); })) {
-        _available_workers.fetch_sub(1, std::memory_order_relaxed);
+        _available_workers -= 1;
         auto job = std::move(_queue.front());
         _queue.pop();
 
@@ -62,69 +63,16 @@ public:
       start_worker();
   }
 
+  BAR_NON_COPYABLE(ThreadPoolExecutor);
+  BAR_NON_MOVEABLE(ThreadPoolExecutor);
+
   bool blocking() const override { return false; };
   void execute(std::function<void()> &&job) override {
     std::unique_lock lg(_mutex);
     _queue.push(std::move(job));
     _condvar.notify_one();
-    if (_available_workers.load(std::memory_order_relaxed) == 0 && _workers.size() < _max_threads)
+    if (_available_workers == 0 && _workers.size() < _max_threads)
       start_worker();
-  }
-};
-
-class PinnedThreadExecutor final : public Executor {
-  std::jthread _thread;
-  std::queue<std::function<void()>> _lazy;
-  std::function<void()> _now;
-  std::mutex _mutex;
-  std::condition_variable_any _condvar;
-
-  void _worker_main(std::stop_token token) {
-    std::unique_lock lg(_mutex);
-
-    auto run = [&lg](auto work) {
-      lg.unlock();
-      try {
-        work();
-      } catch (std::exception &ex) {
-        error << "Pinned executor caught an exception: " << ex.what() << "\n";
-      } catch (...) {
-        error << "Pinned executor caught an something!\n";
-      }
-      lg.lock();
-    };
-
-    while (true) {
-      _condvar.wait(lg, token, [&] { return _now != nullptr || !_lazy.empty() || token.stop_requested(); });
-      if (token.stop_requested())
-        return;
-
-      if (_now != nullptr) {
-        run(_now);
-        _now = nullptr;
-        _condvar.notify_one();
-      } else {
-        auto work = std::move(_lazy.front());
-        _lazy.pop();
-      }
-    }
-  }
-
-public:
-  PinnedThreadExecutor() : _thread([this](std::stop_token t) { _worker_main(t); }) {}
-
-  bool blocking() const override { return false; }
-  void execute(std::function<void()> &&job) override {
-    std::unique_lock lg(_mutex);
-    _lazy.emplace(job);
-    _condvar.notify_one();
-  }
-
-  void execute_now(std::function<void()> &&job) {
-    std::unique_lock lg(_mutex);
-    _now = std::move(job);
-    _condvar.notify_one();
-    _condvar.wait(_mutex, [this] { return _now == nullptr; });
   }
 };
 
@@ -145,6 +93,8 @@ class ScopedExecutor final : public Executor {
 
 public:
   ScopedExecutor(Executor &executor) : _executor(executor) {}
+  BAR_NON_COPYABLE(ScopedExecutor);
+  BAR_NON_MOVEABLE(ScopedExecutor);
   ~ScopedExecutor() { close(); }
 
   void close() {

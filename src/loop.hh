@@ -28,9 +28,6 @@
 #include <variant>
 #include <vector>
 
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include "executor.hh"
 #include "log.hh"
 #include "util.hh"
@@ -299,9 +296,7 @@ private:
   std::vector<std::exception_ptr> _uncaught_exceptions;
   std::unique_ptr<Executor> _executor = std::make_unique<DirectExecutor>();
 
-  void _queue_uncaught_exception(std::exception_ptr&& ptr) {
-    _uncaught_exceptions.emplace_back(std::move(ptr));
-  }
+  void _queue_uncaught_exception(std::exception_ptr &&ptr) { _uncaught_exceptions.emplace_back(std::move(ptr)); }
 
   EventLoop();
   ~EventLoop();

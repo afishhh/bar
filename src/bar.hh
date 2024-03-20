@@ -36,6 +36,10 @@ class bar {
     BlockInfo(Block &block) : block(block) {}
   };
 
+  std::jthread _ui_thread;
+  std::atomic<bool> _redraw_requested;
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_redraw;
+
   ui::gwindow _window;
   ui::gwindow _tooltip_window;
 
@@ -47,16 +51,24 @@ class bar {
   std::vector<BlockInfo> _left_blocks;
   std::vector<BlockInfo> _right_blocks;
 
-  void _init_ui();
+  void _ui_init();
+  void _ui_loop(std::stop_token);
   void _setup_block(BlockInfo &info);
 
   bar() {
-    try {
-      ui::ui_thread.execute_now([this] { _init_ui(); });
-    } catch (std::runtime_error &e) {
-      fmt::print(error, "Failed to initialize window backend: {}\n", e.what());
-      std::exit(1);
-    }
+    std::latch ui_initialized_latch(1);
+    // TODO: Wait for the ui thread to open windows
+    _ui_thread = std::jthread([this, &ui_initialized_latch](std::stop_token st) {
+      _ui_init();
+      ui_initialized_latch.count_down();
+      _ui_loop(st);
+    });
+    ui_initialized_latch.wait();
+  }
+
+  ~bar() {
+    _ui_thread.request_stop();
+    schedule_redraw();
   }
 
 public:
@@ -73,6 +85,11 @@ public:
   void add_left(Block &block) { _setup_block(_left_blocks.emplace_back(block)); };
 
   void add_right(Block &block) { _setup_block(_right_blocks.emplace_back(block)); };
+
+  void schedule_redraw() {
+    _redraw_requested.store(true, std::memory_order_acquire);
+    _redraw_requested.notify_one();
+  }
 
   void redraw();
 };

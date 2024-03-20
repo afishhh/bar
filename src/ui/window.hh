@@ -35,18 +35,21 @@ class gdraw;
 
 class gwindow {
   GLFWwindow *_window;
-  gdraw *_drawer;
+  gdraw *_drawer = nullptr;
 
 public:
   operator GLFWwindow *() const { return _window; }
   gwindow() : _window(nullptr) {}
-  ~gwindow();
   explicit gwindow(GLFWwindow *window) : _window(window) {}
+  ~gwindow();
 
-  gwindow(const gwindow &) = delete;
-  gwindow(gwindow &&) = default;
-  gwindow &operator=(const gwindow &) = delete;
-  gwindow &operator=(gwindow &&) = default;
+  BAR_NON_COPYABLE(gwindow);
+  gwindow(gwindow &&other) : _window(other._window) { other._window = nullptr; }
+  gwindow &operator=(gwindow &&other) {
+    _window = other._window;
+    other._window = nullptr;
+    return *this;
+  }
 
   gdraw &drawer();
 };
@@ -75,6 +78,10 @@ class gdraw final : public draw {
       self->_update_projection();
     });
   }
+
+  BAR_NON_COPYABLE(gdraw);
+  BAR_NON_MOVEABLE(gdraw);
+
   friend class gwindow;
 
   void _update_projection() {
@@ -149,7 +156,8 @@ public:
     glEnd();
   }
 
-  void fcircle(pos_t x, pos_t y, pos_t d, color color) {}
+  // void fcircle(pos_t x, pos_t y, pos_t d, color color) {}
+  void fcircle(pos_t, pos_t, pos_t, color) {}
 
   pos_t text(pos_t x, pos_t y, std::string_view text, color color) {
     auto [logical, ink, off, texture] = _texter.render(text);

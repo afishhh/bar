@@ -100,6 +100,8 @@ class TextRenderer {
 
 public:
   TextRenderer() : _pango_itemize_attrs(nullptr), _fonts(nullptr) {}
+  BAR_NON_COPYABLE(TextRenderer);
+  BAR_NON_MOVEABLE(TextRenderer);
   ~TextRenderer() { pango_attr_list_unref(_pango_itemize_attrs); }
 
   void set_fonts(std::shared_ptr<fonts> &&fonts) {

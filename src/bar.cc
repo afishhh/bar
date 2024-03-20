@@ -1,7 +1,9 @@
 #include "bar.hh"
 #include "config.hh"
 
-void bar::_init_ui() {
+void bar::_ui_init() {
+  glfwInit();
+
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
   glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -109,6 +111,34 @@ void bar::_setup_block(BlockInfo &info) {
       block.animate(delta);
       EV.fire_event(RedrawEvent());
     });
+}
+
+void bar::_ui_loop(std::stop_token token) {
+  try {
+    while (true) {
+      _redraw_requested.wait(false, std::memory_order_acquire);
+      if (token.stop_requested())
+        break;
+
+      {
+        auto start = std::chrono::steady_clock::now();
+        // fmt::println(debug, "Redrawing! ({:>6.3f}ms elapsed since last redraw)",
+        //              (double)std::chrono::duration_cast<std::chrono::microseconds>(start - _last_redraw).count() /
+        //                  1000);
+        _last_redraw = start;
+      }
+
+      redraw();
+
+      _redraw_requested.store(true, std::memory_order_release);
+      std::this_thread::sleep_until(_last_redraw + 100ms);
+    }
+
+    glfwTerminate();
+  } catch (std::exception &e) {
+    fmt::print(error, "Failed to initialize window backend: {}\n", e.what());
+    std::exit(1);
+  }
 }
 
 void bar::redraw() {

@@ -38,6 +38,7 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/blocks/systray.cc
+  src/ui/ui.cc
   src/ui/window.cc
   src/ui/text.cc
 
@@ -60,9 +61,10 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
   target_compile_options(${PROJECT_NAME} PRIVATE
     -g
   )
+  target_link_options(${PROJECT_NAME} PRIVATE -g -rdynamic)
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE
-    -Werror -flto
+    -Werror -flto -g
   )
   target_link_options(${PROJECT_NAME} PRIVATE -flto)
 endif()

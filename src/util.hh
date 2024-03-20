@@ -16,6 +16,14 @@
 #include <tuple>
 #include <type_traits>
 
+#define BAR_NON_COPYABLE(Self)                                                                                         \
+  Self(Self const &) = delete;                                                                                         \
+  Self &operator=(Self const &) = delete
+
+#define BAR_NON_MOVEABLE(Self)                                                                                         \
+  Self(Self &&) = delete;                                                                                              \
+  Self &operator=(Self &&) = delete
+
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };

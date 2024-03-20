@@ -14,7 +14,7 @@ public:
 
   void update() override;
   std::chrono::duration<double> update_interval() override {
-    return std::chrono::milliseconds(250);
+    return std::chrono::milliseconds(500);
   }
 
   bool has_tooltip() const override { return true; }

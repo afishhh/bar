@@ -18,6 +18,8 @@ public:
 
   void relayout_tray();
 
+  bool skip() override;
+
   void late_init() override;
   std::size_t draw(ui::draw &, std::chrono::duration<double>) override {
     return 0;

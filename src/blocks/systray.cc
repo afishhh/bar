@@ -31,7 +31,6 @@
 thread_local int trapped_x11_error_code = 0;
 
 void XSystrayBlock::relayout_tray() {
-  auto &bar = bar::instance();
   Display *display = glfwGetX11Display();
   if (!display) {
     fmt::print(warn, "XSystrayBlock only works on the X11 backend\n");
@@ -78,7 +77,6 @@ relayout_tray:
 }
 
 void XSystrayBlock::late_init() {
-  auto &bar = bar::instance();
   Display *display = glfwGetX11Display();
   if (!display) {
     fmt::print(warn, "XSystrayBlock only works on the X11 backend\n");
@@ -193,6 +191,8 @@ void XSystrayBlock::late_init() {
   // XSendEvent(*xconn, e.xclient.window, false, StructureNotifyMask, &e);
   // XSync(*xconn, false);
 }
+
+bool XSystrayBlock::skip() { return _icons.empty(); }
 
 std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>, size_t x, bool right_aligned) {
   if (!_tray)
