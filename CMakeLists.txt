@@ -38,7 +38,6 @@ add_executable(
   src/blocks/script.cc
   src/blocks/disk.cc
   src/blocks/systray.cc
-  src/ui/ui.cc
   src/ui/window.cc
   src/ui/text.cc
 

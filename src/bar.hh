@@ -19,7 +19,6 @@
 #include "log.hh"
 #include "loop.hh"
 #include "ui/draw.hh"
-#include "ui/ui.hh"
 #include "ui/window.hh"
 #include "util.hh"
 

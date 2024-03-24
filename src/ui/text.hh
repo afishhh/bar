@@ -5,7 +5,6 @@
 #include "../util.hh"
 #include "fonts.hh"
 #include "gl.hh"
-#include "ui.hh"
 #include "util.hh"
 
 namespace ui {

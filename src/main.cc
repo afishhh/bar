@@ -32,7 +32,6 @@
 #include "log.hh"
 #include "loop.hh"
 #include "ui/gl.hh"
-#include "ui/ui.hh"
 #include "util.hh"
 
 int main() {
