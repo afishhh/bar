@@ -7,6 +7,7 @@
 #include <compare>
 #include <concepts>
 #include <condition_variable>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -51,24 +52,21 @@ public:
   template <typename... Args> explicit DerivedEvent(Args &&...args) : Base(std::forward<Args>(args)...) {}
 };
 
-// Base class for events whose callbacks should be called at most once per event loop cylce;
-// FIXME: Creating events derived from other events derived from StateEvent may not work as expected.
-class StateEvent : public Event {
-protected:
-  StateEvent() {}
+class SignalEvent : public Event {
+  SignalEvent(int signum, siginfo_t info) : signum(signum), info(info) {}
+  friend class EventLoop;
+
+  static std::map<int, int> s_attached;
+
+  static void _action(int, siginfo_t *, void *);
 
 public:
-  enum DuplicateHandling {
-    DROP,
-    OVERWRITE,
-  };
-};
+  int signum;
+  siginfo_t info;
 
-#define EV_STATE_EVENT(handling)                                                                                       \
-public:                                                                                                                \
-  constexpr static StateEvent::DuplicateHandling _ev_duplicate_handling = StateEvent::DuplicateHandling::handling;     \
-                                                                                                                       \
-private:
+  // NOT THREAD SAFE
+  static void attach(int signal, int flags = 0);
+};
 
 class StopEvent : public Event {
 public:
@@ -89,6 +87,8 @@ public:
   using duration = clock::duration;
   // TODO: Rename to event_callback_id
   using callback_id = std::uint32_t;
+
+  friend class SignalEvent;
 
 private:
   struct task {
@@ -212,29 +212,19 @@ private:
 
     // FIXME: Rework this with parallel execution in mind
     std::unordered_set<int> _current_callbacks;
+    std::map<uint32_t, std::function<void(const E &)>> _callbacks;
+
+    virtual std::optional<E> _pop_event_unsync() = 0;
+
+  protected:
+    mutable std::recursive_mutex _mutex;
 
   public:
-    mutable std::recursive_mutex _mutex;
-    std::vector<E> queued_events;
-    std::map<uint32_t, std::function<void(const E &)>> callbacks;
-
-    template <typename... Args> void emplace(Args &&...args) {
-      std::unique_lock lg(_mutex);
-
-      if constexpr (std::derived_from<E, StateEvent>) {
-        if constexpr (E::_ev_duplicate_handling == StateEvent::DuplicateHandling::OVERWRITE) {
-          if (!queued_events.empty())
-            queued_events.clear();
-        } else if (!queued_events.empty())
-          return;
-      }
-
-      queued_events.emplace_back(std::forward<Args>(args)...);
-    }
-
-    bool empty() const override {
-      std::unique_lock lg(_mutex);
-      return queued_events.empty();
+    template <typename Callback>
+      requires std::constructible_from<std::function<void(const E &)>, Callback>
+    void emplace_callback(callback_id id, Callback cb) {
+      std::unique_lock lock(_mutex);
+      _callbacks.emplace(id, std::move(cb));
     }
 
     bool try_remove_callback(callback_id id) override {
@@ -243,12 +233,12 @@ private:
         _current_callbacks.erase(it);
         return true;
       } else
-        return callbacks.erase(id) != 0;
+        return _callbacks.erase(id) != 0;
     }
 
     void fire_one(const E &event) {
       _mutex.lock();
-      for (auto &[_, callback] : callbacks) {
+      for (auto &[_, callback] : _callbacks) {
         _mutex.unlock();
 
         fire_base_event(event);
@@ -261,12 +251,16 @@ private:
     void flush(Executor &executor = DIRECT_EXECUTOR) override {
       std::unique_lock lg(_mutex);
 
-      auto events = std::move(queued_events);
-      for (auto &event : events) {
+      while (true) {
+        auto maybe_event = _pop_event_unsync();
+        if (!maybe_event.has_value())
+          break;
+        auto &event = maybe_event.value();
+
         {
           ScopedExecutor scoped_executor(executor);
 
-          for (auto it = callbacks.begin(); it != callbacks.end(); ++it) {
+          for (auto it = _callbacks.begin(); it != _callbacks.end(); ++it) {
             auto &[id, callback] = *it;
             _current_callbacks.emplace(id);
 
@@ -283,14 +277,83 @@ private:
           }
         }
 
-        for (auto it = callbacks.begin(); it != callbacks.end();)
+        for (auto it = _callbacks.begin(); it != _callbacks.end();)
           if (!_current_callbacks.contains(it->first))
-            it = callbacks.erase(it);
+            it = _callbacks.erase(it);
           else
             ++it;
       }
     }
   };
+
+  template <std::derived_from<Event> E> class VectorEventQueue final : public EventQueue<E> {
+    std::queue<E> _queued_events;
+
+    std::optional<E> _pop_event_unsync() override {
+      if (_queued_events.empty())
+        return std::nullopt;
+      E event = _queued_events.front();
+      _queued_events.pop();
+      return event;
+    }
+
+  public:
+    bool empty() const override {
+      std::unique_lock lg(this->_mutex);
+      return _queued_events.empty();
+    }
+
+    template <typename... Args> void emplace(Args &&...args) {
+      std::unique_lock lg(this->_mutex);
+      _queued_events.emplace(std::forward<Args>(args)...);
+    }
+  };
+
+  // A ring buffer event queue that will not allocate on insertion.
+  //
+  // Allocates 17KB of storage, enough for 128 signals.
+  // Signals will be dropped if buffer capacity is exceeded.
+  class SignalEventQueue final : public EventQueue<SignalEvent> {
+    std::allocator<SignalEvent> _allocator;
+    size_t _capacity = 128;
+    SignalEvent *_buffer = _allocator.allocate(_capacity);
+    SignalEvent *_read = _buffer;
+    SignalEvent *_write = _buffer;
+    bool _full;
+
+    std::optional<SignalEvent> _pop_event_unsync() override {
+      if (_read == _write && !_full)
+        return std::nullopt;
+
+      SignalEvent value = *_read++;
+      if (_read == _buffer + _capacity)
+        _read = _buffer;
+      _full = false;
+      return value;
+    }
+
+  public:
+    ~SignalEventQueue() { _allocator.deallocate(_buffer, _capacity); }
+
+    bool empty() const override {
+      std::unique_lock lg(_mutex);
+      return _read == _write && !_full;
+    }
+
+    template <typename... Args> void emplace(Args &&...args) {
+      std::unique_lock lg(_mutex);
+      if (_full)
+        return;
+      *_write++ = SignalEvent(std::forward<Args>(args)...);
+      if (_write == _buffer + _capacity)
+        _write = _buffer;
+      if (_write == _read)
+        _full = true;
+    }
+  };
+
+  template <typename E>
+  using EventQueueFor = std::conditional_t<std::same_as<E, SignalEvent>, SignalEventQueue, VectorEventQueue<E>>;
 
   bool _stopped{false};
   std::vector<std::exception_ptr> _uncaught_exceptions;
@@ -341,16 +404,15 @@ public:
     requires std::constructible_from<std::function<void(const E &)>, Callback>
   callback_id on(Callback cb) {
     if (auto it = _event_queues.lower_bound(typeid(E)); it == _event_queues.end() || it->first != typeid(E)) {
-      auto new_queue = std::make_unique<EventQueue<E>>();
+      auto new_queue = std::make_unique<EventQueueFor<E>>();
       auto id = _current_event_callback_id.fetch_add(1);
-      new_queue->callbacks.emplace(id, std::move(cb));
+      new_queue->emplace_callback(id, std::move(cb));
       _event_queues.emplace_hint(it, typeid(E), std::move(new_queue));
       return id;
     } else {
       auto id = _current_event_callback_id.fetch_add(1);
       auto queue = it->second->into_queue_of<E>();
-      std::unique_lock lock(queue->_mutex);
-      queue->callbacks.emplace(id, std::move(cb));
+      queue->emplace_callback(id, cb);
       return id;
     }
   }
@@ -358,14 +420,14 @@ public:
   template <std::derived_from<Event> E> void fire_event(E const &event) {
     if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end()) {
       auto queue = it->second->into_queue_of<E>();
-      queue->emplace(event);
+      static_cast<EventQueueFor<E> *>(queue)->emplace(event);
     }
   }
 
   template <std::derived_from<Event> E> void fire_event(E &&event) {
     if (auto it = _event_queues.find(typeid(E)); it != _event_queues.end()) {
       auto queue = it->second->into_queue_of<E>();
-      queue->emplace(std::move(event));
+      static_cast<EventQueueFor<E> *>(queue)->emplace(std::move(event));
     }
   }
 

@@ -28,17 +28,14 @@
 #include "bar.hh"
 #include "block.hh"
 #include "config.hh"
-#include "events.hh"
 #include "executor.hh"
 #include "log.hh"
 #include "loop.hh"
-#include "signal.hh"
 #include "ui/gl.hh"
 #include "ui/ui.hh"
 #include "util.hh"
 
 int main() {
-  SignalEvent::setup();
   StopEvent::attach_to_signals();
 
   EV.set_executor(std::make_unique<ThreadPoolExecutor>(std::thread::hardware_concurrency() * 2));
@@ -57,8 +54,6 @@ int main() {
     bar.add_right(*block);
 
   bar.show();
-
-  EV.on<RedrawEvent>([](const RedrawEvent &) { bar::instance().schedule_redraw(); });
 
   EV.run();
 

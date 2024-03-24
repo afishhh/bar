@@ -37,6 +37,7 @@ public:
   ~UiThread() {
     _thread.request_stop();
     _work.store((std::function<void()> *)1, std::memory_order::release);
+    _work.notify_one();
   }
 
   BAR_NON_COPYABLE(UiThread);

@@ -58,7 +58,7 @@ class gdraw final : public draw {
   GLFWwindow *_window;
   int _width, _height;
   int _available_width, _available_height;
-  float _text_render_scale;
+  float _xscale, _yscale;
   TextRenderer _texter;
 
   gdraw(GLFWwindow *win) : _window(win) {
@@ -85,28 +85,24 @@ class gdraw final : public draw {
   friend class gwindow;
 
   void _update_projection() {
-    float scalex, scaley;
-    glfwGetWindowContentScale(_window, &scalex, &scaley);
+    glfwGetWindowContentScale(_window, &_xscale, &_yscale);
 
-    // TODO: How do we render things if these are different?
-    //       Can these be different?
-    _text_render_scale = std::min(scalex, scaley);
+    _available_width = _width / _xscale;
+    _available_height = _height / _yscale;
 
-    _available_width = _width / scalex;
-    _available_height = _height / scaley;
-
+    glfwMakeContextCurrent(_window);
     glViewport(0, 0, _width, _height);
     glMatrixMode(GL_PROJECTION);
     glOrtho(0, _available_width, _available_height, 0, -1, 1);
 
-    fmt::print(debug, "Updating projection matrix for framebuffer size {}x{}\n", _width, _height);
-
     int a, b;
     glfwGetWindowSize(_window, &a, &b);
 
-    fmt::print(debug, "Window size is {}x{}\n", a, b);
-    fmt::print(debug, "Content scale is x:{} y:{}\n", scalex, scaley);
-    fmt::print(debug, "Scaled size is {}x{}\n", _available_width, _available_height);
+    fmt::print(debug, "Window {} resized", (void*)_window);
+    fmt::print(debug, "  Framebuffer size changed to {}x{}\n", _width, _height);
+    fmt::print(debug, "  Window size is {}x{}\n", a, b);
+    fmt::print(debug, "  Content scale is x:{} y:{}\n", _xscale, _yscale);
+    fmt::print(debug, "  Scaled size is {}x{}\n", _available_width, _available_height);
   }
 
 public:
@@ -163,10 +159,9 @@ public:
     auto [logical, ink, off, texture] = _texter.render(text);
 
     if (texture) {
-      ink.x /= _text_render_scale, ink.y /= _text_render_scale;
-
       color::rgb rgb = color;
-      x += off.x / _text_render_scale, y += off.y / _text_render_scale;
+      ink.x /= text_render_scale(), ink.y /= text_render_scale();
+      x += off.x / text_render_scale(), y += off.y / text_render_scale();
 
       // fmt::println("drawing texture {} for {:?} at ({}, {})", texture, text, x, y);
       glActiveTexture(GL_TEXTURE_2D);
@@ -187,16 +182,18 @@ public:
       glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    return logical.x / _text_render_scale;
+    return logical.x / text_render_scale();
   }
 
   pos_t text(pos_t x, std::string_view text, color color) { return this->text(x, vcenter(), text, color); }
   uvec2 textsz(std::string_view text) {
     auto unscaled = _texter.size(text);
-    return {(unsigned)(unscaled.x / _text_render_scale), (unsigned)(unscaled.y / _text_render_scale)};
+    return {(unsigned)(unscaled.x / text_render_scale()), (unsigned)(unscaled.y / text_render_scale())};
   }
 
-  float get_text_render_scale() { return _text_render_scale; }
+  float x_render_scale() { return _xscale; }
+  float y_render_scale() { return _yscale; }
+  float text_render_scale() { return _yscale; }
 };
 
 } // namespace ui

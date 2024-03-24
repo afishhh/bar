@@ -15,7 +15,6 @@
 #include "block.hh"
 #include "bufdraw.hh"
 #include "config.hh"
-#include "events.hh"
 #include "guard.hh"
 #include "log.hh"
 #include "loop.hh"
@@ -44,7 +43,9 @@ class bar {
   ui::gwindow _tooltip_window;
 
   // Used to implement tooltip drawing
+  ivec2 _monitor_size;
   BlockInfo *_hovered_block;
+  int _hovered_block_threatened;
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_mouse_move;
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_tooltip_draw;
 
@@ -87,8 +88,8 @@ public:
   void add_right(Block &block) { _setup_block(_right_blocks.emplace_back(block)); };
 
   void schedule_redraw() {
-    _redraw_requested.store(true, std::memory_order_acquire);
-    _redraw_requested.notify_one();
+    if(!_redraw_requested.exchange(true, std::memory_order_acq_rel))
+      glfwPostEmptyEvent();
   }
 
   void redraw();

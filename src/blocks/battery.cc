@@ -155,11 +155,11 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
 
   // If charging then fill the box with a gradient
   if (_charging) {
-    for (size_t i = 0; i < fill_width; ++i) {
-      auto color = (155 + (unsigned long)((double)i / fill_width * 100)) << 8;
-      auto x = left + 1 + ((i + _charging_gradient_offset / 10) % fill_width);
-      draw.line(x, top + 1, x, bottom - 1, color);
-    }
+    // for (size_t i = 0; i < fill_width; ++i) {
+    //   auto color = (155 + (unsigned long)((double)i / fill_width * 100)) << 8;
+    //   auto x = left + 1 + ((i + _charging_gradient_offset / 10) % fill_width);
+    //   draw.line(x, top + 1, x, bottom - 1, color);
+    // }
 
     if (_config.show_time_left_charging && !_full) {
       auto time_left_str = format_time(_seconds_left);

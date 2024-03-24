@@ -25,9 +25,9 @@ class DwmBlock : public Block {
   };
   std::vector<Tag> _tags;
   std::string _focused_client_title;
-  bool _focused_client_floating;
+  bool _focused_client_floating{false};
   // TODO: Make a better system for customising title based on state.
-  bool _focused_client_urgent;
+  bool _focused_client_urgent{false};
   std::string _layout_symbol;
 
 public:

@@ -16,6 +16,8 @@
 #include <tuple>
 #include <type_traits>
 
+#include "ui/gl.hh"
+
 #define BAR_NON_COPYABLE(Self)                                                                                         \
   Self(Self const &) = delete;                                                                                         \
   Self &operator=(Self const &) = delete
@@ -23,6 +25,39 @@
 #define BAR_NON_MOVEABLE(Self)                                                                                         \
   Self(Self &&) = delete;                                                                                              \
   Self &operator=(Self &&) = delete
+
+class glfw_error : public std::runtime_error {
+  int _code;
+
+public:
+  glfw_error(std::string message, int code) : std::runtime_error(message), _code(code) {}
+};
+
+inline void glfw_throw_error(char const *function = nullptr) {
+  char const *description;
+  int code = glfwGetError(&description);
+  if (code != GLFW_NO_ERROR) {
+    if (function)
+      throw glfw_error(std::format("{}: {}", function, description), code);
+    else
+      throw glfw_error(description, code);
+  }
+}
+
+namespace _private {
+
+template <typename T> T check_glfw_return(T, char const *function = nullptr) = delete;
+
+template <typename T> T *check_glfw_return(T *ptr, char const *function = nullptr) {
+  if (ptr == nullptr)
+    glfw_throw_error(function);
+  return ptr;
+}
+
+} // namespace _private
+
+#define BAR_GLFW_CHECK(value) _private::check_glfw_return(value)
+#define BAR_GLFW_CALL(name, ...) _private::check_glfw_return(glfw##name(__VA_ARGS__), #name)
 
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;

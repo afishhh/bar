@@ -1,12 +1,36 @@
 #include "loop.hh"
 #include "executor.hh"
-#include "signal.hh"
 
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <optional>
 #include <ratio>
+#include <system_error>
 #include <thread>
+
+std::map<int, int> SignalEvent::s_attached;
+
+void SignalEvent::_action(int signal, siginfo_t *info, void *) {
+  EV.fire_event(SignalEvent(signal, *info));
+}
+
+void SignalEvent::attach(int signal, int flags) {
+  if (auto it = s_attached.find(signal); it != s_attached.end()) {
+    // this api is terrible :sob:
+    if (it->second != flags)
+      throw std::logic_error("mixed flag SignalEvent::attach");
+    return;
+  } else
+    s_attached.emplace_hint(it, signal, flags);
+
+  struct sigaction act;
+  act.sa_sigaction = &_action;
+  act.sa_flags = SA_SIGINFO | flags;
+
+  if (sigaction(signal, &act, nullptr))
+    throw std::system_error(errno, std::generic_category(), "sigaction");
+}
 
 void StopEvent::attach_to_signals() {
   static bool already_attached = false;
@@ -23,7 +47,7 @@ void StopEvent::attach_to_signals() {
   });
 }
 
-EventLoop::EventLoop() { _event_queues.emplace(typeid(StopEvent), std::make_unique<EventQueue<StopEvent>>()); }
+EventLoop::EventLoop() { _event_queues.emplace(typeid(StopEvent), std::make_unique<VectorEventQueue<StopEvent>>()); }
 EventLoop::~EventLoop() {}
 
 void EventLoop::add_oneshot(task::oneshot::callback callback) { _tasks.emplace(task::oneshot{callback}); }

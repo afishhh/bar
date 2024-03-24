@@ -17,7 +17,6 @@
 
 #include "../bar.hh"
 #include "../config.hh"
-#include "../events.hh"
 #include "../log.hh"
 #include "systray.hh"
 
@@ -73,7 +72,7 @@ relayout_tray:
   }
 
   XFlush(display);
-  EV.fire_event(RedrawEvent());
+  bar::instance().schedule_redraw();
 }
 
 void XSystrayBlock::late_init() {

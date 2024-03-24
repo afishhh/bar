@@ -78,7 +78,11 @@ void CpuBlock::update() {
           continue;
       }
 
+      // average C++ compiler moment (complaining about its own optional type)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
       _thermal = ThermalInfo();
+#pragma GCC diagnostic pop
       {
         auto temp_path = entry.path() / "temp";
         std::ifstream temp_file(temp_path);

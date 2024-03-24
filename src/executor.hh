@@ -38,7 +38,8 @@ class ThreadPoolExecutor final : public Executor {
   std::condition_variable_any _condvar;
   std::queue<std::function<void()>> _queue;
   std::vector<std::jthread> _workers;
-  unsigned _available_workers;
+  // FIXME: this overflows or something (but causes no problems :rocket:)
+  unsigned _available_workers = 0;
   unsigned _max_threads;
 
   void start_worker() {
@@ -85,8 +86,7 @@ class ScopedExecutor final : public Executor {
 
   void _on_async_job_done() {
     unsigned state = _state.fetch_sub(1, std::memory_order_acq_rel);
-    // debug << "SE " << (void *)this << " REL: " << (state bitand (compl WAITING))
-    //       << " W?: " << (bool)(state bitand WAITING) << '\n';
+    // debug << "SE " << (void *)this << " REL: " << (state & ~WAITING) << " W?: " << (bool)(state & WAITING) << '\n';
     if (state == (WAITING + 1))
       _waiter.release();
   }
@@ -116,7 +116,7 @@ public:
       _executor.execute([&] { job(); });
     else {
       unsigned state = _state.fetch_add(1, std::memory_order_acq_rel);
-      // debug << "SE " << (void *)this << " AQ: " << val << '\n';
+      // debug << "SE " << (void *)this << " AQ: " << state << '\n';
       if (state == WAITING)
         throw std::logic_error("ScopedExecutor::execute called after the executor was closed");
 

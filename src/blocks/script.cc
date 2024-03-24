@@ -16,22 +16,20 @@
 
 extern char **environ;
 
-#include "../events.hh"
-#include "../signal.hh"
+#include "../bar.hh"
 #include "../util.hh"
 #include "script.hh"
 
 void ScriptBlock::late_init() {
-  for (auto signal : _update_signals) {
+  for (auto signal : _update_signals)
     SignalEvent::attach(signal);
-  }
 
   if (!_update_signals.empty()) {
     EV.on<SignalEvent>([this, signals = std::unordered_set<int>(_update_signals.begin(), _update_signals.end())](
                            const SignalEvent &ev) {
       if (signals.contains(ev.signum)) {
         update();
-        EV.fire_event(RedrawEvent());
+        bar::instance().schedule_redraw();
       }
     });
   }
@@ -98,7 +96,7 @@ void ScriptBlock::update() {
     // TODO: Cleaner solution
     EventLoop::callback_id sigchld_handler;
     sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
-      if (ev.signum != SIGCHLD || (pid_t)ev.info.ssi_pid != pid)
+      if (ev.signum != SIGCHLD || (pid_t)ev.info.si_pid != pid)
         return;
 
       _process_mutex.unlock();

@@ -23,9 +23,7 @@ class CpuBlock : public Block {
     long guest;
     long guest_nice;
 
-    long busy() const {
-      return user + nice + system + irq + softirq + steal + guest + guest_nice;
-    }
+    long busy() const { return user + nice + system + irq + softirq + steal + guest + guest_nice; }
     long notbusy() const { return idle + iowait; }
     long total() const { return busy() + notbusy(); }
 
@@ -55,9 +53,8 @@ class CpuBlock : public Block {
 
       result.total = total - other.total;
       assert(percore.size() == other.percore.size());
-      for (size_t i = 0; i < percore.size(); ++i) {
+      for (size_t i = 0; i < percore.size(); ++i)
         result.percore.push_back(percore[i] - other.percore[i]);
-      }
 
       return result;
     }
@@ -115,11 +112,8 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
-  std::chrono::duration<double> update_interval() override {
-    return std::chrono::milliseconds(500);
-  }
+  std::chrono::duration<double> update_interval() override { return std::chrono::milliseconds(500); }
 
   bool has_tooltip() const override { return true; }
-  void draw_tooltip(ui::draw &, std::chrono::duration<double>,
-                    unsigned) const override;
+  void draw_tooltip(ui::draw &, std::chrono::duration<double>, unsigned) const override;
 };
