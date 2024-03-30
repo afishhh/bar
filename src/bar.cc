@@ -179,6 +179,10 @@ void bar::_ui_loop(std::stop_token token) {
         _redraw_requested.store(true, std::memory_order_release);
     }
 
+    // Free drawers
+    _window.~gwindow();
+    _tooltip_window.~gwindow();
+
     glfwTerminate();
   } catch (std::exception &e) {
     fmt::print(error, "Exception in UI loop: {}\n", e.what());

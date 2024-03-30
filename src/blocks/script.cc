@@ -93,9 +93,7 @@ void ScriptBlock::update() {
       }
     }
 
-    // TODO: Cleaner solution
-    EventLoop::callback_id sigchld_handler;
-    sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
+    EventLoop::callback_id sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
       if (ev.signum != SIGCHLD || (pid_t)ev.info.si_pid != pid)
         return;
 

@@ -69,6 +69,8 @@ class bar {
   ~bar() {
     _ui_thread.request_stop();
     schedule_redraw();
+    _ui_thread.join();
+    asm("" ::: "memory");
   }
 
 public:
@@ -87,7 +89,7 @@ public:
   void add_right(Block &block) { _setup_block(_right_blocks.emplace_back(block)); };
 
   void schedule_redraw() {
-    if(!_redraw_requested.exchange(true, std::memory_order_acq_rel))
+    if (!_redraw_requested.exchange(true, std::memory_order_acq_rel))
       glfwPostEmptyEvent();
   }
 

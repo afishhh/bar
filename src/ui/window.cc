@@ -10,6 +10,10 @@ gdraw &gwindow::drawer() {
   }
 }
 
-gwindow::~gwindow() { delete _drawer; }
+gwindow::~gwindow() {
+  delete _drawer;
+  _drawer = nullptr;
+  asm("" ::: "memory");
+}
 
 } // namespace ui

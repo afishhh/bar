@@ -319,9 +319,14 @@ private:
     SignalEvent *_buffer = _allocator.allocate(_capacity);
     SignalEvent *_read = _buffer;
     SignalEvent *_write = _buffer;
-    bool _full;
+    bool _full{false}, _overflowed{false};
 
     std::optional<SignalEvent> _pop_event_unsync() override {
+      if(_overflowed) {
+        warn << "Signal event queue overflowed, some events have been dropped!\n";
+        _overflowed = false;
+      }
+
       if (_read == _write && !_full)
         return std::nullopt;
 
@@ -342,8 +347,10 @@ private:
 
     template <typename... Args> void emplace(Args &&...args) {
       std::unique_lock lg(_mutex);
-      if (_full)
+      if (_full) {
+        _overflowed = true;
         return;
+      }
       *_write++ = SignalEvent(std::forward<Args>(args)...);
       if (_write == _buffer + _capacity)
         _write = _buffer;
