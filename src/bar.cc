@@ -44,12 +44,14 @@ void bar::_ui_init() {
   glfwSetWindowPos(window, 0, 0);
   glfw_throw_error();
 
-  if (Window xwindow = glfwGetX11Window(window); xwindow != None)
+  if (Window xwindow = glfwGetX11Window(window); xwindow != None) {
+    XSetWindowAttributes attr;
+    attr.override_redirect = true;
+    XChangeWindowAttributes(glfwGetX11Display(), glfwGetX11Window(tooltip_window), CWOverrideRedirect, &attr);
     if (config::x11::override_redirect) {
-      XSetWindowAttributes attr;
-      attr.override_redirect = true;
       XChangeWindowAttributes(glfwGetX11Display(), xwindow, CWOverrideRedirect, &attr);
     }
+  }
 
   glfwMakeContextCurrent(window);
   int version = gladLoadGL(glfwGetProcAddress);

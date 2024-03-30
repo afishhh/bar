@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cmath>
 #include <memory>
+#include <numbers>
 #include <stdexcept>
 
 #include "../log.hh"
@@ -93,12 +95,13 @@ class gdraw final : public draw {
     glfwMakeContextCurrent(_window);
     glViewport(0, 0, _width, _height);
     glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
     glOrtho(0, _available_width, _available_height, 0, -1, 1);
 
     int a, b;
     glfwGetWindowSize(_window, &a, &b);
 
-    fmt::print(debug, "Window {} resized", (void*)_window);
+    fmt::print(debug, "Window {} resized\n", (void *)_window);
     fmt::print(debug, "  Framebuffer size changed to {}x{}\n", _width, _height);
     fmt::print(debug, "  Window size is {}x{}\n", a, b);
     fmt::print(debug, "  Content scale is x:{} y:{}\n", _xscale, _yscale);
@@ -168,6 +171,7 @@ public:
       glBindTexture(GL_TEXTURE_2D, texture);
       glColor3ub(rgb.r, rgb.g, rgb.b);
 
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       glBegin(GL_QUADS);
       glTexCoord2f(0.0, 0.0);
       glVertex2i(x, y);

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <iterator>
 #include <locale>
+#include <memory>
 #include <ranges>
 #include <set>
 #include <stdexcept>
@@ -136,9 +137,9 @@ unsigned TextRenderer::_create_texture(PreparedText const &text) {
 
   auto [width, height] = text.ink_size();
   cairo_surface_t *surface;
-  unsigned char *surface_data = new unsigned char[4 * width * height];
-  std::fill_n(surface_data, 4 * width * height, 0);
-  surface = cairo_image_surface_create_for_data(surface_data, CAIRO_FORMAT_ARGB32, width, height, 4 * width);
+  std::unique_ptr<unsigned char[]> surface_data(new unsigned char[4 * width * height]);
+  std::fill_n(surface_data.get(), 4 * width * height, 0);
+  surface = cairo_image_surface_create_for_data(surface_data.get(), CAIRO_FORMAT_ARGB32, width, height, 4 * width);
   cairo_t *context = cairo_create(surface);
 
   cairo_set_source_rgba(context, 1, 1, 1, 1);
@@ -177,9 +178,8 @@ unsigned TextRenderer::_create_texture(PreparedText const &text) {
   //   }
   // }
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, surface_data);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, surface_data.get());
 
-  delete[] surface_data;
   cairo_destroy(context);
   cairo_surface_destroy(surface);
 
@@ -213,7 +213,6 @@ TextRenderer::Result TextRenderer::render(std::string_view text) {
 
   return Result{cached->logical_size, cached->ink_size, cached->offset, cached->texture};
 }
-
 
 uvec2 TextRenderer::size(std::string_view text) {
   auto *cached = _text_cache.get(text);
