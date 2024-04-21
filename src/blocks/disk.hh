@@ -12,7 +12,7 @@
 
 #include "../block.hh"
 
-class DiskBlock : public Block {
+class DiskBlock : public SimpleBlock {
   struct statfs _statfs;
 
   std::filesystem::path _mountpoint;
@@ -37,7 +37,7 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
-  std::chrono::duration<double> update_interval() override {
+  Interval update_interval() override {
     return std::chrono::seconds(3);
   }
 };

@@ -170,7 +170,7 @@ void iwctl_update_station(WifiStation &station) {
     station.info = std::move(new_info);
   }
 
-  station.update_running.store(false);
+  station.update_running.clear();
 }
 
 NetworkBlock::Config NetworkBlock::Config::autodetect() {
@@ -230,8 +230,7 @@ void NetworkBlock::update() {
   }
 
   for (auto &station : _wifi_stations) {
-    bool ex = false;
-    if (station.update_running.compare_exchange_strong(ex, true))
+    if (!station.update_running.test_and_set())
       iwctl_update_station(station);
   }
 }

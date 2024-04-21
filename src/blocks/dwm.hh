@@ -14,7 +14,7 @@
 #include "../block.hh"
 #include "dwmipcpp/connection.hpp"
 
-class DwmBlock : public Block {
+class DwmBlock : public SimpleBlock {
   dwmipc::Connection _connection;
   struct Tag {
     std::string name;
@@ -58,7 +58,7 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
-  std::chrono::duration<double> update_interval() override {
+  Interval update_interval() override {
     return std::chrono::milliseconds(100);
   }
 };

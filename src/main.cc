@@ -44,21 +44,23 @@ int main() {
     return EventLoop::ExceptionAction::IGNORE;
   });
 
-    bar &bar = bar::instance();
+  bar &bar = bar::instance();
 
-    for (auto &block : config::left_blocks)
-      bar.add_left(*block);
+  for (auto &block : config::left_blocks)
+    bar.add_left(*block);
 
-    for (auto &block : config::right_blocks | std::views::reverse)
-      bar.add_right(*block);
+  for (auto &block : config::right_blocks | std::views::reverse)
+    bar.add_right(*block);
 
-    bar.show();
+  bar.show();
 
-    EV.run();
+  EV.run();
 
-    // The event loop may still contain xevents that reference the X11 connection owned by the bar instance that's about
-    // to be destroyed, therefore we reset the event loop before destroying bar to avoid this use-after-free.
-    EV.reset();
+  // The event loop may still contain xevents that reference the X11 connection owned by the bar instance that's about
+  // to be destroyed, therefore we reset the event loop before destroying bar to avoid this use-after-free.
+  EV.reset();
+
+  EV.run();
 
   return 0;
 }

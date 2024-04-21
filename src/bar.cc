@@ -117,26 +117,7 @@ void bar::_ui_init() {
   _tooltip_window.drawer().texter().set_fonts(std::move(fonts));
 }
 
-void bar::_setup_block(BlockInfo &info) {
-  info.block.late_init();
-
-  info.last_update = std::chrono::steady_clock::now();
-  info.block.update();
-
-  info.last_draw = std::chrono::steady_clock::now();
-
-  if (info.block.update_interval() != std::chrono::duration<double>::max())
-    EV.add_timer(std::chrono::duration_cast<EventLoop::duration>(info.block.update_interval()),
-                 [&block = info.block](auto) {
-                   block.update();
-                   bar::instance().schedule_redraw();
-                 });
-  if (auto i = info.block.animate_interval())
-    EV.add_timer(*i, [&block = info.block](auto delta) {
-      block.animate(delta);
-      bar::instance().schedule_redraw();
-    });
-}
+void bar::_setup_block(BlockInfo &info) { info.block.setup(); }
 
 void bar::_ui_loop(std::stop_token token) {
   try {
@@ -193,6 +174,7 @@ void bar::_ui_loop(std::stop_token token) {
 void bar::redraw() {
   std::size_t x = 5;
 
+  auto now = std::chrono::steady_clock::now();
   auto &direct_draw = _window.drawer();
   auto buffered_draw = BufDraw(direct_draw);
 
@@ -206,16 +188,12 @@ void bar::redraw() {
       while (true) {
         auto &info = *it;
         auto &block = info.block;
-        auto now = std::chrono::steady_clock::now();
-        auto width = block.draw(buffered_draw, now - info.last_draw);
-        width += block.ddraw(buffered_draw, now - info.last_draw, x, false);
+        auto width = block.draw(buffered_draw, now - _last_redraw, x, false);
         info.last_pos = {(unsigned)x, 0};
         info.last_size = {(unsigned)width, config::height};
-        info.last_draw = now;
 
         buffered_draw.draw_offset(x, 0);
         buffered_draw.clear();
-
         x += width;
 
         if (++it == filtered.end())
@@ -236,12 +214,9 @@ void bar::redraw() {
       while (true) {
         auto &info = *it;
         auto &block = info.block;
-        auto now = std::chrono::steady_clock::now();
-        auto width = block.draw(buffered_draw, now - info.last_draw);
-        width += block.ddraw(buffered_draw, now - info.last_draw, x - width, true);
+        auto width = block.draw(buffered_draw, now - _last_redraw, x, true);
         info.last_pos = {(unsigned)(x - width), 0};
         info.last_size = {(unsigned)width, config::height};
-        info.last_draw = now;
 
         x -= width;
         direct_draw.frect(x - 8, 0, width + 16, config::height, config::background_color.as_rgb());
@@ -267,7 +242,6 @@ void bar::redraw() {
     glfwMakeContextCurrent(_tooltip_window);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    auto now = std::chrono::steady_clock::now();
     auto &block = hovered->block;
     auto &wd = _tooltip_window.drawer();
     auto bd = BufDraw(wd);

@@ -144,8 +144,6 @@ public:
     color::rgb rgb = color;
     glColor3ub(rgb.r, rgb.g, rgb.b);
 
-    x -= 1;
-
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glBegin(GL_POLYGON);
     glVertex2i(x, y);
@@ -155,8 +153,35 @@ public:
     glEnd();
   }
 
-  // void fcircle(pos_t x, pos_t y, pos_t d, color color) {}
-  void fcircle(pos_t, pos_t, pos_t, color) {}
+  void fcircle(pos_t x, pos_t y, pos_t d, color color) {
+    color::rgb rgb = color;
+    glColor3ub(rgb.r, rgb.g, rgb.b);
+
+    constexpr int segments = 100;
+    static struct CircleThetas {
+      float values[segments];
+      CircleThetas() {
+        for (int i = 0; i < segments; ++i)
+          values[i] = 2.0 * std::numbers::pi * i / segments;
+      }
+      float operator[](int i) { return values[i]; }
+    } thetas;
+
+    x -= 1;
+
+    float r = d / 2.0;
+    float cx = x + r;
+    float cy = y + r;
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < segments; ++i) {
+      float nx = r * std::cos(thetas[i]);
+      float ny = r * std::sin(thetas[i]);
+      glVertex2f(cx + nx, cy + ny);
+    }
+    glEnd();
+  }
 
   pos_t text(pos_t x, pos_t y, std::string_view text, color color) {
     auto [logical, ink, off, texture] = _texter.render(text);

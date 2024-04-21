@@ -7,7 +7,7 @@
 
 #include "../block.hh"
 
-class CpuBlock : public Block {
+class CpuBlock : public SimpleBlock {
   struct Times {
     long user;
     long nice;
@@ -112,7 +112,7 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
-  std::chrono::duration<double> update_interval() override { return std::chrono::milliseconds(500); }
+  Interval update_interval() override { return std::chrono::milliseconds(500); }
 
   bool has_tooltip() const override { return true; }
   void draw_tooltip(ui::draw &, std::chrono::duration<double>, unsigned) const override;

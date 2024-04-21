@@ -25,13 +25,15 @@
 class bar {
   struct BlockInfo {
     Block &block;
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> last_update;
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> last_draw;
 
     uvec2 last_pos;
     uvec2 last_size;
 
     BlockInfo(Block &block) : block(block) {}
+    BlockInfo(BlockInfo const &) = delete;
+    BlockInfo(BlockInfo &&) = default;
+    BlockInfo &operator=(BlockInfo const &) = delete;
+    BlockInfo &operator=(BlockInfo &&) = delete;
   };
 
   std::jthread _ui_thread;
@@ -56,6 +58,7 @@ class bar {
   void _setup_block(BlockInfo &info);
 
   bar() {
+    EV.add_timer(std::chrono::milliseconds(10), [](auto) {});
     std::latch ui_initialized_latch(1);
     // TODO: Wait for the ui thread to open windows
     _ui_thread = std::jthread([this, &ui_initialized_latch](std::stop_token st) {

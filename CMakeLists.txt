@@ -28,6 +28,7 @@ add_executable(
   src/guard.cc
   src/util.cc
   src/log.cc
+  src/block.cc
   src/bar.cc
   src/bufdraw.cc
   src/blocks/memory.cc

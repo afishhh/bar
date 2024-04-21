@@ -17,7 +17,7 @@ enum class BatteryStatus {
   Unknown,
 };
 
-class BatteryBlock : public Block {
+class BatteryBlock final : public SimpleBlock {
 private:
   std::filesystem::path _path;
   // size_t _charge_full, _charge_full_design, _charge_now;
@@ -51,12 +51,12 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
-  void animate(EventLoop::duration delta) override;
-  std::optional<EventLoop::duration> animate_interval() override {
+  void animate(Interval delta) override;
+  std::optional<Interval> animate_interval() override {
     return std::chrono::milliseconds(50);
   }
   void update() override;
-  std::chrono::duration<double> update_interval() override {
+  Interval update_interval() override {
     return std::chrono::milliseconds(1000);
   }
 };

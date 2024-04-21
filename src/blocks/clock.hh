@@ -6,14 +6,14 @@
 
 #include "../block.hh"
 
-class ClockBlock : public Block {
+class ClockBlock : public SimpleBlock {
   struct tm *_time;
 
 public:
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
   void update() override;
-  std::chrono::duration<double> update_interval() override {
+  Interval update_interval() override {
     return std::chrono::milliseconds(500);
   }
 

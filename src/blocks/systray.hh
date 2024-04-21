@@ -20,10 +20,6 @@ public:
 
   bool skip() override;
 
-  void late_init() override;
-  std::size_t draw(ui::draw &, std::chrono::duration<double>) override {
-    return 0;
-  }
-  std::size_t ddraw(ui::draw &, std::chrono::duration<double> delta, size_t x,
-                    bool right_aligned) override;
+  void setup() override;
+  std::size_t draw(ui::draw &, std::chrono::duration<double> delta, size_t x, bool right_aligned) override;
 };

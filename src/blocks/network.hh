@@ -37,7 +37,7 @@ struct IwctlStationInfo {
 struct WifiStation {
   std::string name;
   mutable std::mutex modify_mutex;
-  std::atomic_bool update_running;
+  std::atomic_flag update_running;
   int iwctl_status;
   std::optional<IwctlStationInfo> info;
 
@@ -45,7 +45,7 @@ struct WifiStation {
 };
 
 // iwctl only for now
-class NetworkBlock : public Block {
+class NetworkBlock : public SimpleBlock {
   size_t _last_tx_bytes = 0, _last_rx_bytes = 0;
   size_t _tx_bytes, _rx_bytes;
 
@@ -72,7 +72,7 @@ public:
 
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
   void update() override;
-  std::chrono::duration<double> update_interval() override {
+  Interval update_interval() override {
     return std::chrono::milliseconds(500);
   }
 

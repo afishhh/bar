@@ -75,7 +75,7 @@ relayout_tray:
   bar::instance().schedule_redraw();
 }
 
-void XSystrayBlock::late_init() {
+void XSystrayBlock::setup() {
   Display *display = glfwGetX11Display();
   if (!display) {
     fmt::print(warn, "XSystrayBlock only works on the X11 backend\n");
@@ -193,7 +193,7 @@ void XSystrayBlock::late_init() {
 
 bool XSystrayBlock::skip() { return _icons.empty(); }
 
-std::size_t XSystrayBlock::ddraw(ui::draw &, std::chrono::duration<double>, size_t x, bool right_aligned) {
+std::size_t XSystrayBlock::draw(ui::draw &, std::chrono::duration<double>, size_t x, bool right_aligned) {
   if (!_tray)
     return 0;
 

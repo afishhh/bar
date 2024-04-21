@@ -5,6 +5,8 @@
 #include <optional>
 #include <stdexcept>
 
+#include "bufdraw.hh"
+#include "cancel.hh"
 #include "loop.hh"
 #include "ui/draw.hh"
 
@@ -14,40 +16,59 @@ public:
   virtual ~Block() = default;
 
   Block(Block const &) = delete;
-  Block(Block &&) = default;
+  Block(Block &&) = delete;
   Block &operator=(Block const &) = delete;
-  Block &operator=(Block &&) = default;
+  Block &operator=(Block &&) = delete;
 
-  // FIXME: Workaroud for "Static Initiaisation Order Fiasco".
-  //        dwmipcpp has a static hashmap which is initialised after the blocks
-  //        are and when DwmBlock tries to intialise a Connection with dwm that
-  //        hashmap is accessed and causes a SIGFPE floating point exception.
-  virtual void late_init(){};
-
-  virtual size_t draw(ui::draw &, std::chrono::duration<double> delta) = 0;
-  // HACK: Should this function exist?
-  //       Should it have a better name?
-  //       Should it have a different signature?
-  virtual size_t ddraw(ui::draw &, std::chrono::duration<double>, size_t,
-                       bool) {
-    return 0;
-  }
-
+  virtual void setup() {}
   virtual bool skip() { return false; }
+  virtual void delay_draw() {}
 
-  virtual void animate(EventLoop::duration) {}
-  virtual std::optional<EventLoop::duration> animate_interval() {
-    return std::nullopt;
-  }
-  virtual void update(){};
-  // FIXME: Use EventLoop::duration instead of std::chrono::duration<double>.
-  virtual std::chrono::duration<double> update_interval() {
-    return std::chrono::duration<double>::max();
-  };
+  virtual size_t draw(ui::draw &, std::chrono::duration<double>, size_t, bool) = 0;
 
   virtual bool has_tooltip() const { return false; }
-  virtual void draw_tooltip(ui::draw &, std::chrono::duration<double>,
-                            unsigned) const {
+  virtual void draw_tooltip(ui::draw &, std::chrono::duration<double>, unsigned) const {
     throw std::logic_error("Block::draw_tooltip called but not implemented");
+  };
+};
+
+class SimpleBlock : public Block {
+  CancellableThread _seconary_thread;
+
+public:
+  SimpleBlock() = default;
+  virtual ~SimpleBlock() = default;
+
+  // Workaroud for "Static Initiaisation Order Fiasco".
+  // dwmipcpp has a static hashmap which is initialised after the blocks
+  // are and when DwmBlock tries to intialise a Connection with dwm that
+  // hashmap is accessed and causes a SIGFPE floating point exception.
+  virtual void late_init() {}
+
+  virtual size_t draw(ui::draw &, std::chrono::duration<double> delta) = 0;
+
+  size_t draw(ui::draw &draw, std::chrono::duration<double> delta, size_t, bool right) override {
+    if (right)
+      return this->draw(draw, delta);
+    else
+      return this->draw(draw, delta);
   }
+
+  using Interval = std::chrono::steady_clock::duration;
+
+  virtual void animate(Interval) {}
+  virtual std::optional<Interval> animate_interval() { return std::nullopt; }
+  virtual void update(){};
+  virtual Interval update_interval() { return Interval::max(); };
+
+  void seconary_thread_main(CancellationToken &token);
+
+  void setup() final override {
+    late_init();
+
+    update();
+    _seconary_thread = CancellableThread([this](CancellationToken &token) { seconary_thread_main(token); });
+  }
+
+  void delay_draw() override{};
 };

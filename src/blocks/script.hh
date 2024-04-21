@@ -16,9 +16,9 @@
 #include "../block.hh"
 #include "../util.hh"
 
-class ScriptBlock : public Block {
+class ScriptBlock : public SimpleBlock {
   std::filesystem::path _path;
-  std::chrono::duration<double> _interval;
+  Interval _interval;
   std::vector<int> _update_signals;
   std::vector<std::string> _extra_environment_variables;
   bool _inherit_environment_variables;
@@ -48,7 +48,7 @@ class ScriptBlock : public Block {
 public:
   struct Config {
     std::filesystem::path path;
-    std::chrono::duration<double> interval;
+    Interval interval;
     std::vector<int> update_signals{};
     std::unordered_map<std::string, std::string> extra_environment_variables{};
     bool inherit_environment_variables = true;
@@ -78,5 +78,5 @@ public:
     return std::holds_alternative<SuccessR>(_result) && std::get<SuccessR>(_result).output.empty();
   }
   void update() override;
-  std::chrono::duration<double> update_interval() override { return _interval; }
+  Interval update_interval() override { return _interval; }
 };
