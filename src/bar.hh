@@ -50,8 +50,8 @@ class bar {
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_mouse_move;
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_tooltip_draw;
 
-  std::vector<BlockInfo> _left_blocks;
-  std::vector<BlockInfo> _right_blocks;
+  std::list<BlockInfo> _left_blocks;
+  std::list<BlockInfo> _right_blocks;
 
   void _ui_init();
   void _ui_loop(std::stop_token);
