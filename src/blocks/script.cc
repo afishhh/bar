@@ -17,27 +17,34 @@
 
 extern char **environ;
 
+#include "../bar.hh"
 #include "../log.hh"
 #include "../util.hh"
 #include "script.hh"
 
-void ScriptBlock::late_init() {
-  // for (auto signal : _update_signals)
-  // if (!_update_signals.empty()) {
-  //   EV.on<SignalEvent>([this, signals = std::unordered_set<int>(_update_signals.begin(), _update_signals.end())](
-  //                          const SignalEvent &ev) {
-  //     if (signals.contains(ev.signum)) {
-  //       update();
-  //       bar::instance().schedule_redraw();
-  //     }
-  //   });
-  // }
+void ScriptBlock::setup_signals(std::vector<int> const &signals) {
+  for (auto signal : signals) {
+    if (signal > SIGRTMAX || signal < SIGRTMIN)
+      throw std::runtime_error(
+          fmt::format("Update signal number out of range! Available range: [{}, {}]", SIGRTMIN, SIGRTMAX));
 
-  // static bool sigchld_registered = false;
-  // if (!sigchld_registered) {
-  //   SignalEvent::attach(SIGCHLD, SA_NOCLDSTOP);
-  //   sigchld_registered = true;
-  // }
+    _signal_handles.emplace_back();
+    uv_signal_t *handle = &_signal_handles.back();
+    uv_signal_init(uv_default_loop(), handle);
+    handle->data = this;
+
+    uv_signal_start(
+        handle,
+        [](uv_signal_t *handle, int) {
+          auto *self = (ScriptBlock *)handle->data;
+          self->update();
+          bar::instance().schedule_redraw();
+          // FIXME: Why does this cause a segmentation fault??
+          // uv_timer_again(&self->_update_timer);
+        },
+        signal);
+    uv_unref((uv_handle_t *)handle);
+  }
 }
 
 void ScriptBlock::update() {
@@ -46,15 +53,15 @@ void ScriptBlock::update() {
     return;
   }
 
-  uv_pipe_init(uv_default_loop(), &child_output_stream, false);
-  child_output_buffer_real_size = 0;
-  child_output_stream.data = this;
-  child_process.data = this;
+  uv_pipe_init(uv_default_loop(), &_child_output_stream, false);
+  _child_output_buffer_real_size = 0;
+  _child_output_stream.data = this;
+  _child_process.data = this;
   uv_process_options_t options{};
   uv_stdio_container_t child_stdio[2];
   child_stdio[0].flags = UV_IGNORE;
   child_stdio[1].flags = (uv_stdio_flags)(UV_CREATE_PIPE | UV_WRITABLE_PIPE);
-  child_stdio[1].data.stream = (uv_stream_t *)&child_output_stream;
+  child_stdio[1].data.stream = (uv_stream_t *)&_child_output_stream;
   options.stdio = child_stdio;
   options.stdio_count = 2;
   char *args[2];
@@ -66,8 +73,10 @@ void ScriptBlock::update() {
   options.exit_cb = [](uv_process_t *process, int64_t status, int signal) {
     auto *self = (ScriptBlock *)process->data;
 
-    uv_close((uv_handle_t *)process, nullptr);
-    uv_close((uv_handle_t *)&self->child_output_stream, nullptr);
+    uv_close((uv_handle_t *)process,
+             [](uv_handle_t *handle) { (void)((ScriptBlock *)handle->data)->_close_synchronizer.arrive(); });
+    uv_close((uv_handle_t *)&self->_child_output_stream,
+             [](uv_handle_t *handle) { (void)((ScriptBlock *)handle->data)->_close_synchronizer.arrive(); });
 
     {
       std::unique_lock lg(self->_result_mutex);
@@ -76,27 +85,37 @@ void ScriptBlock::update() {
       else if (status)
         self->_result = NonZeroExit{(int)status};
       else {
-        while (self->child_output_buffer_real_size > 0 &&
-               std::isspace(self->child_output_buffer[self->child_output_buffer_real_size - 1]))
-          self->child_output_buffer_real_size -= 1;
-        self->child_output_buffer.resize(self->child_output_buffer_real_size);
-        self->_result = SuccessR{self->child_output_buffer};
+        while (self->_child_output_buffer_real_size > 0 &&
+               std::isspace(self->_child_output_buffer[self->_child_output_buffer_real_size - 1]))
+          self->_child_output_buffer_real_size -= 1;
+        self->_child_output_buffer.resize(self->_child_output_buffer_real_size);
+        self->_result = SuccessR{self->_child_output_buffer};
       }
     }
-
-    self->_is_updating.clear(std::memory_order::release);
   };
 
-  if (int err = uv_spawn(uv_default_loop(), &child_process, &options); err < 0) {
+  std::vector<char *> env;
+  if (_inherit_environment_variables)
+    for (char **cur = environ; *cur; ++cur)
+      env.push_back(*cur);
+
+  for (auto &var : _extra_environment_variables)
+    env.push_back(var.data());
+
+  env.push_back(nullptr);
+
+  options.env = env.data();
+
+  if (int err = uv_spawn(uv_default_loop(), &_child_process, &options); err < 0) {
     _is_updating.clear(std::memory_order::release);
     throw std::runtime_error("libuv spawn failed: " + std::string(uv_strerror(err)));
   }
 
-  uv_read_start((uv_stream_t *)&child_output_stream,
+  uv_read_start((uv_stream_t *)&_child_output_stream,
                 [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
                   auto *self = (ScriptBlock *)handle->data;
-                  self->child_output_buffer.resize(self->child_output_buffer_real_size + size);
-                  buf->base = self->child_output_buffer.data() + self->child_output_buffer_real_size;
+                  self->_child_output_buffer.resize(self->_child_output_buffer_real_size + size);
+                  buf->base = self->_child_output_buffer.data() + self->_child_output_buffer_real_size;
                   buf->len = size;
                 },
                 [](uv_stream_t *stream, ssize_t nread, uv_buf_t const *) {
@@ -107,7 +126,7 @@ void ScriptBlock::update() {
                   else if (nread < 0)
                     error << "Reading child pipe failed!\n";
                   else {
-                    self->child_output_buffer_real_size += nread;
+                    self->_child_output_buffer_real_size += nread;
                   }
                 });
 }

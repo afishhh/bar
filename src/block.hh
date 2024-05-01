@@ -36,6 +36,7 @@ public:
 };
 
 class SimpleBlock : public Block {
+protected:
   uv_timer_t _update_timer;
 
 public:
@@ -60,18 +61,7 @@ public:
   virtual void update(){};
   virtual Interval update_interval() { return Interval::max(); };
 
-  void setup() final override {
-    late_init();
-    update();
-
-    auto loop = uv_default_loop();
-    uv_timer_init(loop, &_update_timer);
-    _update_timer.data = this;
-    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(update_interval()).count();
-    uv_timer_start(
-        &_update_timer, [](uv_timer_t *timer) { ((SimpleBlock *)timer->data)->update(); }, interval, interval);
-    uv_unref((uv_handle_t *)&_update_timer);
-  }
+  void setup() final override;
 
   void delay_draw() override{};
 };

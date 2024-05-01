@@ -29,8 +29,6 @@
 #include "bar.hh"
 #include "block.hh"
 #include "config.hh"
-#include "execute.hh"
-#include "executor.hh"
 #include "log.hh"
 #include "ui/gl.hh"
 #include "util.hh"
