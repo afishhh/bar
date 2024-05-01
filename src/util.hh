@@ -187,3 +187,29 @@ public:
       return nullptr;
   }
 };
+
+template <typename T> class HandleMap {
+  std::vector<size_t> _free;
+  // TODO: The optional is unnecessary (but raw allocator usage is required to avoid it)
+  std::vector<std::optional<T>> _items;
+
+public:
+  template <typename... Args> size_t emplace(Args &&...args) {
+    if (_free.empty()) {
+      size_t handle = _items.size();
+      _items.emplace_back(std::forward<Args>(args)...);
+      return handle;
+    } else {
+      size_t handle = _free.back();
+      _items[handle].emplace(std::forward<Args>(args)...);
+      _free.pop_back();
+      return handle;
+    }
+  }
+
+  void remove(size_t handle) {
+    assert(_items[handle].has_value());
+    _items[handle] = std::nullopt;
+    _free.push_back(handle);
+  }
+};

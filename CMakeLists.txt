@@ -24,11 +24,10 @@ add_executable(
   ${PROJECT_NAME}
 
   src/main.cc
-  src/loop.cc
   src/guard.cc
   src/util.cc
   src/log.cc
-  src/block.cc
+  src/execute.cc
   src/bar.cc
   src/bufdraw.cc
   src/blocks/memory.cc
@@ -38,7 +37,7 @@ add_executable(
   src/blocks/clock.cc
   src/blocks/script.cc
   src/blocks/disk.cc
-  src/blocks/systray.cc
+  # src/blocks/systray.cc
   src/ui/window.cc
   src/ui/text.cc
 
@@ -82,6 +81,7 @@ find_package(PkgConfig REQUIRED)
 find_package(glfw3 REQUIRED)
 pkg_check_modules(PANGO REQUIRED pango pangocairo)
 pkg_check_modules(cairo REQUIRED cairo)
+pkg_check_modules(libuv REQUIRED libuv)
 
 if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/glad-generated")
   execute_process(
@@ -106,6 +106,7 @@ target_link_libraries(
   ${PANGO_LIBRARIES}
   ${cairo_LIBRARIES}
   ${DWMIPCPP_LIBRARIES}
+  ${libuv_LIBRARIES}
   pthread
   glfw
 )
@@ -115,12 +116,14 @@ target_include_directories(
   PUBLIC
   ${PANGO_INCLUDE_DIRS}
   "${CMAKE_CURRENT_BINARY_DIR}/glad-generated/include"
+  ${libuv_INCLUDE_DIRS}
 )
 
 target_compile_options(
   ${PROJECT_NAME}
   PUBLIC
   ${PANGO_CFLAGS_OTHER}
+  ${libuv_CFLAGS_OTHER}
 )
 
 include(GNUInstallDirs)

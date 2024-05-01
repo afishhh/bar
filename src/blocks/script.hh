@@ -1,6 +1,8 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
+#include <barrier>
 #include <csignal>
 #include <cstddef>
 #include <filesystem>
@@ -8,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <uv.h>
 #include <variant>
 #include <vector>
 
@@ -22,10 +25,12 @@ class ScriptBlock : public SimpleBlock {
   std::vector<int> _update_signals;
   std::vector<std::string> _extra_environment_variables;
   bool _inherit_environment_variables;
-  bool _skip_on_empty;
 
-  std::mutex _update_mutex;
-  std::timed_mutex _process_mutex;
+  std::atomic_flag _is_updating;
+  uv_pipe_t child_output_stream{};
+  size_t child_output_buffer_real_size;
+  std::string child_output_buffer;
+  uv_process_t child_process{};
 
   // Success is a macro... is this X's fault?
   struct SuccessR {
@@ -58,7 +63,7 @@ public:
   ScriptBlock(Config &&config)
       : _path(std::move(config.path)), _interval(std::move(config.interval)),
         _update_signals(std::move(config.update_signals)),
-        _inherit_environment_variables(config.inherit_environment_variables), _skip_on_empty(config.skip_on_empty) {
+        _inherit_environment_variables(config.inherit_environment_variables) {
     for (auto signal : _update_signals)
       if (signal > SIGRTMAX || signal < SIGRTMIN)
         throw std::runtime_error(

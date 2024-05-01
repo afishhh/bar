@@ -9,17 +9,17 @@
 
 #include "../block.hh"
 
-class XSystrayBlock : public Block {
-  std::optional<Window> _tray{};
-  std::map<Window, EventLoop::callback_id> _icons;
-
-public:
-  XSystrayBlock() {}
-
-  void relayout_tray();
-
-  bool skip() override;
-
-  void setup() override;
-  std::size_t draw(ui::draw &, std::chrono::duration<double> delta, size_t x, bool right_aligned) override;
-};
+// class XSystrayBlock : public Block {
+//   std::optional<Window> _tray{};
+//   std::map<Window, EventLoop::callback_id> _icons;
+//
+// public:
+//   XSystrayBlock() {}
+//
+//   void relayout_tray();
+//
+//   bool skip() override;
+//
+//   void setup() override;
+//   std::size_t draw(ui::draw &, std::chrono::duration<double> delta, size_t x, bool right_aligned) override;
+// };

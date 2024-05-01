@@ -11,164 +11,105 @@
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
+#include <uv.h>
 #include <vector>
 #include <wait.h>
 
 extern char **environ;
 
-#include "../bar.hh"
+#include "../log.hh"
 #include "../util.hh"
 #include "script.hh"
 
 void ScriptBlock::late_init() {
-  for (auto signal : _update_signals)
-    SignalEvent::attach(signal);
+  // for (auto signal : _update_signals)
+  // if (!_update_signals.empty()) {
+  //   EV.on<SignalEvent>([this, signals = std::unordered_set<int>(_update_signals.begin(), _update_signals.end())](
+  //                          const SignalEvent &ev) {
+  //     if (signals.contains(ev.signum)) {
+  //       update();
+  //       bar::instance().schedule_redraw();
+  //     }
+  //   });
+  // }
 
-  if (!_update_signals.empty()) {
-    EV.on<SignalEvent>([this, signals = std::unordered_set<int>(_update_signals.begin(), _update_signals.end())](
-                           const SignalEvent &ev) {
-      if (signals.contains(ev.signum)) {
-        update();
-        bar::instance().schedule_redraw();
-      }
-    });
-  }
-
-  static bool sigchld_registered = false;
-  if (!sigchld_registered) {
-    SignalEvent::attach(SIGCHLD, SA_NOCLDSTOP);
-    sigchld_registered = true;
-  }
+  // static bool sigchld_registered = false;
+  // if (!sigchld_registered) {
+  //   SignalEvent::attach(SIGCHLD, SA_NOCLDSTOP);
+  //   sigchld_registered = true;
+  // }
 }
 
 void ScriptBlock::update() {
-  std::unique_lock update_lock(_update_mutex, std::try_to_lock);
-  if (!update_lock.owns_lock())
+  if (_is_updating.test_and_set(std::memory_order::acq_rel)) {
+    debug << "Update skipped: already running\n";
     return;
+  }
 
-  std::thread update_thread([&, update_lock = std::move(update_lock)] {
-    if (!_process_mutex.try_lock())
-      throw std::runtime_error("ScriptBlock::update() called while a process is still running");
+  uv_pipe_init(uv_default_loop(), &child_output_stream, false);
+  child_output_buffer_real_size = 0;
+  child_output_stream.data = this;
+  child_process.data = this;
+  uv_process_options_t options{};
+  uv_stdio_container_t child_stdio[2];
+  child_stdio[0].flags = UV_IGNORE;
+  child_stdio[1].flags = (uv_stdio_flags)(UV_CREATE_PIPE | UV_WRITABLE_PIPE);
+  child_stdio[1].data.stream = (uv_stream_t *)&child_output_stream;
+  options.stdio = child_stdio;
+  options.stdio_count = 2;
+  char *args[2];
+  args[0] = strdup(_path.c_str());
+  args[1] = NULL;
+  DEFER([args] { free(args[0]); });
+  options.args = args;
+  options.file = _path.c_str();
+  options.exit_cb = [](uv_process_t *process, int64_t status, int signal) {
+    auto *self = (ScriptBlock *)process->data;
 
-    // Execute script from this->_path and put it's stdout into this->_output
-    pid_t pid;
-    posix_spawn_file_actions_t actions;
-    if (posix_spawn_file_actions_init(&actions) < 0)
-      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_init");
-
-    int memfd = memfd_create("script_output", 0);
-    if (memfd < 0)
-      throw std::system_error(errno, std::system_category(), "memfd_create");
-
-    DEFER([memfd] {
-      if (close(memfd) < 0)
-        throw std::system_error(errno, std::system_category(), "close");
-    });
-
-    if (posix_spawn_file_actions_adddup2(&actions, memfd, STDOUT_FILENO) < 0)
-      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_adddup2");
-
-    posix_spawnattr_t attr;
-    if (posix_spawnattr_init(&attr) < 0)
-      throw std::system_error(errno, std::system_category(), "posix_spawnattr_init");
+    uv_close((uv_handle_t *)process, nullptr);
+    uv_close((uv_handle_t *)&self->child_output_stream, nullptr);
 
     {
-      std::string path_str = _path.string();
-      char *const argv[] = {path_str.data(), nullptr};
-
-      std::vector<char *> environment;
-      environment.reserve(64 + _extra_environment_variables.size());
-      if (_inherit_environment_variables)
-        for (char **var = environ; *var; ++var)
-          environment.push_back(*var);
-      for (auto &namevalue : _extra_environment_variables)
-        environment.push_back(namevalue.data());
-      environment.push_back(nullptr);
-
-      if (int err = posix_spawnp(&pid, this->_path.c_str(), &actions, &attr, argv, environment.data()); err != 0) {
-        std::unique_lock lock(_result_mutex);
-        _result = SpawnFailed{err};
-        _process_mutex.unlock();
-        return;
+      std::unique_lock lg(self->_result_mutex);
+      if (signal)
+        self->_result = Signaled{signal};
+      else if (status)
+        self->_result = NonZeroExit{(int)status};
+      else {
+        while (self->child_output_buffer_real_size > 0 &&
+               std::isspace(self->child_output_buffer[self->child_output_buffer_real_size - 1]))
+          self->child_output_buffer_real_size -= 1;
+        self->child_output_buffer.resize(self->child_output_buffer_real_size);
+        self->_result = SuccessR{self->child_output_buffer};
       }
     }
 
-    EventLoop::callback_id sigchld_handler = EV.on<SignalEvent>([this, pid](const SignalEvent &ev) {
-      if (ev.signum != SIGCHLD || (pid_t)ev.info.si_pid != pid)
-        return;
+    self->_is_updating.clear(std::memory_order::release);
+  };
 
-      _process_mutex.unlock();
-    });
-
-#define CHECK_WSTATUS(wstatus)                                                                                         \
-  {                                                                                                                    \
-    if (WIFEXITED(wstatus)) {                                                                                          \
-      auto status = WEXITSTATUS(wstatus);                                                                              \
-      if (status) {                                                                                                    \
-        std::unique_lock lock(_result_mutex);                                                                          \
-        _result = NonZeroExit{status};                                                                                 \
-        return;                                                                                                        \
-      }                                                                                                                \
-    } else if (WIFSIGNALED(wstatus)) {                                                                                 \
-      std::unique_lock lock(_result_mutex);                                                                            \
-      _result = Signaled{WTERMSIG(wstatus)};                                                                           \
-      return;                                                                                                          \
-    }                                                                                                                  \
+  if (int err = uv_spawn(uv_default_loop(), &child_process, &options); err < 0) {
+    _is_updating.clear(std::memory_order::release);
+    throw std::runtime_error("libuv spawn failed: " + std::string(uv_strerror(err)));
   }
 
-    if (posix_spawn_file_actions_destroy(&actions) < 0)
-      throw std::system_error(errno, std::system_category(), "posix_spawn_file_actions_destroy");
-    if (posix_spawnattr_destroy(&attr) < 0)
-      throw std::system_error(errno, std::system_category(), "posix_spawnattr_destroy");
+  uv_read_start((uv_stream_t *)&child_output_stream,
+                [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+                  auto *self = (ScriptBlock *)handle->data;
+                  self->child_output_buffer.resize(self->child_output_buffer_real_size + size);
+                  buf->base = self->child_output_buffer.data() + self->child_output_buffer_real_size;
+                  buf->len = size;
+                },
+                [](uv_stream_t *stream, ssize_t nread, uv_buf_t const *) {
+                  auto *self = (ScriptBlock *)stream->data;
 
-    if (!_process_mutex.try_lock_for(_interval - std::chrono::milliseconds(30))) {
-      EV.off<SignalEvent>(sigchld_handler);
-      // not safe, check for lock with try lock first!
-      _process_mutex.unlock();
-
-      // HACK:
-      int wstatus;
-      if (waitpid(pid, &wstatus, WNOHANG) == pid)
-        CHECK_WSTATUS(wstatus);
-
-      kill(pid, SIGKILL);
-
-      // Get rid of the zombie process.
-      while (waitpid(pid, &wstatus, 0) < 0 && errno == EINTR)
-        ;
-
-      std::unique_lock lock(_result_mutex);
-      _result = TimedOut{};
-      return;
-    }
-
-    int wstatus;
-    // Get rid of the zombie process.
-    while (waitpid(pid, &wstatus, 0) < 0 && errno == EINTR)
-      ;
-
-    // If we got the lock that means the process finished before the timeout
-    // and we can unlock the mutex safely.
-    _process_mutex.unlock();
-
-    CHECK_WSTATUS(wstatus);
-
-    std::ifstream ifs("/proc/self/fd/" + std::to_string(memfd), std::ios::binary);
-    if (!ifs)
-      throw std::runtime_error("Failed to open memfd with script output");
-
-    std::string output;
-
-    ifs.seekg(0, std::ios::end);
-    output.resize(ifs.tellg());
-    ifs.seekg(0, std::ios::beg);
-    ifs.read(&output[0], output.size());
-    ifs.close();
-
-    std::unique_lock lock(_result_mutex);
-    _result = SuccessR{std::string(trim(output))};
-  });
-  update_thread.detach();
+                  if (nread == UV_EOF)
+                    return;
+                  else if (nread < 0)
+                    error << "Reading child pipe failed!\n";
+                  else {
+                    self->child_output_buffer_real_size += nread;
+                  }
+                });
 }
 
 ui::draw::pos_t draw_text_with_ansi_color(ui::draw::pos_t x, ui::draw::pos_t const y, ui::draw &draw,

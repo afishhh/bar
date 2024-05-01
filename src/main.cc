@@ -23,26 +23,20 @@
 #include <thread>
 #include <unordered_map>
 #include <utility>
+#include <uv.h>
 #include <vector>
 
 #include "bar.hh"
 #include "block.hh"
 #include "config.hh"
+#include "execute.hh"
 #include "executor.hh"
 #include "log.hh"
-#include "loop.hh"
 #include "ui/gl.hh"
 #include "util.hh"
 
 int main() {
-  StopEvent::attach_to_signals();
-
-  EV.set_executor(std::make_unique<ThreadPoolExecutor>(std::thread::hardware_concurrency() * 2));
-  EV.set_exception_handler([](std::exception &e) {
-    error << "Uncaught exception of type " << typeid(e).name() << " in event loop\n";
-    error << "    what(): " << e.what() << '\n';
-    return EventLoop::ExceptionAction::IGNORE;
-  });
+  std::locale::global(std::locale(""));
 
   bar &bar = bar::instance();
 
@@ -52,15 +46,10 @@ int main() {
   for (auto &block : config::right_blocks | std::views::reverse)
     bar.add_right(*block);
 
-  bar.show();
+  bar.start_ui();
 
-  EV.run();
-
-  // The event loop may still contain xevents that reference the X11 connection owned by the bar instance that's about
-  // to be destroyed, therefore we reset the event loop before destroying bar to avoid this use-after-free.
-  EV.reset();
-
-  EV.run();
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  uv_loop_close(uv_default_loop());
 
   return 0;
 }

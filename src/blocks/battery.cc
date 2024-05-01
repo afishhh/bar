@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 
 #include "../util.hh"
+#include "../log.hh"
 #include "battery.hh"
 
 BatteryBlock::BatteryBlock(std::filesystem::path path, BatteryBlock::Config config) : _path(path), _config(config) {}

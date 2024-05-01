@@ -3,6 +3,9 @@
 , cmake
 , ninja
 , pkg-config
+
+, libuv
+
 , libX11
 , libXext
 , libXrandr
@@ -40,6 +43,7 @@ gcc13Stdenv.mkDerivation {
     glad2
   ];
   buildInputs = [
+    libuv
     libX11
     libXext
     fmt.dev

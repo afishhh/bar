@@ -7,17 +7,13 @@
 #include "../block.hh"
 
 class ClockBlock : public SimpleBlock {
-  struct tm *_time;
+  tm *_time;
 
 public:
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
-  void update() override;
-  Interval update_interval() override {
-    return std::chrono::milliseconds(500);
-  }
+  void animate(Interval) override;
 
   bool has_tooltip() const override { return true; }
-  void draw_tooltip(ui::draw &, std::chrono::duration<double>,
-                    unsigned int) const override;
+  void draw_tooltip(ui::draw &, std::chrono::duration<double>, unsigned int) const override;
 };

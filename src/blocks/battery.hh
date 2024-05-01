@@ -52,9 +52,6 @@ public:
   size_t draw(ui::draw &, std::chrono::duration<double> delta) override;
 
   void animate(Interval delta) override;
-  std::optional<Interval> animate_interval() override {
-    return std::chrono::milliseconds(50);
-  }
   void update() override;
   Interval update_interval() override {
     return std::chrono::milliseconds(1000);

@@ -27,6 +27,7 @@
 
 #include "../util.hh"
 #include "network.hh"
+#include "../log.hh"
 
 auto const DEVICE_CLASS_ETHERNET = 0x020000;
 auto const DEVICE_CLASS_WIFI = 0x028000;

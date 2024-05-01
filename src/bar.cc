@@ -5,7 +5,6 @@ void bar::_ui_init() {
   glfwInit();
 
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-  glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
   glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
   glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
   glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);
@@ -119,6 +118,21 @@ void bar::_ui_init() {
 
 void bar::_setup_block(BlockInfo &info) { info.block.setup(); }
 
+void bar::_ui_process_events(std::stop_token token, std::chrono::steady_clock::time_point until) {
+  while (true) {
+    auto now = std::chrono::steady_clock::now();
+    if (token.stop_requested())
+      break;
+    if (now >= until) {
+      if (_redraw_requested.load(std::memory_order_acquire))
+        break;
+      else
+        glfwWaitEvents();
+    } else
+      glfwWaitEventsTimeout(std::chrono::duration_cast<std::chrono::milliseconds>(until - now).count() / 1000.0);
+  }
+}
+
 void bar::_ui_loop(std::stop_token token) {
   try {
     while (true) {
@@ -126,11 +140,18 @@ void bar::_ui_loop(std::stop_token token) {
         break;
 
       {
-        auto start = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+
+        auto delta = now - _last_redraw;
+        for (auto &block : _left_blocks)
+          block.block.animate(delta);
+        for (auto &block : _right_blocks)
+          block.block.animate(delta);
+
         // fmt::println(debug, "Redrawing! ({:>6.3f}ms elapsed since last redraw)",
         //              (double)std::chrono::duration_cast<std::chrono::microseconds>(start - _last_redraw).count() /
         //                  1000);
-        _last_redraw = start;
+        _last_redraw = now;
       }
 
       redraw();
@@ -139,19 +160,7 @@ void bar::_ui_loop(std::stop_token token) {
 
       _hovered_block_threatened = 0;
 
-      auto wait_end = _last_redraw + 48ms;
-      while (true) {
-        auto now = std::chrono::steady_clock::now();
-        if (token.stop_requested())
-          break;
-        if (now >= wait_end) {
-          if (_redraw_requested.load(std::memory_order_acquire))
-            break;
-          else
-            glfwWaitEvents();
-        } else
-          glfwWaitEventsTimeout(std::chrono::duration_cast<std::chrono::milliseconds>(wait_end - now).count() / 1000.0);
-      }
+      _ui_process_events(token, _last_redraw + 48ms);
 
       if (_hovered_block_threatened == 0b01)
         _hovered_block = nullptr;
@@ -277,4 +286,9 @@ void bar::redraw() {
     glfwShowWindow(_tooltip_window);
   } else
     glfwHideWindow(_tooltip_window);
+}
+
+void bar::join() {
+  if (_ui_thread.joinable())
+    _ui_thread.join();
 }

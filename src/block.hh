@@ -4,10 +4,10 @@
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
+#include <uv.h>
 
 #include "bufdraw.hh"
-#include "cancel.hh"
-#include "loop.hh"
+#include "log.hh"
 #include "ui/draw.hh"
 
 class Block {
@@ -20,9 +20,12 @@ public:
   Block &operator=(Block const &) = delete;
   Block &operator=(Block &&) = delete;
 
+  using Interval = std::chrono::steady_clock::duration;
+
   virtual void setup() {}
   virtual bool skip() { return false; }
   virtual void delay_draw() {}
+  virtual void animate(Interval) {}
 
   virtual size_t draw(ui::draw &, std::chrono::duration<double>, size_t, bool) = 0;
 
@@ -33,7 +36,7 @@ public:
 };
 
 class SimpleBlock : public Block {
-  CancellableThread _seconary_thread;
+  uv_timer_t _update_timer;
 
 public:
   SimpleBlock() = default;
@@ -54,20 +57,20 @@ public:
       return this->draw(draw, delta);
   }
 
-  using Interval = std::chrono::steady_clock::duration;
-
-  virtual void animate(Interval) {}
-  virtual std::optional<Interval> animate_interval() { return std::nullopt; }
   virtual void update(){};
   virtual Interval update_interval() { return Interval::max(); };
 
-  void seconary_thread_main(CancellationToken &token);
-
   void setup() final override {
     late_init();
-
     update();
-    _seconary_thread = CancellableThread([this](CancellationToken &token) { seconary_thread_main(token); });
+
+    auto loop = uv_default_loop();
+    uv_timer_init(loop, &_update_timer);
+    _update_timer.data = this;
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(update_interval()).count();
+    uv_timer_start(
+        &_update_timer, [](uv_timer_t *timer) { ((SimpleBlock *)timer->data)->update(); }, interval, interval);
+    uv_unref((uv_handle_t *)&_update_timer);
   }
 
   void delay_draw() override{};

@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string_view>
 #include <vector>
+#include <set>
 
 #include <fmt/core.h>
 
