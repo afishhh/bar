@@ -58,6 +58,8 @@ CpuBlock::AllTimes CpuBlock::read_cpu_times() {
 }
 
 void CpuBlock::update() {
+  std::unique_lock lg(_update_mutex);
+
   this->_previous = this->_current;
   this->_current = this->read_cpu_times();
 
@@ -79,11 +81,7 @@ void CpuBlock::update() {
           continue;
       }
 
-      // average C++ compiler moment (complaining about its own optional type)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
       _thermal = ThermalInfo();
-#pragma GCC diagnostic pop
       {
         auto temp_path = entry.path() / "temp";
         std::ifstream temp_file(temp_path);
@@ -137,6 +135,8 @@ void CpuBlock::update() {
 }
 
 size_t CpuBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
+  std::unique_lock lg(_update_mutex);
+
   size_t y = draw.vcenter();
   size_t x = 0;
   auto percentage = 100.0 * _diff.total.busy() / _diff.total.total();

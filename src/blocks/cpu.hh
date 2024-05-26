@@ -44,6 +44,7 @@ class CpuBlock : public SimpleBlock {
       return result;
     }
   };
+
   struct AllTimes {
     Times total;
     std::vector<Times> percore;
@@ -59,6 +60,7 @@ class CpuBlock : public SimpleBlock {
       return result;
     }
   };
+
   AllTimes _previous;
   AllTimes _current;
 
@@ -95,6 +97,8 @@ class CpuBlock : public SimpleBlock {
   };
 
   std::optional<ThermalInfo> _thermal;
+
+  std::mutex _update_mutex;
 
 public:
   struct Config {
