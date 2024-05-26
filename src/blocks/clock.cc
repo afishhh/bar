@@ -23,13 +23,14 @@ size_t ClockBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   return draw.text(0, draw.vcenter(), fmt::format(std::locale(), "{:%c}", *_time));
 }
 
-std::string_view constexpr WEEKDAYS[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-// std::string_view constexpr MONTHS[] = {
-//     "January", "February", "March",     "April",   "May",      "June",
-//     "July",    "August",   "September", "October", "November", "December",
-// };
-// FIXME: leap years and shit
 unsigned constexpr MONTH_LENGHTS[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+std::string_view short_weekday_name(int i, std::locale locale = std::locale()) {
+  if (locale.name().starts_with("ja_JP"))
+    return (std::array<std::string_view, 7>{"月", "火", "水", "木", "金", "土", "日"})[i];
+  else
+    return (std::array<std::string_view, 7>{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"})[i];
+}
 
 void ClockBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>, unsigned int) const {
   auto const width = 180;
@@ -46,7 +47,7 @@ void ClockBlock::draw_tooltip(ui::draw &draw, std::chrono::duration<double>, uns
   auto const calendar_lmargin = (width - calendar_width) / 2;
 
   for (size_t i = 0; i < 7; ++i) {
-    auto t = fmt::format("{}", WEEKDAYS[i].substr(0, 2));
+    auto t = fmt::format("{}", short_weekday_name(i));
     draw.text(calendar_lmargin + i * calendar_cell_size + (calendar_cell_size - draw.textw(t)) / 2,
               calendar_tmargin + 12, t);
   }

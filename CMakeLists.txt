@@ -24,10 +24,11 @@ add_executable(
   ${PROJECT_NAME}
 
   src/main.cc
+  src/run.cc
   src/guard.cc
   src/util.cc
   src/log.cc
-  src/execute.cc
+  src/block.cc
   src/bar.cc
   src/bufdraw.cc
   src/blocks/memory.cc

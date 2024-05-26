@@ -17,6 +17,7 @@
 #include <fmt/core.h>
 
 #include "../block.hh"
+#include "../run.hh"
 #include "../util.hh"
 
 class ScriptBlock : public SimpleBlock {
@@ -26,12 +27,8 @@ class ScriptBlock : public SimpleBlock {
   std::vector<std::string> _extra_environment_variables;
   bool _inherit_environment_variables;
 
-  std::barrier<std::function<void()>> _close_synchronizer;
   std::atomic_flag _is_updating;
-  uv_pipe_t _child_output_stream{};
-  size_t _child_output_buffer_real_size;
-  std::string _child_output_buffer;
-  uv_process_t _child_process{};
+  nuv_process _process;
 
   // Success is a macro... is this X's fault?
   struct SuccessR {
@@ -62,8 +59,7 @@ public:
 
   ScriptBlock(Config &&config)
       : _path(std::move(config.path)), _interval(std::move(config.interval)),
-        _inherit_environment_variables(config.inherit_environment_variables),
-        _close_synchronizer(2, [this] { _is_updating.clear(std::memory_order::release); }) {
+        _inherit_environment_variables(config.inherit_environment_variables)  {
     setup_signals(config.update_signals);
 
     for (auto const &[name, value] : config.extra_environment_variables) {

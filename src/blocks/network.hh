@@ -15,6 +15,7 @@
 #include <fmt/core.h>
 
 #include "../block.hh"
+#include "../run.hh"
 
 struct IwctlConnectionInfo {
   std::string connected_network;
@@ -39,6 +40,7 @@ struct WifiStation {
   mutable std::mutex modify_mutex;
   std::atomic_flag update_running;
   int iwctl_status;
+  nuv_process iwctl_process;
   std::optional<IwctlStationInfo> info;
 
   WifiStation(std::string const &name) : name(name) {}
