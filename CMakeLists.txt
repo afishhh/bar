@@ -83,6 +83,7 @@ find_package(glfw3 REQUIRED)
 pkg_check_modules(PANGO REQUIRED pango pangocairo)
 pkg_check_modules(cairo REQUIRED cairo)
 pkg_check_modules(libuv REQUIRED libuv)
+pkg_check_modules(wayland-client REQUIRED wayland-client)
 
 if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/glad-generated")
   execute_process(
@@ -110,6 +111,7 @@ target_link_libraries(
   ${libuv_LIBRARIES}
   pthread
   glfw
+  ${wayland-client_LIBRARIES}
 )
 
 target_include_directories(
@@ -118,6 +120,7 @@ target_include_directories(
   ${PANGO_INCLUDE_DIRS}
   "${CMAKE_CURRENT_BINARY_DIR}/glad-generated/include"
   ${libuv_INCLUDE_DIRS}
+  ${wayland-client_INCLUDE_DIRS}
 )
 
 target_compile_options(

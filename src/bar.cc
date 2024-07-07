@@ -2,7 +2,19 @@
 #include "config.hh"
 
 void bar::_ui_init() {
-  glfwInit();
+  for (auto platform : config::init_platform_order) {
+    glfwGetError(NULL);
+    glfwInitHint(GLFW_PLATFORM, platform);
+    if (glfwInit())
+      break;
+  }
+
+  try {
+    glfw_throw_error("glfwInit");
+  } catch (glfw_error &e) {
+    fmt::println(error, "Failed to initialize GLFW with any platform from config::platform_priority");
+    throw;
+  }
 
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -10,47 +22,59 @@ void bar::_ui_init() {
   glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+  glfwWindowHint(GLFW_POSITION_X, 0);
+  glfwWindowHint(GLFW_POSITION_Y, 0);
+  glfwWindowHint(GLFW_WAYLAND_ZWLR_LAYER, GLFW_TRUE);
 
   glfwWindowHintString(GLFW_X11_CLASS_NAME, config::x11::window_class.data());
   glfwWindowHintString(GLFW_X11_INSTANCE_NAME, config::x11::window_class.data());
 
   GLFWmonitor *mon = glfwGetPrimaryMonitor();
-  int mon_width, mon_height;
-  glfwGetMonitorWorkarea(mon, NULL, NULL, &mon_width, &mon_height);
-  glfw_throw_error();
+  if (glfwGetPlatform() == GLFW_PLATFORM_X11) {
+    Display *dpy = glfwGetX11Display();
+    RROutput output = glfwGetX11Monitor(mon);
+    auto *res = XRRGetScreenResourcesCurrent(dpy, DefaultRootWindow(dpy));
+    auto *oinfo = XRRGetOutputInfo(dpy, res, output);
+    XRRCrtcInfo *cinfo = XRRGetCrtcInfo(dpy, res, oinfo->crtc);
 
-  if (glfwGetX11Display()) {
-    fmt::println(debug, "X11: Scaling width by {} to work around incorrect reported workarea",
-                 config::x11::fractional_scaling_workaround);
-    mon_width *= config::x11::fractional_scaling_workaround;
-    mon_height *= config::x11::fractional_scaling_workaround;
+    _monitor_size.x = cinfo->width;
+    _monitor_size.y = cinfo->height;
+
+    XRRFreeOutputInfo(oinfo);
+    XRRFreeScreenResources(res);
+  } else {
+    glfwGetMonitorWorkarea(mon, NULL, NULL, &_monitor_size.x, &_monitor_size.y);
+    glfw_throw_error();
   }
 
-  _monitor_size = {mon_width, mon_height};
+  int platform = glfwGetPlatform();
+  glfw_throw_error();
 
-  fmt::println(debug, "Work area for primary monitor: {}x{}", mon_width, mon_height);
+  fmt::println(debug, "Size of primary monitor: {}x{}", _monitor_size.x, _monitor_size.y);
+
+  _height = glfwGetPlatform() == GLFW_PLATFORM_X11 ? config::x11::height : config::height;
 
   GLFWwindow *window =
-      BAR_GLFW_CALL(CreateWindow, mon_width, config::height, config::x11::window_name.data(), NULL, NULL);
+      BAR_GLFW_CALL(CreateWindow, _monitor_size.x, _height, config::x11::window_name.data(), NULL, NULL);
 
   glfwWindowHintString(GLFW_X11_CLASS_NAME, "");
   glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "");
+  glfwWindowHint(GLFW_WAYLAND_ZWLR_LAYER, GLFW_FALSE);
 
   GLFWwindow *tooltip_window = BAR_GLFW_CALL(CreateWindow, 1, 1, "bar tooltip", NULL, NULL);
 
-  glfwSetWindowPos(window, 0, 0);
-  glfw_throw_error();
-
-  if (Window xwindow = glfwGetX11Window(window); xwindow != None) {
-    XSetWindowAttributes attr;
-    attr.override_redirect = true;
-    XChangeWindowAttributes(glfwGetX11Display(), glfwGetX11Window(tooltip_window), CWOverrideRedirect, &attr);
-    if (config::x11::override_redirect) {
-      XChangeWindowAttributes(glfwGetX11Display(), xwindow, CWOverrideRedirect, &attr);
+  if (platform == GLFW_PLATFORM_X11)
+    if (Window xwindow = glfwGetX11Window(window); xwindow != None) {
+      XSetWindowAttributes attr;
+      attr.override_redirect = true;
+      XChangeWindowAttributes(glfwGetX11Display(), glfwGetX11Window(tooltip_window), CWOverrideRedirect, &attr);
+      if (config::x11::override_redirect) {
+        XChangeWindowAttributes(glfwGetX11Display(), xwindow, CWOverrideRedirect, &attr);
+      }
     }
-  }
 
   glfwMakeContextCurrent(window);
   int version = gladLoadGL(glfwGetProcAddress);
@@ -110,8 +134,9 @@ void bar::_ui_init() {
 
   auto fonts = std::make_shared<ui::fonts>();
   for (auto fname : config::fonts)
-    fonts->add(fname, _window.drawer().text_render_scale());
+    fonts->add(fname);
 
+  _window.drawer().set_fixed_rendering_height(24);
   _window.drawer().texter().set_fonts(std::shared_ptr(fonts));
   _tooltip_window.drawer().texter().set_fonts(std::move(fonts));
 }
@@ -199,7 +224,7 @@ void bar::redraw() {
         auto &block = info.block;
         auto width = block.draw(buffered_draw, now - _last_redraw, x, false);
         info.last_pos = {(unsigned)x, 0};
-        info.last_size = {(unsigned)width, config::height};
+        info.last_size = {(unsigned)width, _height};
 
         buffered_draw.draw_offset(x, 0);
         buffered_draw.clear();
@@ -225,10 +250,10 @@ void bar::redraw() {
         auto &block = info.block;
         auto width = block.draw(buffered_draw, now - _last_redraw, x, true);
         info.last_pos = {(unsigned)(x - width), 0};
-        info.last_size = {(unsigned)width, config::height};
+        info.last_size = {(unsigned)width, _height};
 
         x -= width;
-        direct_draw.frect(x - 8, 0, width + 16, config::height, config::background_color.as_rgb());
+        direct_draw.frect(x - 8, 0, width + 16, direct_draw.height(), config::background_color.as_rgb());
         buffered_draw.draw_offset(x, 0);
         buffered_draw.clear();
 
@@ -261,7 +286,7 @@ void bar::redraw() {
 
     uvec2 pos{(uint32_t)(hovered->last_pos.x * wd.x_render_scale()) +
                   (signed)(hovered->last_size.x * wd.x_render_scale() - dim.x - 16) / 2,
-              (unsigned)(hovered->last_pos.y * wd.y_render_scale() + config::height)};
+              (unsigned)(hovered->last_pos.y * wd.y_render_scale() + _height)};
     uvec2 size{dim.x + (unsigned)(16 * wd.x_render_scale()), dim.y + (unsigned)(16 * wd.y_render_scale())};
     uvec2 dsize = {(unsigned)_monitor_size.x, (unsigned)_monitor_size.y};
 

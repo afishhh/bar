@@ -186,6 +186,12 @@ public:
     } else
       return nullptr;
   }
+
+  void clear() {
+    _list.clear();
+    for(auto &value : _values)
+      value.reset();
+  }
 };
 
 template <typename T> class HandleMap {

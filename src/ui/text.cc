@@ -60,13 +60,11 @@ TextRenderer::PreparedText TextRenderer::_text_prepare(std::string_view text) {
   for (GList *it = items; it; it = it->next) {
     PangoItem *item = (PangoItem *)it->data;
     PangoGlyphString *glyphs = pango_glyph_string_new();
-    // debug << "shaping item " << text.substr(item->offset, item->length) << '\n';
-    pango_shape_full(text.data() + item->offset, item->length, text.data(), text.size(), &item->analysis, glyphs);
+    pango_shape_item(item, text.data(), text.size(), NULL, glyphs, PANGO_SHAPE_NONE);
     item_glyphs.push_back(glyphs);
   }
 
-#define PPROP(r, p) #p ": " << r.p
-#define PRECT(r) PPROP(r, x) << ' ' << PPROP(r, y) << ' ' << PPROP(r, width) << ' ' << PPROP(r, height)
+#define PRECT(r) "x:" << r.x << " y:" << r.y << ' ' << r.width << 'x' << r.height
   std::vector<ivec2> item_offsets;
   PangoRectangle ink{};
   PangoRectangle logical{};

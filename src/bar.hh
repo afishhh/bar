@@ -1,6 +1,3 @@
-#include <uv.h>
-#define GLFW_EXPOSE_NATIVE_X11
-
 #include "ui/gl.hh"
 
 #include <chrono>
@@ -14,6 +11,7 @@
 
 #include <fmt/core.h>
 #include <fmt/ostream.h>
+#include <uv.h>
 
 #include "block.hh"
 #include "bufdraw.hh"
@@ -47,6 +45,7 @@ class bar {
 
   // Used to implement tooltip drawing
   ivec2 _monitor_size;
+  uint32_t _height;
   BlockInfo *_hovered_block;
   int _hovered_block_threatened;
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> _last_mouse_move;

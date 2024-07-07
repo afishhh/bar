@@ -12,20 +12,21 @@
 
 , fmt
 
-  # libXft deps
-, libXrender
-, fontconfig
-, freetype
-
 , dwmipcpp-src
   # For dwmipcpp
 , jsoncpp
 
-, pango
 , glib
-, glfw
-, glad2 ? pkgs.python3Packages.glad2
+, pango
+, fontconfig
+, freetype
 , cairo
+
+, glfw
+, wayland-scanner
+, glad2 ? pkgs.python3Packages.glad2
+
+, libGL
 
 , configFile ? ./src/config.def.hh
 , ...
@@ -47,24 +48,34 @@ gcc13Stdenv.mkDerivation {
     libX11
     libXext
     fmt.dev
-    libXrender
     libXrandr
     fontconfig
     freetype
     jsoncpp
     pango
     glib
-    glfw
+    (pkgs.enableDebugging (glfw.overrideAttrs (src: {
+      patches = [
+        # Why is this not a list...
+        src.patches
+        ./glfw.patch
+      ];
+    })))
+    wayland-scanner.dev
     cairo
   ];
 
   patchPhase = ''
     ln -s ${configFile} src/config.hh
   '';
- 
+
   cmakeFlags = [
     "-DDWMIPC=ON"
     "-DFETCHCONTENT_SOURCE_DIR_DWMIPCPP=${dwmipcpp-src}"
     ''-DCMAKE_INSTALL_PREFIX=''${out}''
   ];
+
+  shellHook = ''
+    export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ libGL ]}
+  '';
 }

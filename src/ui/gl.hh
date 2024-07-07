@@ -1,7 +1,7 @@
 #pragma once
 
-// TODO: remove? (dont use xft font map)
 #define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_WAYLAND
 
 // clang-format off
 #include <glad/gl.h>

@@ -61,6 +61,7 @@ class gdraw final : public draw {
   int _width, _height;
   int _available_width, _available_height;
   float _xscale, _yscale;
+  int _fixed_rendering_height = -1;
   TextRenderer _texter;
 
   gdraw(GLFWwindow *win) : _window(win) {
@@ -87,10 +88,19 @@ class gdraw final : public draw {
   friend class gwindow;
 
   void _update_projection() {
+    int window_width, window_height;
+    glfwGetWindowSize(_window, &window_width, &window_height);
     glfwGetWindowContentScale(_window, &_xscale, &_yscale);
 
-    _available_width = _width / _xscale;
-    _available_height = _height / _yscale;
+    if (_fixed_rendering_height != -1) {
+      _available_height = _fixed_rendering_height;
+      _yscale = (float)_height / _available_height;
+      _xscale = _yscale;
+      _available_width = _width / _xscale;
+    } else {
+      _available_width = (float)_width / _xscale;
+      _available_height = (float)_height / _yscale;
+    }
 
     glfwMakeContextCurrent(_window);
     glViewport(0, 0, _width, _height);
@@ -98,17 +108,25 @@ class gdraw final : public draw {
     glLoadIdentity();
     glOrtho(0, _available_width, _available_height, 0, -1, 1);
 
-    int a, b;
-    glfwGetWindowSize(_window, &a, &b);
-
-    fmt::print(debug, "Window {} resized\n", (void *)_window);
+    fmt::print(debug, "Window {} resized", (void *)_window);
+    if(_fixed_rendering_height != -1) {
+      fmt::print(debug, " (fixed height {})", (void *)_window);
+    }
+    fmt::print(debug, "\n");
     fmt::print(debug, "  Framebuffer size changed to {}x{}\n", _width, _height);
-    fmt::print(debug, "  Window size is {}x{}\n", a, b);
+    fmt::print(debug, "  Window size is {}x{}\n", window_width, window_height);
     fmt::print(debug, "  Content scale is x:{} y:{}\n", _xscale, _yscale);
     fmt::print(debug, "  Scaled size is {}x{}\n", _available_width, _available_height);
+
+    texter().set_scale(text_render_scale());
   }
 
 public:
+  void set_fixed_rendering_height(int height) {
+    _fixed_rendering_height = height;
+    _update_projection();
+  }
+
   TextRenderer &texter() { return _texter; }
 
   pos_t height() const { return _available_height; }

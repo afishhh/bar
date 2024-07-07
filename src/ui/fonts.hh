@@ -41,15 +41,13 @@ public:
     g_object_unref(_pango);
   }
 
-  void add(std::string_view name, float scale) {
+  void add(std::string_view name) {
     PangoFontMap *font_map = pango_context_get_font_map(_pango);
     PangoFontDescription *description = pango_font_description_from_string(name.data());
     debug << "pango description for " << name << ":\n";
     debug << "  family: " << pango_font_description_get_family(description) << '\n';
     debug << "  style: " << pango_font_description_get_style(description) << '\n';
     debug << "  size: " << pango_font_description_get_size(description) << '\n';
-    pango_font_description_set_size(description, pango_font_description_get_size(description) * scale);
-    debug << "  scaled size: " << pango_font_description_get_size(description) << '\n';
     PangoFont *font = pango_font_map_load_font(font_map, _pango, description);
     _descriptions.push_back(description);
 

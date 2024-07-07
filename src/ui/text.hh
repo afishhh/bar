@@ -48,6 +48,8 @@ class TextRenderer {
   LRUMap<std::string, CachedText, 512> _text_cache;
 
   PangoAttrList *_pango_itemize_attrs;
+  float _current_scale;
+
   std::shared_ptr<fonts> _fonts;
   uvec2 _size;
 
@@ -98,7 +100,7 @@ class TextRenderer {
   CachedText _text_full(PreparedText const &text);
 
 public:
-  TextRenderer() : _pango_itemize_attrs(nullptr), _fonts(nullptr) {}
+  TextRenderer() : _pango_itemize_attrs(nullptr), _current_scale(1.0), _fonts(nullptr) {}
   BAR_NON_COPYABLE(TextRenderer);
   BAR_NON_MOVEABLE(TextRenderer);
   ~TextRenderer() { pango_attr_list_unref(_pango_itemize_attrs); }
@@ -111,8 +113,18 @@ public:
     _pango_itemize_attrs = pango_attr_list_new();
     for (auto d : _fonts->_descriptions | std::views::reverse)
       pango_attr_list_insert(_pango_itemize_attrs, pango_attr_font_desc_new(d));
+    pango_attr_list_insert(_pango_itemize_attrs, pango_attr_scale_new(_current_scale));
   }
   std::shared_ptr<class fonts> const &get_fonts() { return _fonts; }
+
+  void set_scale(float new_scale) {
+    if (new_scale != _current_scale) {
+      _text_cache.clear();
+      _current_scale = new_scale;
+      if (_pango_itemize_attrs)
+        pango_attr_list_change(_pango_itemize_attrs, pango_attr_scale_new(new_scale));
+    }
+  }
 
   struct Result {
     uvec2 logical_size;

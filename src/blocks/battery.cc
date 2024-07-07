@@ -8,8 +8,8 @@
 
 #include <fmt/core.h>
 
-#include "../util.hh"
 #include "../log.hh"
+#include "../util.hh"
 #include "battery.hh"
 
 BatteryBlock::BatteryBlock(std::filesystem::path path, BatteryBlock::Config config) : _path(path), _config(config) {}
@@ -92,10 +92,15 @@ void BatteryBlock::update() {
 }
 
 void BatteryBlock::animate(Interval delta) {
-  if (_charging)
-    _charging_gradient_offset =
-        (_charging_gradient_offset + std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() / 2500000) %
-        size_t(map_range(_charge_level, 0, _max_charge_level, 0, (_config.bar_width - 1) * 20));
+  if (_charging) {
+    size_t w = size_t(map_range(_charge_level, 0, _max_charge_level, 0, (_config.bar_width - 1) * 20));
+    if (w)
+      _charging_gradient_offset =
+          (_charging_gradient_offset + std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() / 2500000) %
+          w;
+    else
+      _charging_gradient_offset = 0;
+  }
 }
 
 size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
@@ -122,7 +127,7 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
 
   draw.hrect(left, top, width, height);
 
-  size_t fill_width = battery_percent / 100 * (width - 1);
+  size_t fill_width = (std::min(battery_percent, 100.0)) / 100 * (width - 1);
 
   auto format_time = [this](size_t seconds) {
     std::string time_str;

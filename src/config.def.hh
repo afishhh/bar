@@ -22,16 +22,19 @@ using namespace std::literals;
 
 namespace config {
 
-// NOTE: While the height might seem configurable you will also need to change
-//       widths of quite a few different independent boxes for them to look
-//       good.
+// The height of the status bar, note that internally the bar's coordinate system will always place 0 at the top and 24 at the bottom.
 constexpr static size_t height = 24;
+
+// The order in which different platforms are attempted.
+constexpr int init_platform_order[] = {GLFW_PLATFORM_WAYLAND, GLFW_ANY_PLATFORM};
 
 constexpr color background_color = color::rgb(0, 0, 120);
 
 // Configuration options specific to the X11 backend
 namespace x11 {
 
+// Why? Fractional scaling. TODO: explain why
+static const size_t height = 48;
 // Whether to set the override-redirect flag on the bar window.
 constexpr static bool override_redirect = false;
 // The window name of the bar window.
