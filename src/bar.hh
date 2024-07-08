@@ -1,3 +1,5 @@
+#pragma once
+
 #include "ui/gl.hh"
 
 #include <chrono>
@@ -15,7 +17,6 @@
 
 #include "block.hh"
 #include "bufdraw.hh"
-#include "config.hh"
 #include "guard.hh"
 #include "log.hh"
 #include "ui/draw.hh"
@@ -24,12 +25,12 @@
 
 class bar {
   struct BlockInfo {
-    Block &block;
+    std::unique_ptr<Block> block;
 
-    uvec2 last_pos;
-    uvec2 last_size;
+    uvec2 last_pos{0,0};
+    uvec2 last_size{0,0};
 
-    BlockInfo(Block &block) : block(block) {}
+    BlockInfo(std::unique_ptr<Block> &&block) : block(std::move(block)) {}
     BlockInfo(BlockInfo const &) = delete;
     BlockInfo(BlockInfo &&) = default;
     BlockInfo &operator=(BlockInfo const &) = delete;
@@ -80,9 +81,12 @@ public:
   ui::gwindow &window() { return _window; }
   ui::gwindow &tooltip_window() { return _tooltip_window; }
 
-  void add_left(Block &block) { _setup_block(_left_blocks.emplace_back(block)); };
-
-  void add_right(Block &block) { _setup_block(_right_blocks.emplace_back(block)); };
+  template <std::derived_from<Block> B, typename... Args> void add_left(Args &&...args) {
+    _setup_block(_left_blocks.emplace_back(BlockInfo(std::make_unique<B>(std::forward<Args>(args)...))));
+  }
+  template <std::derived_from<Block> B, typename... Args> void add_right(Args &&...args) {
+    _setup_block(_right_blocks.emplace_back(BlockInfo(std::make_unique<B>(std::forward<Args>(args)...))));
+  };
 
   void schedule_redraw() {
     if (!_redraw_requested.exchange(true, std::memory_order_acq_rel))
@@ -91,19 +95,22 @@ public:
 
   void redraw();
 
+  void init_ui() {
+    _ui_init();
+  }
+
   void start_ui() {
-    std::latch ui_initialized_latch(1);
-    _ui_thread = std::jthread([this, &ui_initialized_latch](std::stop_token st) {
+    std::latch ui_ready_latch(1);
+    _ui_thread = std::jthread([this, &ui_ready_latch](std::stop_token st) {
       uv_async_t handle;
       uv_async_init(uv_default_loop(), &handle, [](uv_async_t *) {});
 
-      _ui_init();
-      ui_initialized_latch.count_down();
+      ui_ready_latch.count_down();
       _ui_loop(st);
 
       uv_close((uv_handle_t *)&handle, nullptr);
     });
-    ui_initialized_latch.wait();
+    ui_ready_latch.wait();
   }
 
   size_t on_x11_event(std::function<void(XEvent *)> callback) { return _x11_event_callbacks.emplace(callback); }

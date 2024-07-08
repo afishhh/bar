@@ -37,12 +37,8 @@ int main() {
 
   bar &bar = bar::instance();
 
-  for (auto &block : config::left_blocks)
-    bar.add_left(*block);
-
-  for (auto &block : config::right_blocks | std::views::reverse)
-    bar.add_right(*block);
-
+  bar.init_ui();
+  config::initialize(bar);
   bar.start_ui();
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

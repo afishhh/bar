@@ -141,7 +141,7 @@ void bar::_ui_init() {
   _tooltip_window.drawer().texter().set_fonts(std::move(fonts));
 }
 
-void bar::_setup_block(BlockInfo &info) { info.block.setup(); }
+void bar::_setup_block(BlockInfo &info) { info.block->setup(); }
 
 void bar::_ui_process_events(std::stop_token token, std::chrono::steady_clock::time_point until) {
   while (true) {
@@ -169,9 +169,9 @@ void bar::_ui_loop(std::stop_token token) {
 
         auto delta = now - _last_redraw;
         for (auto &block : _left_blocks)
-          block.block.animate(delta);
+          block.block->animate(delta);
         for (auto &block : _right_blocks)
-          block.block.animate(delta);
+          block.block->animate(delta);
 
         // fmt::println(debug, "Redrawing! ({:>6.3f}ms elapsed since last redraw)",
         //              (double)std::chrono::duration_cast<std::chrono::microseconds>(start - _last_redraw).count() /
@@ -216,13 +216,13 @@ void bar::redraw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   {
-    auto filtered = _left_blocks | std::views::filter([](BlockInfo const &info) { return !info.block.skip(); });
+    auto filtered = _left_blocks | std::views::filter([](BlockInfo const &info) { return !info.block->skip(); });
     auto it = filtered.begin();
     if (it != filtered.end())
       while (true) {
         auto &info = *it;
         auto &block = info.block;
-        auto width = block.draw(buffered_draw, now - _last_redraw, x, false);
+        auto width = block->draw(buffered_draw, now - _last_redraw, x, false);
         info.last_pos = {(unsigned)x, 0};
         info.last_size = {(unsigned)width, _height};
 
@@ -242,13 +242,13 @@ void bar::redraw() {
   x = direct_draw.width() - 5;
 
   {
-    auto filtered = _right_blocks | std::views::filter([](BlockInfo const &info) { return !info.block.skip(); });
+    auto filtered = _right_blocks | std::views::reverse | std::views::filter([](BlockInfo const &info) { return !info.block->skip(); });
     auto it = filtered.begin();
     if (it != filtered.end())
       while (true) {
         auto &info = *it;
         auto &block = info.block;
-        auto width = block.draw(buffered_draw, now - _last_redraw, x, true);
+        auto width = block->draw(buffered_draw, now - _last_redraw, x, true);
         info.last_pos = {(unsigned)(x - width), 0};
         info.last_size = {(unsigned)width, _height};
 
@@ -272,14 +272,14 @@ void bar::redraw() {
   glfwSwapBuffers(_window);
 
   BlockInfo *hovered = _hovered_block;
-  if (hovered && hovered->block.has_tooltip()) {
+  if (hovered && hovered->block->has_tooltip()) {
     glfwMakeContextCurrent(_tooltip_window);
     glClear(GL_COLOR_BUFFER_BIT);
 
     auto &block = hovered->block;
     auto &wd = _tooltip_window.drawer();
     auto bd = BufDraw(wd);
-    block.draw_tooltip(bd, now - _last_tooltip_draw, hovered->last_size.x);
+    block->draw_tooltip(bd, now - _last_tooltip_draw, hovered->last_size.x);
 
     auto dim = bd.calculate_size();
     dim.x *= wd.x_render_scale(), dim.y *= wd.y_render_scale();
