@@ -110,7 +110,7 @@ class gdraw final : public draw {
 
     fmt::print(debug, "Window {} resized", (void *)_window);
     if(_fixed_rendering_height != -1) {
-      fmt::print(debug, " (fixed height {})", (void *)_window);
+      fmt::print(debug, " (fixed height {})", _fixed_rendering_height);
     }
     fmt::print(debug, "\n");
     fmt::print(debug, "  Framebuffer size changed to {}x{}\n", _width, _height);
