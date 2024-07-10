@@ -139,6 +139,8 @@ void bar::_ui_init() {
   _window.drawer().set_fixed_rendering_height(24);
   _window.drawer().texter().set_fonts(std::shared_ptr(fonts));
   _tooltip_window.drawer().texter().set_fonts(std::move(fonts));
+
+  glfwMakeContextCurrent(nullptr);
 }
 
 void bar::_setup_block(BlockInfo &info) { info.block->setup(); }
