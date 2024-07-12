@@ -149,6 +149,7 @@ public:
     color::rgb rgb = color;
     glColor3ub(rgb.r, rgb.g, rgb.b);
 
+    glLineWidth(1.15);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBegin(GL_POLYGON);
     glVertex2i(x, y);
