@@ -303,7 +303,6 @@ void bar::redraw() {
     glfwSetWindowPos(_tooltip_window, pos.x, pos.y);
     glfwSetWindowSize(_tooltip_window, size.x, size.y);
 
-    _tooltip_window.drawer().hrect(0, 0, size.x - 1, size.y - 1, color(0xFFAA00));
     bd.draw_offset(8, 8);
 
     _last_tooltip_draw = now;

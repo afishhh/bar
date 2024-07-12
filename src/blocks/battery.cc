@@ -119,15 +119,13 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   x += 5;
 
   auto top = 3;
-  auto bottom = draw.height() - 6;
+  auto bottom = draw.height() - 5;
   auto height = bottom - top;
   auto left = x;
   auto width = _config.bar_width;
   x += width;
 
-  draw.hrect(left, top, width, height);
-
-  size_t fill_width = (std::min(battery_percent, 100.0)) / 100 * (width - 1);
+  size_t fill_width = (std::min(battery_percent, 100.0)) / 100 * width;
 
   auto format_time = [this](size_t seconds) {
     std::string time_str;
@@ -163,8 +161,8 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
   if (_charging) {
     for (size_t i = 0; i < fill_width; ++i) {
       auto color = (155 + (unsigned long)((double)i / fill_width * 100)) << 8;
-      auto x = left + 1 + ((i + _charging_gradient_offset / 10) % fill_width);
-      draw.frect(x, top + 1, 1, bottom - 1 - top, color);
+      auto x = left + ((i + _charging_gradient_offset / 10) % fill_width);
+      draw.frect(x, top, 1, height, color);
     }
 
     if (_config.show_time_left_charging && !_full) {
@@ -177,13 +175,15 @@ size_t BatteryBlock::draw(ui::draw &draw, std::chrono::duration<double>) {
     auto hue = map_range(battery_percent, 0, 360, 0, 1);
     color fill_color = color::hsl(hue, .9, .45);
 
-    draw.frect(left + 1, top + 1, fill_width, height - 1, fill_color);
+    draw.frect(left, top, fill_width, height, fill_color);
 
     if (_config.show_time_left_discharging && !_full && _wattage_now > 0) {
       auto time_left_str = format_time(_seconds_left);
       draw.text(left + width / 2 - draw.textw(time_left_str) / 2, draw.vcenter(), time_left_str);
     }
   }
+
+  draw.hrect(left, top, width, height);
 
   if (_config.show_degradation) {
     x += 5;
