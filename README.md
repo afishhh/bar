@@ -1,5 +1,12 @@
 # A custom status bar
 
+> [!WARNING]
+> THIS README IS VERY OUTDATED!
+>
+> Consult the source code for usage instructions.
+> In particular config.def.hh contains an example config.hh.
+> Also for some reason I switched from a custom event loop to libuv (quite possibly mistake).
+
 ## Features
 - dwm-ipc patch support (uses dwmipcpp library), support for other window managers may be added through custom blocks.
 - Easy custom block creation in C++.
@@ -113,5 +120,3 @@ Follow the code style, submit a PR.
 Note that custom blocks may or may not be accepted.
 Complex integrations with other programs like pipewire or pulseaudio should just be left to `ScriptBlock`s.
 An extension system may be implemented to allow such integrations in C++, although it is unlikely I will bother with this.
-
-Don't refactor the whole codebase and expect me to merge it though, I want to keep working on this.
