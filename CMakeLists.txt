@@ -25,7 +25,6 @@ add_executable(
 
   src/main.cc
   src/run.cc
-  src/guard.cc
   src/util.cc
   src/log.cc
   src/block.cc

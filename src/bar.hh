@@ -17,7 +17,6 @@
 
 #include "block.hh"
 #include "bufdraw.hh"
-#include "guard.hh"
 #include "log.hh"
 #include "ui/draw.hh"
 #include "ui/window.hh"
