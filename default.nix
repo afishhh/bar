@@ -23,6 +23,7 @@
 , cairo
 
 , glfw
+, wayland
 , wayland-scanner
 , glad2 ? pkgs.python3Packages.glad2
 
@@ -61,6 +62,7 @@ gcc13Stdenv.mkDerivation {
         ./glfw.patch
       ];
     })))
+    wayland
     wayland-scanner.dev
     cairo
   ];

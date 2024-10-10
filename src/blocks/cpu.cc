@@ -92,36 +92,33 @@ void CpuBlock::update() {
         }
       };
 
-      auto point_range =
-          std::ranges::subrange(
-              std::filesystem::directory_iterator(entry.path()),
-              std::filesystem::directory_iterator()) |
-          std::views::filter([](const auto &entry) {
-            auto n = entry.path().filename().string();
-            return n.starts_with("trip_point_") && n.ends_with("_type");
-          }) |
-          std::views::transform([](const auto &entry) {
-            auto f = entry.path().string();
-            // remove _type
-            return f.erase(f.size() - 5);
-          }) |
-          std::views::transform([](const auto &path) {
-            ThermalInfo::TripPoint point;
+      auto point_range = std::ranges::subrange(std::filesystem::directory_iterator(entry.path()),
+                                               std::filesystem::directory_iterator()) |
+                         std::views::filter([](const auto &entry) {
+                           auto n = entry.path().filename().string();
+                           return n.starts_with("trip_point_") && n.ends_with("_type");
+                         }) |
+                         std::views::transform([](const auto &entry) {
+                           auto f = entry.path().string();
+                           // remove _type
+                           return f.erase(f.size() - 5);
+                         }) |
+                         std::views::transform([](const auto &path) {
+                           ThermalInfo::TripPoint point;
 
-            std::ifstream(path + "_temp") >> point.temperature;
-            std::ifstream(path + "_type") >> point.type;
-            std::ifstream(path + "_hyst") >> point.hyst;
+                           std::ifstream(path + "_temp") >> point.temperature;
+                           std::ifstream(path + "_type") >> point.type;
+                           std::ifstream(path + "_hyst") >> point.hyst;
 
-            return point;
-          });
+                           return point;
+                         });
 
       std::set<ThermalInfo::TripPoint, trip_point_temperature_less> points;
       for (auto point : point_range)
         points.emplace(std::move(point));
 
-      auto it = std::ranges::find_if(points, [&](const auto &point) {
-        return point.temperature < _thermal->temperature;
-      });
+      auto it =
+          std::ranges::find_if(points, [&](const auto &point) { return point.temperature < _thermal->temperature; });
       if (it != points.end())
         _thermal->current_trip_point = *it;
       else

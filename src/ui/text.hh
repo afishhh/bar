@@ -35,10 +35,8 @@ class TextRenderer {
     }
 
     ~CachedText() {
-      if (texture != 0) {
+      if (texture != 0)
         glDeleteTextures(1, &texture);
-        fmt::println(debug, "Texture {} destroyed", texture);
-      }
     }
   };
 

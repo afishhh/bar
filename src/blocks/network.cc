@@ -1,4 +1,4 @@
-#include <algorithm>
+#include <atomic>
 #include <charconv>
 #include <concepts>
 #include <cstddef>
@@ -18,7 +18,6 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <system_error>
-#include <type_traits>
 #include <unistd.h>
 #include <unordered_map>
 #include <utility>
@@ -107,9 +106,8 @@ void iwctl_parse_output(std::string const &output, IwctlStationInfo &info) {
 }
 
 void iwctl_update_station(WifiStation &station) {
-  run(&station.iwctl_process,
-      {"iwctl", "station", station.name, "show"},
-      {NULL}, [&station](int status, int signal, std::string output) {
+  run(&station.iwctl_process, {"iwctl", "station", station.name, "show"}, {NULL},
+      [&station](int status, int signal, std::string output) {
         if (status || signal) {
           if (signal)
             station.iwctl_status = -1;
@@ -119,13 +117,19 @@ void iwctl_update_station(WifiStation &station) {
         }
 
         IwctlStationInfo new_info;
-        iwctl_parse_output(output, new_info);
+        try {
+          iwctl_parse_output(output, new_info);
+        } catch (std::exception const &ex) {
+          warn << "failed to parse iwd output for " << station.name << ": " << ex.what() << '\n';
+          station.update_running.clear(std::memory_order_release);
+          return;
+        }
 
-      {
-        std::unique_lock lock(station.modify_mutex);
-        station.iwctl_status = 0;
-        station.info = std::move(new_info);
-      }
+        {
+          std::unique_lock lock(station.modify_mutex);
+          station.iwctl_status = 0;
+          station.info = std::move(new_info);
+        }
 
         station.update_running.clear(std::memory_order_release);
       });
